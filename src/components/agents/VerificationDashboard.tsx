@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import {
   ShieldCheck,
@@ -247,7 +247,8 @@ function AgentRow({ agentId, onRunChecks }: AgentRowProps) {
 
 export function VerificationDashboard() {
   const projectRoot = useLayoutStore((s) => s.projectRootPath);
-  const agentsList = useAgentsStore((s) => s.getAgentsList());
+  const agentsMap = useAgentsStore((s) => s.agents);
+  const agentsList = useMemo(() => Array.from(agentsMap.values()), [agentsMap]);
   const defaultGates = useMergeQueueStore((s) => s.defaultGates);
 
   const verifAgents = useVerificationStore((s) => s.agents);
@@ -256,13 +257,27 @@ export function VerificationDashboard() {
   const setOverallStatus = useVerificationStore((s) => s.setOverallStatus);
   const isRunningAll = useVerificationStore((s) => s.isRunningAll);
   const setRunningAll = useVerificationStore((s) => s.setRunningAll);
-  const passCount = useVerificationStore((s) => s.getPassCount());
-  const failCount = useVerificationStore((s) => s.getFailCount());
-  const totalCount = useVerificationStore((s) => s.getTotalCount());
+
+  const passCount = useMemo(() => {
+    let count = 0;
+    verifAgents.forEach((a) => a.checks.forEach((c) => { if (c.status === "passed") count++; }));
+    return count;
+  }, [verifAgents]);
+  const failCount = useMemo(() => {
+    let count = 0;
+    verifAgents.forEach((a) => a.checks.forEach((c) => { if (c.status === "failed") count++; }));
+    return count;
+  }, [verifAgents]);
+  const totalCount = useMemo(() => {
+    let count = 0;
+    verifAgents.forEach((a) => count += a.checks.length);
+    return count;
+  }, [verifAgents]);
 
   // Agents with worktrees
-  const agentsWithWorktrees = agentsList.filter(
-    (a) => a.worktreePath !== null,
+  const agentsWithWorktrees = useMemo(
+    () => agentsList.filter((a) => a.worktreePath !== null),
+    [agentsList]
   );
 
   // Initialize verification entries for agents not yet tracked
