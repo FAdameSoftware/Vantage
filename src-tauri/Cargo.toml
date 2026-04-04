@@ -33,3 +33,5 @@ uuid = { version = "1", features = ["v4"] }
 regex = "1"
 # --- Phase 5: System notifications ---
 tauri-plugin-notification = "2"
+# --- Phase 6: Auto-update ---
+tauri-plugin-updater = "2"

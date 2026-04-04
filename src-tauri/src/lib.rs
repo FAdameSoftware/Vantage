@@ -4,6 +4,7 @@ mod git;
 mod mcp;
 mod prerequisites;
 mod search;
+mod session_search;
 mod terminal;
 mod worktree;
 
@@ -301,6 +302,45 @@ fn search_project(
     )
 }
 
+// ── Session Search Commands ────────────────────────────────────────
+
+#[tauri::command]
+#[specta::specta]
+fn search_sessions(
+    query: String,
+    cwd: Option<String>,
+) -> Result<Vec<session_search::SessionSearchResult>, String> {
+    session_search::search_sessions(&query, cwd.as_deref())
+}
+
+#[tauri::command]
+#[specta::specta]
+fn get_session_stats(
+    session_path: String,
+) -> Result<session_search::SessionStats, String> {
+    session_search::get_session_stats(&session_path)
+}
+
+// ── Git Log/Blame Commands ─────────────────────────────────────────
+
+#[tauri::command]
+#[specta::specta]
+fn git_log(cwd: String, limit: u32) -> Result<Vec<git::GitLogEntry>, String> {
+    git::git_log(&cwd, limit)
+}
+
+#[tauri::command]
+#[specta::specta]
+fn git_blame(cwd: String, file_path: String) -> Result<Vec<git::GitBlameLine>, String> {
+    git::git_blame(&cwd, &file_path)
+}
+
+#[tauri::command]
+#[specta::specta]
+fn git_diff_commit(cwd: String, hash: String) -> Result<String, String> {
+    git::git_diff_commit(&cwd, &hash)
+}
+
 // ── MCP Config Commands ───────────────────────────────────────────
 
 #[tauri::command]
@@ -362,6 +402,11 @@ pub fn run() {
             search_project,
             read_mcp_config,
             write_mcp_config,
+            search_sessions,
+            get_session_stats,
+            git_log,
+            git_blame,
+            git_diff_commit,
         ],
     );
 
@@ -379,6 +424,7 @@ pub fn run() {
         .plugin(tauri_plugin_pty::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(Mutex::new(FileWatcherState::new()))
         .invoke_handler(builder.invoke_handler())
         .setup(move |app| {

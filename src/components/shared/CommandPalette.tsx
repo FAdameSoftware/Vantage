@@ -21,12 +21,19 @@ import {
   Bot,
   Hash,
   FileCode,
+  Download,
+  BarChart3,
+  Palette,
 } from "lucide-react";
 import { useCommandPaletteStore } from "@/stores/commandPalette";
 import { useLayoutStore } from "@/stores/layout";
 import { useEditorStore } from "@/stores/editor";
+import { useSettingsStore } from "@/stores/settings";
+import type { ThemeName } from "@/stores/settings";
 import type { FileNode } from "@/hooks/useFileTree";
 import * as monaco from "monaco-editor";
+
+const THEME_CYCLE: ThemeName[] = ["vantage-dark", "vantage-light", "vantage-high-contrast"];
 
 // ── Types ─────────────────────────────────────────────────────────────
 
@@ -193,6 +200,15 @@ export function CommandPalette() {
 
   const openFile = useEditorStore((s) => s.openFile);
 
+  const currentTheme = useSettingsStore((s) => s.theme);
+  const setTheme = useSettingsStore((s) => s.setTheme);
+
+  const cycleTheme = useCallback(() => {
+    const currentIndex = THEME_CYCLE.indexOf(currentTheme);
+    const nextIndex = (currentIndex + 1) % THEME_CYCLE.length;
+    setTheme(THEME_CYCLE[nextIndex]);
+  }, [currentTheme, setTheme]);
+
   const [fileList, setFileList] = useState<FlatFile[]>([]);
   const [isLoadingFiles, setIsLoadingFiles] = useState(false);
 
@@ -280,6 +296,117 @@ export function CommandPalette() {
         const state = useEditorStore.getState();
         if (state.activeTabId) {
           state.closeTab(state.activeTabId);
+        }
+      },
+    },
+    {
+      id: "theme-dark",
+      label: "Color Theme: Dark (Catppuccin Mocha)",
+      icon: <Settings className="size-4 shrink-0 text-muted-foreground" />,
+      category: "Preferences",
+      action: () => setTheme("vantage-dark"),
+    },
+    {
+      id: "theme-light",
+      label: "Color Theme: Light (Catppuccin Latte)",
+      icon: <Settings className="size-4 shrink-0 text-muted-foreground" />,
+      category: "Preferences",
+      action: () => setTheme("vantage-light"),
+    },
+    {
+      id: "theme-high-contrast",
+      label: "Color Theme: High Contrast (WCAG AAA)",
+      icon: <Settings className="size-4 shrink-0 text-muted-foreground" />,
+      category: "Preferences",
+      action: () => setTheme("vantage-high-contrast"),
+    },
+    {
+      id: "theme-cycle",
+      label: "Color Theme: Cycle to Next Theme",
+      icon: <Settings className="size-4 shrink-0 text-muted-foreground" />,
+      category: "Preferences",
+      action: cycleTheme,
+    },
+    {
+      id: "check-updates",
+      label: "Check for Updates",
+      icon: <Download className="size-4 shrink-0 text-muted-foreground" />,
+      category: "Application",
+      action: async () => {
+        const { toast } = await import("sonner");
+        try {
+          const { check } = await import("@tauri-apps/plugin-updater");
+          const update = await check();
+          if (update) {
+            const { relaunch } = await import("@tauri-apps/plugin-process");
+            toast(`Update available: v${update.version}`, {
+              description: update.body ?? "A new version is ready to install.",
+              duration: Infinity,
+              action: {
+                label: "Install",
+                onClick: async () => {
+                  await update.downloadAndInstall();
+                  await relaunch();
+                },
+              },
+            });
+          } else {
+            toast.success("You're up to date!");
+          }
+        } catch {
+          toast.error("Could not check for updates.");
+        }
+      },
+    },
+    {
+      id: "open-analytics",
+      label: "Open Usage Analytics",
+      icon: <BarChart3 className="size-4 shrink-0 text-muted-foreground" />,
+      category: "View",
+      action: () => {
+        const { useEditorStore } = require("@/stores/editor");
+        const store = useEditorStore.getState();
+        store.openFile(
+          "__vantage://analytics",
+          "Usage Analytics",
+          "plaintext",
+          "",
+        );
+      },
+    },
+    {
+      id: "customize-theme",
+      label: "Customize Theme (Edit theme.json)",
+      icon: <Palette className="size-4 shrink-0 text-muted-foreground" />,
+      category: "Preferences",
+      action: async () => {
+        try {
+          const { invoke } = await import("@tauri-apps/api/core");
+          const filePath = await invoke<string>("get_theme_file_path");
+          // Ensure the file exists with a template
+          const existing = await invoke<string | null>("read_theme_file");
+          if (!existing) {
+            const template = JSON.stringify(
+              {
+                name: "My Custom Theme",
+                base: "vantage-dark",
+                colors: {
+                  "color-base": "#1e1e2e",
+                  "color-blue": "#89b4fa",
+                },
+              },
+              null,
+              2,
+            );
+            await invoke("write_theme_file", { content: template });
+          }
+          const { useEditorStore } = require("@/stores/editor");
+          const content = await invoke<string | null>("read_theme_file");
+          useEditorStore
+            .getState()
+            .openFile(filePath, "theme.json", "json", content ?? "{}");
+        } catch (err) {
+          console.error("Failed to open theme file:", err);
         }
       },
     },
