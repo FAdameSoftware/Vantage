@@ -3,6 +3,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { useKeybindings } from "@/hooks/useKeybindings";
 import { PermissionDialog } from "@/components/permissions/PermissionDialog";
 import { CommandPalette } from "@/components/shared/CommandPalette";
+import { PrerequisiteCheck } from "@/components/shared/PrerequisiteCheck";
 
 function App() {
   useKeybindings();
@@ -12,6 +13,7 @@ function App() {
       <IDELayout />
       <CommandPalette />
       <PermissionDialog />
+      <PrerequisiteCheck />
       <Toaster
         position="bottom-right"
         toastOptions={{

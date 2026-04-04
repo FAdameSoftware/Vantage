@@ -1,5 +1,7 @@
 mod claude;
 mod files;
+mod git;
+mod prerequisites;
 mod terminal;
 
 use claude::session::{self, SessionInfo, SessionManager};
@@ -188,6 +190,28 @@ async fn claude_is_session_alive(app_handle: tauri::AppHandle, session_id: Strin
     manager.is_session_alive(&session_id).await
 }
 
+// ── Prerequisite Commands ───────────────────────────────────────────
+
+#[tauri::command]
+#[specta::specta]
+fn check_prerequisites() -> Vec<prerequisites::PrerequisiteResult> {
+    prerequisites::check_all()
+}
+
+// ── Git Commands ────────────────────────────────────────────────────
+
+#[tauri::command]
+#[specta::specta]
+fn get_git_branch(cwd: String) -> Result<git::GitBranchInfo, String> {
+    git::get_branch(&cwd)
+}
+
+#[tauri::command]
+#[specta::specta]
+fn get_git_status(cwd: String) -> Result<Vec<git::GitFileStatus>, String> {
+    git::get_status(&cwd)
+}
+
 // ── Application Setup ───────────────────────────────────────────────
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -215,6 +239,9 @@ pub fn run() {
             claude_list_active_sessions,
             claude_list_sessions,
             claude_is_session_alive,
+            check_prerequisites,
+            get_git_branch,
+            get_git_status,
         ],
     );
 
