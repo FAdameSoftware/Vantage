@@ -10,6 +10,7 @@ export interface SlashCommand {
 }
 
 export const BUILTIN_COMMANDS: SlashCommand[] = [
+  { name: "btw", description: "Ask a quick question (zero context cost)", source: "built-in", isSkill: false },
   { name: "bug", description: "Report a bug to Anthropic", source: "built-in", isSkill: false },
   { name: "clear", description: "Clear the conversation history", source: "built-in", isSkill: false },
   { name: "compact", description: "Compact conversation to reduce context usage", source: "built-in", isSkill: false },

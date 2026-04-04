@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import {
   Panel,
   Group,
@@ -12,6 +13,7 @@ import { SecondarySidebar } from "./SecondarySidebar";
 import { PanelArea } from "./PanelArea";
 import { StatusBar } from "./StatusBar";
 import { TitleBar } from "./TitleBar";
+import { useQuickQuestionStore } from "@/stores/quickQuestion";
 
 function VerticalResizeHandle() {
   return (
@@ -45,6 +47,18 @@ function HorizontalResizeHandle({ onMouseDown }: { onMouseDown: (e: React.MouseE
 
 export function IDELayout() {
   const primarySidebarVisible = useLayoutStore((s) => s.primarySidebarVisible);
+
+  // Ctrl+Shift+Q — open Quick Question overlay
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && e.key === "Q") {
+        e.preventDefault();
+        useQuickQuestionStore.getState().open();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
   const secondarySidebarVisible = useLayoutStore(
     (s) => s.secondarySidebarVisible
   );

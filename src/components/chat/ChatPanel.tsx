@@ -6,6 +6,9 @@ import { MessageBubble } from "./MessageBubble";
 import { ChatInput } from "./ChatInput";
 import { ThinkingIndicator } from "./ThinkingIndicator";
 import { SessionSelector } from "./SessionSelector";
+import { QuickQuestionOverlay } from "./QuickQuestionOverlay";
+import { useQuickQuestionStore } from "@/stores/quickQuestion";
+import { CompactDialog } from "./CompactDialog";
 
 // ─── Streaming preview (live text accumulation) ─────────────────────────────
 
@@ -111,6 +114,10 @@ export function ChatPanel() {
 
   const handleSend = useCallback(
     (content: string) => {
+      // Track /btw questions so the overlay can show them
+      if (content.startsWith("/btw ")) {
+        useQuickQuestionStore.getState().ask(content.slice(5));
+      }
       autoScrollRef.current = true;
       const cwd = session?.cwd ?? "C:/CursorProjects/Vantage";
       sendMessage(content, cwd);
@@ -153,6 +160,7 @@ export function ChatPanel() {
           </span>
         </div>
         <div className="flex items-center gap-2">
+          <CompactDialog onSend={handleSend} />
           <SessionSelector
             cwd={session?.cwd ?? ""}
             onNewSession={handleNewSession}
@@ -246,15 +254,18 @@ export function ChatPanel() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
-      <ChatInput
-        onSend={handleSend}
-        onStop={handleStop}
-        isStreaming={isStreaming}
-        disabled={false}
-        connectionStatus={connectionStatus}
-        installedSkills={installedSkills}
-      />
+      {/* Input + Quick Question Overlay */}
+      <div className="relative shrink-0">
+        <QuickQuestionOverlay />
+        <ChatInput
+          onSend={handleSend}
+          onStop={handleStop}
+          isStreaming={isStreaming}
+          disabled={false}
+          connectionStatus={connectionStatus}
+          installedSkills={installedSkills}
+        />
+      </div>
     </div>
   );
 }
