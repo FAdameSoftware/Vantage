@@ -1,117 +1,80 @@
-import { X, FileCode } from "lucide-react";
-
-interface PlaceholderTab {
-  id: string;
-  label: string;
-  isActive: boolean;
-  isDirty: boolean;
-}
-
-const placeholderTabs: PlaceholderTab[] = [
-  { id: "welcome", label: "Welcome", isActive: true, isDirty: false },
-];
-
-function TabBar({ tabs }: { tabs: PlaceholderTab[] }) {
-  return (
-    <div
-      className="flex items-center h-9 shrink-0 overflow-x-auto"
-      style={{
-        backgroundColor: "var(--color-mantle)",
-        borderBottom: "1px solid var(--color-surface-0)",
-      }}
-      role="tablist"
-    >
-      {tabs.map((tab) => (
-        <div
-          key={tab.id}
-          className="flex items-center gap-2 px-3 h-full text-xs cursor-pointer shrink-0 transition-colors"
-          style={{
-            backgroundColor: tab.isActive ? "var(--color-base)" : "transparent",
-            color: tab.isActive ? "var(--color-text)" : "var(--color-subtext-0)",
-            borderRight: "1px solid var(--color-surface-0)",
-          }}
-          role="tab"
-          aria-selected={tab.isActive}
-        >
-          <FileCode size={14} style={{ color: "var(--color-blue)" }} />
-          <span>{tab.label}</span>
-          {tab.isDirty && (
-            <span
-              className="w-2 h-2 rounded-full"
-              style={{ backgroundColor: "var(--color-text)" }}
-            />
-          )}
-          <button
-            className="p-0.5 rounded hover:bg-[var(--color-surface-1)] transition-colors"
-            style={{ color: "var(--color-overlay-1)" }}
-            aria-label={`Close ${tab.label}`}
-          >
-            <X size={12} />
-          </button>
-        </div>
-      ))}
-    </div>
-  );
-}
+import { useCallback, useEffect } from "react";
+import { invoke } from "@tauri-apps/api/core";
+import { FileCode } from "lucide-react";
+import { useEditorStore } from "@/stores/editor";
+import { MonacoEditor } from "@/components/editor/MonacoEditor";
+import { EditorTabs } from "@/components/editor/EditorTabs";
 
 function Breadcrumbs() {
+  const activeTab = useEditorStore((s) => {
+    const tab = s.tabs.find((t) => t.id === s.activeTabId);
+    return tab ?? null;
+  });
+
+  if (!activeTab) return null;
+
+  const segments = activeTab.path.split("/");
+
   return (
     <div
-      className="flex items-center h-6 px-3 text-xs shrink-0"
+      className="flex items-center h-6 px-3 text-xs shrink-0 overflow-x-auto"
       style={{
         backgroundColor: "var(--color-base)",
         color: "var(--color-subtext-0)",
         borderBottom: "1px solid var(--color-surface-0)",
       }}
     >
-      <span>Vantage</span>
-      <span className="mx-1" style={{ color: "var(--color-overlay-0)" }}>
-        /
-      </span>
-      <span style={{ color: "var(--color-text)" }}>Welcome</span>
+      {segments.map((segment, i) => (
+        <span key={i} className="flex items-center shrink-0">
+          {i > 0 && (
+            <span className="mx-1" style={{ color: "var(--color-overlay-0)" }}>
+              /
+            </span>
+          )}
+          <span
+            style={{
+              color:
+                i === segments.length - 1
+                  ? "var(--color-text)"
+                  : "var(--color-subtext-0)",
+            }}
+          >
+            {segment}
+          </span>
+        </span>
+      ))}
     </div>
   );
 }
 
-export function EditorArea() {
+function WelcomeScreen() {
   return (
-    <div
-      className="flex flex-col h-full overflow-hidden"
-      style={{ backgroundColor: "var(--color-base)" }}
-      data-allow-select="true"
-    >
-      <TabBar tabs={placeholderTabs} />
-      <Breadcrumbs />
-
-      {/* Editor content placeholder */}
-      <div className="flex-1 flex flex-col items-center justify-center gap-4">
-        <div
-          className="w-16 h-16 rounded-xl flex items-center justify-center"
-          style={{ backgroundColor: "var(--color-surface-0)" }}
+    <div className="flex-1 flex flex-col items-center justify-center gap-4">
+      <div
+        className="w-16 h-16 rounded-xl flex items-center justify-center"
+        style={{ backgroundColor: "var(--color-surface-0)" }}
+      >
+        <FileCode size={32} style={{ color: "var(--color-blue)" }} />
+      </div>
+      <div className="text-center">
+        <h2
+          className="text-lg font-semibold mb-1"
+          style={{ color: "var(--color-text)" }}
         >
-          <FileCode size={32} style={{ color: "var(--color-blue)" }} />
-        </div>
-        <div className="text-center">
-          <h2
-            className="text-lg font-semibold mb-1"
-            style={{ color: "var(--color-text)" }}
-          >
-            Welcome to Vantage
-          </h2>
-          <p
-            className="text-xs max-w-md"
-            style={{ color: "var(--color-overlay-1)" }}
-          >
-            Open a project folder to get started. The code editor will appear here
-            in Phase 2 with Monaco Editor, syntax highlighting, and inline diff
-            review.
-          </p>
-        </div>
-        <div className="flex gap-3 mt-2">
-          <KeyboardHint keys="Ctrl+Shift+P" label="Command Palette" />
-          <KeyboardHint keys="Ctrl+Shift+E" label="Explorer" />
-          <KeyboardHint keys="Ctrl+`" label="Terminal" />
-        </div>
+          Welcome to Vantage
+        </h2>
+        <p
+          className="text-xs max-w-md"
+          style={{ color: "var(--color-overlay-1)" }}
+        >
+          Open a project folder to get started. Use the Explorer (Ctrl+Shift+E)
+          to browse files, or press Ctrl+Shift+P for the Command Palette.
+        </p>
+      </div>
+      <div className="flex gap-3 mt-2">
+        <KeyboardHint keys="Ctrl+Shift+P" label="Command Palette" />
+        <KeyboardHint keys="Ctrl+Shift+E" label="Explorer" />
+        <KeyboardHint keys="Ctrl+`" label="Terminal" />
       </div>
     </div>
   );
@@ -131,6 +94,79 @@ function KeyboardHint({ keys, label }: { keys: string; label: string }) {
         {keys}
       </kbd>
       <span style={{ color: "var(--color-overlay-1)" }}>{label}</span>
+    </div>
+  );
+}
+
+export function EditorArea() {
+  const tabs = useEditorStore((s) => s.tabs);
+  const activeTabId = useEditorStore((s) => s.activeTabId);
+  const updateContent = useEditorStore((s) => s.updateContent);
+  const markSaved = useEditorStore((s) => s.markSaved);
+
+  const activeTab = tabs.find((t) => t.id === activeTabId) ?? null;
+
+  // Handle Ctrl+S to save the active file
+  const handleSave = useCallback(async () => {
+    if (!activeTab || !activeTab.isDirty) return;
+    try {
+      await invoke("write_file", {
+        path: activeTab.path,
+        content: activeTab.content,
+      });
+      markSaved(activeTab.id, activeTab.content);
+    } catch (e) {
+      console.error("Failed to save file:", e);
+    }
+  }, [activeTab, markSaved]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.key === "s" && !e.shiftKey && !e.altKey) {
+        e.preventDefault();
+        handleSave();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown, true);
+    return () => window.removeEventListener("keydown", handleKeyDown, true);
+  }, [handleSave]);
+
+  const handleContentChange = useCallback(
+    (newValue: string) => {
+      if (activeTab) {
+        updateContent(activeTab.id, newValue);
+      }
+    },
+    [activeTab, updateContent]
+  );
+
+  return (
+    <div
+      className="flex flex-col h-full overflow-hidden"
+      style={{ backgroundColor: "var(--color-base)" }}
+      data-allow-select="true"
+    >
+      {/* Tab bar */}
+      <EditorTabs />
+
+      {/* Breadcrumbs */}
+      <Breadcrumbs />
+
+      {/* Editor content */}
+      {activeTab ? (
+        <div className="flex-1 overflow-hidden">
+          <MonacoEditor
+            key={activeTab.id}
+            filePath={activeTab.path}
+            language={activeTab.language}
+            value={activeTab.content}
+            onChange={handleContentChange}
+          />
+        </div>
+      ) : (
+        <WelcomeScreen />
+      )}
     </div>
   );
 }
