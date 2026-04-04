@@ -16,7 +16,6 @@ pub struct SessionInfo {
     pub file_path: String,
     pub last_modified: f64,
     pub file_size: u64,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub first_message: Option<String>,
     pub line_count: u32,
 }

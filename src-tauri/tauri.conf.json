@@ -25,13 +25,6 @@
       "csp": null
     }
   },
-  "plugins": {
-    "store": {},
-    "updater": {
-      "endpoints": [
-        "https://github.com/YOUR_ORG/vantage/releases/latest/download/latest.json"
-      ],
-      "pubkey": ""
-    }
-  }
+  "plugins": {}
+
 }

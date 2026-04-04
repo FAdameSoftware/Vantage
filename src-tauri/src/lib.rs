@@ -538,7 +538,7 @@ pub fn run() {
         .plugin(tauri_plugin_pty::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
-        .plugin(tauri_plugin_updater::Builder::new().build())
+        // .plugin(tauri_plugin_updater::Builder::new().build()) // TODO: enable when updater endpoint is configured
         .manage(Mutex::new(FileWatcherState::new()))
         .invoke_handler(builder.invoke_handler())
         .setup(move |app| {
