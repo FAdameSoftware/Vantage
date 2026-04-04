@@ -129,8 +129,17 @@ export function useKeybindings() {
       key: "f",
       ctrl: true,
       shift: true,
-      action: () => setActiveActivityBarItem("search"),
-      description: "Focus Search",
+      action: () => {
+        setActiveActivityBarItem("search");
+        // Focus the search input after the panel renders
+        setTimeout(() => {
+          const input = document.querySelector(
+            "[data-search-input]"
+          ) as HTMLInputElement;
+          input?.focus();
+        }, 50);
+      },
+      description: "Search in Files",
     },
     {
       key: "g",
