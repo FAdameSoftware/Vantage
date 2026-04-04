@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { FileCode } from "lucide-react";
 import { useEditorStore } from "@/stores/editor";
 import { MonacoEditor } from "@/components/editor/MonacoEditor";
+import { DiffViewer } from "@/components/editor/DiffViewer";
 import { EditorTabs } from "@/components/editor/EditorTabs";
 import { MarkdownPreview } from "@/components/editor/MarkdownPreview";
 
@@ -105,11 +106,19 @@ export function EditorArea() {
   const updateContent = useEditorStore((s) => s.updateContent);
   const markSaved = useEditorStore((s) => s.markSaved);
   const markdownPreviewTabs = useEditorStore((s) => s.markdownPreviewTabs);
+  const pendingDiffs = useEditorStore((s) => s.pendingDiffs);
 
   const activeTab = tabs.find((t) => t.id === activeTabId) ?? null;
 
+  // If the active tab has a pending diff, show the diff viewer instead of the editor.
+  // TODO: setPendingDiff is triggered from useClaude hook when a Claude Edit/Write
+  //       tool call completes — the hook captures before/after content and calls
+  //       setPendingDiff(tabId, originalContent, modifiedContent, description).
+  const activeDiff = activeTab ? pendingDiffs.get(activeTab.id) : undefined;
+
   const isMarkdownPreview =
     activeTab !== null &&
+    !activeDiff &&
     activeTab.language === "markdown" &&
     markdownPreviewTabs.has(activeTab.id);
 
@@ -162,31 +171,42 @@ export function EditorArea() {
 
       {/* Editor content */}
       {activeTab ? (
-        <div className="flex-1 overflow-hidden flex">
-          {/* Monaco editor — full width or left half */}
-          <div
-            className={isMarkdownPreview ? "w-1/2" : "w-full"}
-            style={{ overflow: "hidden" }}
-          >
-            <MonacoEditor
+        activeDiff ? (
+          /* Diff viewer — replaces the normal editor when a pending diff exists */
+          <div className="flex-1 overflow-hidden">
+            <DiffViewer
               key={activeTab.id}
-              filePath={activeTab.path}
+              diff={activeDiff}
               language={activeTab.language}
-              value={activeTab.content}
-              onChange={handleContentChange}
             />
           </div>
-
-          {/* Markdown preview — right half, only when toggled */}
-          {isMarkdownPreview && (
+        ) : (
+          <div className="flex-1 overflow-hidden flex">
+            {/* Monaco editor — full width or left half */}
             <div
-              className="w-1/2 overflow-hidden"
-              style={{ borderLeft: "1px solid var(--color-surface-0)" }}
+              className={isMarkdownPreview ? "w-1/2" : "w-full"}
+              style={{ overflow: "hidden" }}
             >
-              <MarkdownPreview content={activeTab.content} />
+              <MonacoEditor
+                key={activeTab.id}
+                filePath={activeTab.path}
+                language={activeTab.language}
+                value={activeTab.content}
+                onChange={handleContentChange}
+              />
             </div>
-          )}
-        </div>
+
+            {/* Markdown preview — right half, only when toggled */}
+            {isMarkdownPreview && (
+              <div
+                className="w-1/2 overflow-hidden"
+                style={{ borderLeft: "1px solid var(--color-surface-0)" }}
+              >
+                <MarkdownPreview content={activeTab.content} />
+              </div>
+            )}
+          </div>
+        )
       ) : (
         <WelcomeScreen />
       )}

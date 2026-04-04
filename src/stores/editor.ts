@@ -1,5 +1,16 @@
 import { create } from "zustand";
 
+export interface PendingDiff {
+  /** Tab ID this diff belongs to */
+  tabId: string;
+  /** The original content before Claude's edit */
+  originalContent: string;
+  /** The modified content from Claude's edit */
+  modifiedContent: string;
+  /** Human-readable description of the change */
+  description: string;
+}
+
 export interface EditorTab {
   /** Unique ID for this tab (normalized file path) */
   id: string;
@@ -68,6 +79,27 @@ export interface EditorState {
   toggleMarkdownPreview: (tabId: string) => void;
   /** Check if a tab has markdown preview active */
   isMarkdownPreviewActive: (tabId: string) => boolean;
+
+  // ── Diff Viewer ────────────────────────────────────────────────────
+  // Triggered by Claude's Edit/Write tool calls (wired in useClaude hook).
+  // TODO: wire setPendingDiff from useClaude when a tool result with name
+  //       "Edit" or "Write" resolves — capture before/after content there.
+
+  /** Pending diffs waiting for user accept/reject, keyed by tabId */
+  pendingDiffs: Map<string, PendingDiff>;
+  /** Set a pending diff for a file (called when Claude edits a file) */
+  setPendingDiff: (
+    tabId: string,
+    original: string,
+    modified: string,
+    description: string
+  ) => void;
+  /** Accept the diff: update tab content to modified version */
+  acceptDiff: (tabId: string) => void;
+  /** Reject the diff: revert tab content to original version */
+  rejectDiff: (tabId: string) => void;
+  /** Check if a tab has a pending diff */
+  hasPendingDiff: (tabId: string) => boolean;
 }
 
 /** Normalize a file path to use as a tab ID (forward slashes, lowercase drive letter) */
@@ -85,6 +117,7 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
   activeTabId: null,
   cursorPosition: { line: 1, column: 1 },
   markdownPreviewTabs: new Set<string>(),
+  pendingDiffs: new Map<string, PendingDiff>(),
 
   openFile: (path, name, language, content, preview = false) => {
     const id = normalizeTabId(path);
@@ -221,5 +254,64 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
 
   isMarkdownPreviewActive: (tabId) => {
     return get().markdownPreviewTabs.has(tabId);
+  },
+
+  setPendingDiff: (tabId, original, modified, description) => {
+    set((state) => {
+      const next = new Map(state.pendingDiffs);
+      next.set(tabId, {
+        tabId,
+        originalContent: original,
+        modifiedContent: modified,
+        description,
+      });
+      return { pendingDiffs: next };
+    });
+  },
+
+  acceptDiff: (tabId) => {
+    const diff = get().pendingDiffs.get(tabId);
+    if (!diff) return;
+    set((state) => {
+      const next = new Map(state.pendingDiffs);
+      next.delete(tabId);
+      return {
+        pendingDiffs: next,
+        tabs: state.tabs.map((t) =>
+          t.id === tabId
+            ? {
+                ...t,
+                content: diff.modifiedContent,
+                isDirty: diff.modifiedContent !== t.savedContent,
+              }
+            : t
+        ),
+      };
+    });
+  },
+
+  rejectDiff: (tabId) => {
+    const diff = get().pendingDiffs.get(tabId);
+    if (!diff) return;
+    set((state) => {
+      const next = new Map(state.pendingDiffs);
+      next.delete(tabId);
+      return {
+        pendingDiffs: next,
+        tabs: state.tabs.map((t) =>
+          t.id === tabId
+            ? {
+                ...t,
+                content: diff.originalContent,
+                isDirty: diff.originalContent !== t.savedContent,
+              }
+            : t
+        ),
+      };
+    });
+  },
+
+  hasPendingDiff: (tabId) => {
+    return get().pendingDiffs.has(tabId);
   },
 }));
