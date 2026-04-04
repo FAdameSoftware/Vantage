@@ -2,7 +2,9 @@ mod claude;
 mod files;
 mod git;
 mod prerequisites;
+mod search;
 mod terminal;
+mod worktree;
 
 use claude::session::{self, SessionInfo, SessionManager};
 use files::operations::{self, FileContent};
@@ -212,6 +214,80 @@ fn get_git_status(cwd: String) -> Result<Vec<git::GitFileStatus>, String> {
     git::get_status(&cwd)
 }
 
+// ── Worktree Commands ──────────────────────────────────────────────
+
+#[tauri::command]
+#[specta::specta]
+fn create_worktree(
+    repo_path: String,
+    branch_name: String,
+    worktree_path: String,
+) -> Result<worktree::WorktreeCreateResult, String> {
+    worktree::create_worktree(&repo_path, &branch_name, &worktree_path)
+}
+
+#[tauri::command]
+#[specta::specta]
+fn list_worktrees(repo_path: String) -> Result<Vec<worktree::WorktreeInfo>, String> {
+    worktree::list_worktrees(&repo_path)
+}
+
+#[tauri::command]
+#[specta::specta]
+fn remove_worktree(
+    repo_path: String,
+    worktree_path: String,
+    force: bool,
+) -> Result<(), String> {
+    worktree::remove_worktree(&repo_path, &worktree_path, force)
+}
+
+#[tauri::command]
+#[specta::specta]
+fn get_worktree_disk_usage(worktree_path: String) -> Result<u64, String> {
+    worktree::get_worktree_disk_usage(&worktree_path)
+}
+
+#[tauri::command]
+#[specta::specta]
+fn get_worktree_changes(worktree_path: String) -> Result<Vec<String>, String> {
+    worktree::get_worktree_changes(&worktree_path)
+}
+
+#[tauri::command]
+#[specta::specta]
+fn get_agent_worktree_path(repo_path: String, agent_name: String, agent_id: String) -> String {
+    worktree::agent_worktree_path(&repo_path, &agent_name, &agent_id)
+}
+
+#[tauri::command]
+#[specta::specta]
+fn get_agent_branch_name(agent_name: String, agent_id: String) -> String {
+    worktree::agent_branch_name(&agent_name, &agent_id)
+}
+
+// ── Search Commands ────────────────────────────────────────────────
+
+#[tauri::command]
+#[specta::specta]
+fn search_project(
+    root: String,
+    query: String,
+    is_regex: bool,
+    case_sensitive: bool,
+    glob_filter: Option<String>,
+    max_results: Option<u32>,
+) -> Result<search::SearchResult, String> {
+    search::search_project(
+        &root,
+        &query,
+        is_regex,
+        case_sensitive,
+        glob_filter.as_deref(),
+        max_results.unwrap_or(1000),
+    )
+}
+
 // ── Application Setup ───────────────────────────────────────────────
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -242,6 +318,14 @@ pub fn run() {
             check_prerequisites,
             get_git_branch,
             get_git_status,
+            create_worktree,
+            list_worktrees,
+            remove_worktree,
+            get_worktree_disk_usage,
+            get_worktree_changes,
+            get_agent_worktree_path,
+            get_agent_branch_name,
+            search_project,
         ],
     );
 
