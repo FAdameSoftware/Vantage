@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import { MessageSquare, Plus } from "lucide-react";
 import { useConversationStore } from "@/stores/conversation";
 import { useClaude } from "@/hooks/useClaude";
@@ -57,6 +57,15 @@ export function ChatPanel() {
   const totalCost = useConversationStore((s) => s.totalCost);
 
   const { startSession, sendMessage, interruptSession, stopSession } = useClaude();
+
+  const [installedSkills, setInstalledSkills] = useState<
+    Array<{ name: string; description: string; source: string }>
+  >([]);
+
+  // Load installed skills on mount (currently returns empty — future extension point)
+  useEffect(() => {
+    setInstalledSkills([]);
+  }, []);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -244,6 +253,7 @@ export function ChatPanel() {
         isStreaming={isStreaming}
         disabled={false}
         connectionStatus={connectionStatus}
+        installedSkills={installedSkills}
       />
     </div>
   );
