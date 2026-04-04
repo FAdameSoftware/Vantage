@@ -134,3 +134,124 @@
     @apply font-sans;
   }
 }
+
+:root {
+  /* ===== Catppuccin Mocha Surface Layering ===== */
+  --color-base: #1e1e2e;
+  --color-mantle: #181825;
+  --color-crust: #11111b;
+  --color-surface-0: #313244;
+  --color-surface-1: #45475a;
+  --color-surface-2: #585b70;
+  --color-overlay-0: #6c7086;
+  --color-overlay-1: #7f849c;
+  --color-overlay-2: #9399b2;
+
+  /* ===== Text Hierarchy ===== */
+  --color-text: #cdd6f4;
+  --color-subtext-1: #bac2de;
+  --color-subtext-0: #a6adc8;
+
+  /* ===== Accent Colors ===== */
+  --color-rosewater: #f5e0dc;
+  --color-flamingo: #f2cdcd;
+  --color-pink: #f5c2e7;
+  --color-mauve: #cba6f7;
+  --color-red: #f38ba8;
+  --color-maroon: #eba0ac;
+  --color-peach: #fab387;
+  --color-yellow: #f9e2af;
+  --color-green: #a6e3a1;
+  --color-teal: #94e2d5;
+  --color-sky: #89dceb;
+  --color-sapphire: #74c7ec;
+  --color-blue: #89b4fa;
+  --color-lavender: #b4befe;
+
+  /* ===== Semantic Aliases ===== */
+  --color-primary: var(--color-blue);
+  --color-warning: var(--color-peach);
+  --color-error: var(--color-red);
+  --color-success: var(--color-green);
+  --color-info: var(--color-teal);
+
+  /* ===== Borders ===== */
+  --color-border: var(--color-surface-0);
+  --color-border-focus: var(--color-blue);
+
+  /* ===== Typography ===== */
+  --font-mono: "JetBrains Mono", "Cascadia Code", "Fira Code", monospace;
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-size-editor: 14px;
+  --font-size-ui: 13px;
+  --font-size-small: 12px;
+  --line-height-editor: 1.5;
+
+  /* ===== Syntax Highlighting Token Colors ===== */
+  --syntax-keyword: var(--color-mauve);
+  --syntax-string: var(--color-green);
+  --syntax-number: var(--color-peach);
+  --syntax-comment: var(--color-overlay-0);
+  --syntax-function: var(--color-blue);
+  --syntax-type: var(--color-yellow);
+  --syntax-variable: var(--color-text);
+  --syntax-constant: var(--color-peach);
+  --syntax-operator: var(--color-sky);
+  --syntax-property: var(--color-lavender);
+  --syntax-parameter: var(--color-maroon);
+  --syntax-decorator: var(--color-mauve);
+  --syntax-tag: var(--color-blue);
+  --syntax-attribute: var(--color-yellow);
+  --syntax-regex: var(--color-peach);
+  --syntax-invalid: var(--color-red);
+}
+
+/* ===== Global Styles ===== */
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--color-base);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-ui);
+  line-height: 1.5;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  user-select: none;
+}
+
+/* Allow text selection in editor and terminal areas */
+[data-allow-select="true"],
+[data-allow-select="true"] * {
+  user-select: text;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-surface-1);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-surface-2);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Focus ring */
+*:focus-visible {
+  outline: 1px solid var(--color-blue);
+  outline-offset: -1px;
+}
