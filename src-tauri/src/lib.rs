@@ -1,6 +1,7 @@
 mod claude;
 mod files;
 mod git;
+mod mcp;
 mod prerequisites;
 mod search;
 mod terminal;
@@ -214,6 +215,18 @@ fn get_git_status(cwd: String) -> Result<Vec<git::GitFileStatus>, String> {
     git::get_status(&cwd)
 }
 
+// ── Git Show Command ────────────────────────────────────────────────
+
+#[tauri::command]
+#[specta::specta]
+fn git_show_file(
+    worktree_path: String,
+    file_path: String,
+    git_ref: String,
+) -> Result<String, String> {
+    git::show_file(&worktree_path, &file_path, &git_ref)
+}
+
 // ── Worktree Commands ──────────────────────────────────────────────
 
 #[tauri::command]
@@ -288,6 +301,26 @@ fn search_project(
     )
 }
 
+// ── MCP Config Commands ───────────────────────────────────────────
+
+#[tauri::command]
+#[specta::specta]
+fn read_mcp_config(
+    project_root: Option<String>,
+) -> Result<Vec<mcp::McpServerEntry>, String> {
+    mcp::read_mcp_config(project_root.as_deref())
+}
+
+#[tauri::command]
+#[specta::specta]
+fn write_mcp_config(
+    scope: String,
+    servers: std::collections::HashMap<String, mcp::McpServerConfig>,
+    project_root: Option<String>,
+) -> Result<(), String> {
+    mcp::write_mcp_config(&scope, servers, project_root.as_deref())
+}
+
 // ── Application Setup ───────────────────────────────────────────────
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -318,6 +351,7 @@ pub fn run() {
             check_prerequisites,
             get_git_branch,
             get_git_status,
+            git_show_file,
             create_worktree,
             list_worktrees,
             remove_worktree,
@@ -326,6 +360,8 @@ pub fn run() {
             get_agent_worktree_path,
             get_agent_branch_name,
             search_project,
+            read_mcp_config,
+            write_mcp_config,
         ],
     );
 

@@ -10,15 +10,17 @@ import {
   List,
   X,
   File,
+  GitCompare,
 } from "lucide-react";
 import { useAgentsStore } from "@/stores/agents";
 import { useAgentConversationsStore } from "@/stores/agentConversations";
 import { MessageBubble } from "@/components/chat/MessageBubble";
 import { AgentTimeline } from "./AgentTimeline";
+import { MultiFileDiffReview } from "@/components/diff/MultiFileDiffReview";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
-type TabId = "timeline" | "conversation" | "files";
+type TabId = "timeline" | "conversation" | "files" | "diff";
 
 // ── Agent status badge ─────────────────────────────────────────────────────────
 
@@ -191,6 +193,7 @@ const TABS: { id: TabId; label: string; icon: React.ElementType }[] = [
   { id: "timeline", label: "Timeline", icon: List },
   { id: "conversation", label: "Conversation", icon: MessageSquare },
   { id: "files", label: "Files", icon: FileText },
+  { id: "diff", label: "Review", icon: GitCompare },
 ];
 
 interface TabBarProps {
@@ -377,6 +380,7 @@ export function AgentDetailPanel({ agentId, onClose }: AgentDetailPanelProps) {
     timeline: timelineCount,
     conversation: conversationCount,
     files: filesCount,
+    diff: 0,
   };
 
   return (
@@ -395,6 +399,22 @@ export function AgentDetailPanel({ agentId, onClose }: AgentDetailPanelProps) {
         {activeTab === "timeline" && <AgentTimeline agentId={agentId} />}
         {activeTab === "conversation" && <ConversationTab agentId={agentId} />}
         {activeTab === "files" && <FilesTab agentId={agentId} />}
+        {activeTab === "diff" && (
+          agent.worktreePath ? (
+            <MultiFileDiffReview
+              worktreePath={agent.worktreePath}
+              label={agent.name}
+            />
+          ) : (
+            <div
+              className="flex flex-col items-center justify-center h-full gap-2 py-8"
+              style={{ color: "var(--color-overlay-0)" }}
+            >
+              <GitCompare size={20} strokeWidth={1.5} />
+              <span className="text-xs">No worktree assigned to this agent</span>
+            </div>
+          )
+        )}
       </div>
     </div>
   );

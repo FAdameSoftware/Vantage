@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use std::process::Command;
+use std::fs;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct GitBranchInfo {
@@ -57,6 +58,43 @@ pub fn get_branch(cwd: &str) -> Result<GitBranchInfo, String> {
         branch: None,
         is_detached: false,
     })
+}
+
+/// Get the content of a file at a specific git ref (e.g., HEAD, a branch name,
+/// or a commit hash). Returns an empty string if the file does not exist at
+/// that ref (i.e., the file is new).
+pub fn show_file(cwd: &str, file_path: &str, git_ref: &str) -> Result<String, String> {
+    let output = Command::new("git")
+        .args(["show", &format!("{}:{}", git_ref, file_path)])
+        .current_dir(cwd)
+        .output()
+        .map_err(|e| format!("Failed to run git show: {}", e))?;
+
+    if output.status.success() {
+        return Ok(String::from_utf8_lossy(&output.stdout).to_string());
+    }
+
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    // New file that doesn't exist at HEAD — treat as empty
+    if stderr.contains("does not exist")
+        || stderr.contains("not found")
+        || stderr.contains("exists on disk")
+        || stderr.contains("Path '")
+    {
+        return Ok(String::new());
+    }
+
+    Err(format!("git show failed: {}", stderr.trim()))
+}
+
+/// Read a file from the working tree by absolute path.
+/// Returns an empty string if the file does not exist.
+pub fn read_working_file(path: &str) -> Result<String, String> {
+    match fs::read_to_string(path) {
+        Ok(content) => Ok(content),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(String::new()),
+        Err(e) => Err(format!("Failed to read file {}: {}", path, e)),
+    }
 }
 
 /// Get the git status of all changed files in the working directory.
