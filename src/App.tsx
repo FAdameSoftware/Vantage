@@ -8,6 +8,7 @@ import { useCustomTheme } from "@/hooks/useCustomTheme";
 import { PermissionDialog } from "@/components/permissions/PermissionDialog";
 import { CommandPalette } from "@/components/shared/CommandPalette";
 import { PrerequisiteCheck } from "@/components/shared/PrerequisiteCheck";
+import { PopoutEditor } from "@/components/editor/PopoutEditor";
 import { useSettingsStore } from "@/stores/settings";
 import type { ThemeName } from "@/stores/settings";
 
@@ -24,6 +25,12 @@ function getThemeClass(theme: ThemeName): string {
   }
 }
 
+/** Check if this window instance is a popout editor window */
+function isPopoutWindow(): boolean {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("popout") === "1" && params.has("tabId");
+}
+
 function App() {
   useKeybindings();
   useAgentNotifications();
@@ -38,6 +45,11 @@ function App() {
     root.classList.remove("dark", "theme-light", "theme-high-contrast");
     root.classList.add(getThemeClass(theme));
   }, [theme]);
+
+  // If this is a popout window, render only the floating editor
+  if (isPopoutWindow()) {
+    return <PopoutEditor />;
+  }
 
   return (
     <>

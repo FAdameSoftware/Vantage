@@ -84,6 +84,17 @@ export interface EditorState {
   /** Check if a tab has markdown preview active */
   isMarkdownPreviewActive: (tabId: string) => boolean;
 
+  // ── Popout Windows ─────────────────────────────────────────────────
+
+  /** Set of tab IDs that are currently popped out to separate windows */
+  popoutTabs: Set<string>;
+  /** Pop out a tab to a separate window */
+  popoutTab: (tabId: string) => void;
+  /** Return a popped-out tab to the main window */
+  returnPopoutTab: (tabId: string) => void;
+  /** Check if a tab is popped out */
+  isPopout: (tabId: string) => boolean;
+
   // ── Diff Viewer ────────────────────────────────────────────────────
   // Triggered by Claude's Edit/Write tool calls (wired in useClaude hook).
   // TODO: wire setPendingDiff from useClaude when a tool result with name
@@ -122,6 +133,7 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
   cursorPosition: { line: 1, column: 1 },
   vimModeLabel: "NORMAL",
   markdownPreviewTabs: new Set<string>(),
+  popoutTabs: new Set<string>(),
   pendingDiffs: new Map<string, PendingDiff>(),
 
   openFile: (path, name, language, content, preview = false) => {
@@ -247,6 +259,26 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
       tabs: tabs.filter((t) => t.id === id),
       activeTabId: id,
     });
+  },
+
+  popoutTab: (tabId) => {
+    set((state) => {
+      const next = new Set(state.popoutTabs);
+      next.add(tabId);
+      return { popoutTabs: next };
+    });
+  },
+
+  returnPopoutTab: (tabId) => {
+    set((state) => {
+      const next = new Set(state.popoutTabs);
+      next.delete(tabId);
+      return { popoutTabs: next };
+    });
+  },
+
+  isPopout: (tabId) => {
+    return get().popoutTabs.has(tabId);
   },
 
   toggleMarkdownPreview: (tabId) => {
