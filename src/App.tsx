@@ -1,6 +1,7 @@
 import { IDELayout } from "@/components/layout";
 import { Toaster } from "@/components/ui/sonner";
 import { useKeybindings } from "@/hooks/useKeybindings";
+import { PermissionDialog } from "@/components/permissions/PermissionDialog";
 
 function App() {
   useKeybindings();
@@ -8,6 +9,7 @@ function App() {
   return (
     <>
       <IDELayout />
+      <PermissionDialog />
       <Toaster
         position="bottom-right"
         toastOptions={{
