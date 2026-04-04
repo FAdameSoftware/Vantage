@@ -17,7 +17,7 @@ tauri = { version = "2", features = ["tray-icon"] }
 tauri-plugin-opener = "2"
 tauri-plugin-store = "2"
 tauri-specta = { version = "=2.0.0-rc.24", features = ["derive", "typescript"] }
-specta = { version = "=2.0.0-rc.24", features = ["derive"] }
+specta = { version = "=2.0.0-rc.24", features = ["derive", "serde_json"] }
 specta-typescript = "0.0.11"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -26,3 +26,6 @@ ignore = "0.4"
 notify-debouncer-full = "0.7"
 tauri-plugin-pty = "0.2"
 tauri-plugin-dialog = "2"
+# --- Phase 3: Claude Code integration ---
+dirs = "6"
+uuid = { version = "1", features = ["v4"] }
