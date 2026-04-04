@@ -8,6 +8,7 @@ import type {
   SystemInitMessage,
   PermissionRequestPayload,
 } from "@/lib/protocol";
+import { useUsageStore } from "./usage";
 
 // ─── Internal streaming accumulator ─────────────────────────────────────────
 
@@ -288,6 +289,7 @@ export const useConversationStore = create<ConversationState>()((set, get) => ({
       cwd: msg.cwd,
     };
     set({ session, connectionStatus: "ready" });
+    useUsageStore.getState().startSession();
   },
 
   handleStreamEvent(msg: StreamEventMessage) {
@@ -436,6 +438,13 @@ export const useConversationStore = create<ConversationState>()((set, get) => ({
       connectionStatus: "ready",
       isStreaming: false,
     }));
+    useUsageStore.getState().addTurnUsage({
+      inputTokens: msg.usage?.input_tokens,
+      outputTokens: msg.usage?.output_tokens,
+      cacheCreation: msg.usage?.cache_creation_input_tokens,
+      cacheRead: msg.usage?.cache_read_input_tokens,
+      costUsd: msg.total_cost_usd,
+    });
   },
 
   setPendingPermission(permission: PermissionRequestPayload | null) {
@@ -464,6 +473,7 @@ export const useConversationStore = create<ConversationState>()((set, get) => ({
       ...DEFAULT_STATE,
       activeBlocks: new Map(),
     });
+    useUsageStore.getState().reset();
   },
 
   setSession(session: SessionMetadata) {

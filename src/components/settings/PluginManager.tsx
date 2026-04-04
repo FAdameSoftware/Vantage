@@ -11,8 +11,10 @@ import {
   Server,
   GitBranch,
   Bot,
+  Package,
 } from "lucide-react";
 import { toast } from "sonner";
+import { PluginStore } from "./PluginStore";
 
 // ── Types (mirroring Rust structs) ─────────────────────────────────
 
@@ -234,6 +236,7 @@ export function PluginManager() {
   const [skills, setSkills] = useState<SkillInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedPlugin, setExpandedPlugin] = useState<string | null>(null);
+  const [showStore, setShowStore] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -290,6 +293,15 @@ export function PluginManager() {
 
   const userSkills = skills.filter((s) => s.source === "user");
 
+  if (showStore) {
+    return (
+      <PluginStore
+        installedPluginNames={plugins.map((p) => p.name)}
+        onBack={() => setShowStore(false)}
+      />
+    );
+  }
+
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
@@ -318,6 +330,18 @@ export function PluginManager() {
             {plugins.length}
           </span>
         )}
+        <button
+          onClick={() => setShowStore(true)}
+          className="flex items-center gap-1 px-2 py-0.5 text-[10px] rounded transition-colors hover:opacity-80"
+          style={{
+            backgroundColor: "var(--color-blue)",
+            color: "var(--color-base)",
+          }}
+          title="Browse plugin store"
+        >
+          <Package size={10} />
+          Store
+        </button>
       </div>
 
       {/* Scrollable content */}
