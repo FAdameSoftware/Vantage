@@ -1,7 +1,10 @@
 import { IDELayout } from "@/components/layout";
 import { Toaster } from "@/components/ui/sonner";
+import { useKeybindings } from "@/hooks/useKeybindings";
 
 function App() {
+  useKeybindings();
+
   return (
     <>
       <IDELayout />
