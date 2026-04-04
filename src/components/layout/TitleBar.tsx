@@ -1,56 +1,41 @@
 import { useState, useEffect } from "react";
 import { Minus, Square, X, Copy } from "lucide-react";
-
-// Dynamic import to avoid errors outside Tauri context
-let tauriWindow: typeof import("@tauri-apps/api/window") | null = null;
-
-async function loadTauriWindow() {
-  try {
-    tauriWindow = await import("@tauri-apps/api/window");
-  } catch {
-    // Not in Tauri context (e.g., running in browser during dev)
-  }
-}
+import { getCurrentWindow } from "@tauri-apps/api/window";
 
 function WindowControls() {
   const [isMaximized, setIsMaximized] = useState(false);
 
   useEffect(() => {
-    loadTauriWindow().then(async () => {
-      if (tauriWindow) {
-        const appWindow = tauriWindow.getCurrentWindow();
-        setIsMaximized(await appWindow.isMaximized());
+    const appWindow = getCurrentWindow();
 
-        const unlisten = await appWindow.onResized(async () => {
+    appWindow.isMaximized().then(setIsMaximized).catch(() => {});
+
+    let unlisten: (() => void) | undefined;
+    appWindow
+      .onResized(async () => {
+        try {
           setIsMaximized(await appWindow.isMaximized());
-        });
+        } catch {}
+      })
+      .then((fn) => {
+        unlisten = fn;
+      });
 
-        return () => {
-          unlisten();
-        };
-      }
-    });
+    return () => {
+      unlisten?.();
+    };
   }, []);
 
-  const handleMinimize = async () => {
-    if (tauriWindow) {
-      const appWindow = tauriWindow.getCurrentWindow();
-      await appWindow.minimize();
-    }
+  const handleMinimize = () => {
+    getCurrentWindow().minimize();
   };
 
-  const handleMaximize = async () => {
-    if (tauriWindow) {
-      const appWindow = tauriWindow.getCurrentWindow();
-      await appWindow.toggleMaximize();
-    }
+  const handleMaximize = () => {
+    getCurrentWindow().toggleMaximize();
   };
 
-  const handleClose = async () => {
-    if (tauriWindow) {
-      const appWindow = tauriWindow.getCurrentWindow();
-      await appWindow.close();
-    }
+  const handleClose = () => {
+    getCurrentWindow().close();
   };
 
   const buttonBase =
@@ -58,7 +43,6 @@ function WindowControls() {
 
   return (
     <div className="flex items-center h-full ml-auto">
-      {/* Minimize */}
       <button
         className={`${buttonBase} hover:bg-[var(--color-surface-1)]`}
         onClick={handleMinimize}
@@ -68,7 +52,6 @@ function WindowControls() {
         <Minus size={14} />
       </button>
 
-      {/* Maximize/Restore */}
       <button
         className={`${buttonBase} hover:bg-[var(--color-surface-1)]`}
         onClick={handleMaximize}
@@ -78,7 +61,6 @@ function WindowControls() {
         {isMaximized ? <Copy size={12} /> : <Square size={12} />}
       </button>
 
-      {/* Close */}
       <button
         className={`${buttonBase} hover:bg-[var(--color-red)] hover:text-white`}
         onClick={handleClose}
@@ -100,12 +82,10 @@ export function TitleBar() {
         borderBottom: "1px solid var(--color-surface-0)",
       }}
     >
-      {/* Drag region - takes all available space */}
       <div
         className="flex items-center flex-1 h-full px-3"
         data-tauri-drag-region
       >
-        {/* App icon and title */}
         <span
           className="text-xs font-medium pointer-events-none"
           style={{ color: "var(--color-subtext-0)" }}
@@ -115,7 +95,6 @@ export function TitleBar() {
         </span>
       </div>
 
-      {/* Window controls (not draggable) */}
       <WindowControls />
     </div>
   );

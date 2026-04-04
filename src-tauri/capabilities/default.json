@@ -5,11 +5,21 @@
   "windows": ["main", "popout-*"],
   "permissions": [
     "core:default",
+    "core:window:allow-minimize",
+    "core:window:allow-maximize",
+    "core:window:allow-toggle-maximize",
+    "core:window:allow-unmaximize",
+    "core:window:allow-close",
+    "core:window:allow-start-dragging",
+    "core:window:allow-set-size",
+    "core:window:allow-is-maximized",
+    "core:window:allow-is-minimized",
+    "core:window:allow-create",
+    "core:window:allow-set-title",
     "opener:default",
     "store:default",
     "pty:default",
     "dialog:default",
-    "notification:default",
-    "updater:default"
+    "notification:default"
   ]
 }
