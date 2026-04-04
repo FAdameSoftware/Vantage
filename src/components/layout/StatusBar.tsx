@@ -19,6 +19,7 @@ import { useUsageStore } from "@/stores/usage";
 import { useGitStatus } from "@/hooks/useGitStatus";
 import { UsagePanel } from "@/components/shared/UsagePanel";
 import { BuddyWidget } from "@/components/shared/BuddyWidget";
+import { EffortLevelSelector } from "@/components/shared/EffortLevelSelector";
 
 export function StatusBar() {
   const cursorPosition = useEditorStore((s) => s.cursorPosition);
@@ -221,6 +222,9 @@ export function StatusBar() {
               <span>${(usageTotalCost || totalCost).toFixed(4)}</span>
             </div>
           </button>
+
+          {/* Effort level */}
+          <EffortLevelSelector />
 
           {/* Model */}
           <span style={{ color: "var(--color-overlay-1)" }}>
