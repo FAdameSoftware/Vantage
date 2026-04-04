@@ -15,6 +15,21 @@ export type AgentStatus =
 
 export type KanbanColumn = "backlog" | "in_progress" | "review" | "done";
 
+// ── Agent role in hierarchy ──────────────────────────────────────────
+
+export type AgentRole = "coordinator" | "specialist" | "verifier" | "builder";
+
+// ── Pipeline configuration (for coordinator agents) ──────────────────
+
+export interface PipelineConfig {
+  /** Task descriptions for each specialist to be created */
+  specialists: string[];
+  /** Model to use for auto-created verifier agents */
+  verifierModel?: string;
+  /** Whether to auto-merge branches after verification passes */
+  autoMerge: boolean;
+}
+
 // ── Agent color assignment (for file ownership dots) ────────────────
 
 const AGENT_COLORS = [
@@ -85,6 +100,14 @@ export interface Agent {
   color: string;
   /** Model being used (e.g., "claude-sonnet-4-20250514") */
   model?: string;
+  /** Role in the agent hierarchy */
+  role: AgentRole;
+  /** Parent agent ID (null for top-level agents) */
+  parentId: string | null;
+  /** Child agent IDs (for coordinators) */
+  childIds: string[];
+  /** Pipeline config (for coordinators): defines specialist→verifier flow */
+  pipeline: PipelineConfig | null;
   /** Chronological event log */
   timeline: AgentTimelineEvent[];
   /** Error message, if status is "error" */
@@ -116,10 +139,24 @@ export interface AgentsState {
     name: string;
     taskDescription: string;
     model?: string;
+    role?: AgentRole;
+    parentId?: string | null;
   }) => string; // returns agent ID
+
+  /** Create a child agent under a coordinator */
+  createChildAgent: (
+    parentId: string,
+    params: { name: string; taskDescription: string; role: AgentRole; model?: string },
+  ) => string | null; // returns agent ID or null if parent is not a coordinator
 
   /** Remove an agent entirely (should stop session first) */
   removeAgent: (agentId: string) => void;
+
+  /** Change an agent's role */
+  setAgentRole: (agentId: string, role: AgentRole) => void;
+
+  /** Promote an agent to coordinator role */
+  promoteToCoordinator: (agentId: string) => void;
 
   /** Update an agent's status */
   updateAgentStatus: (
@@ -180,6 +217,15 @@ export interface AgentsState {
   /** Check if a file is touched by multiple agents (conflict) */
   hasFileConflict: (filePath: string) => boolean;
 
+  /** Get all direct children of an agent */
+  getChildAgents: (parentId: string) => Agent[];
+
+  /** Get the parent agent of a given agent */
+  getParent: (agentId: string) => Agent | undefined;
+
+  /** Get all top-level agents (no parent) */
+  getRootAgents: () => Agent[];
+
   /** Set checkpoint metadata for an agent */
   setCheckpoint: (
     agentId: string,
@@ -202,7 +248,7 @@ export const useAgentsStore = create<AgentsState>()((set, get) => ({
   },
   maxConcurrentAgents: 3,
 
-  createAgent({ name, taskDescription, model }) {
+  createAgent({ name, taskDescription, model, role = "builder", parentId = null }) {
     const id = crypto.randomUUID();
     const { agents } = get();
     const colorIndex = agents.size % AGENT_COLORS.length;
@@ -225,12 +271,28 @@ export const useAgentsStore = create<AgentsState>()((set, get) => ({
       lastActivityAt: now,
       color,
       model,
+      role,
+      parentId,
+      childIds: [],
+      pipeline: null,
       timeline: [],
     };
 
     set((state) => {
       const next = new Map(state.agents);
       next.set(id, agent);
+
+      // If this agent has a parent, add it to the parent's childIds
+      if (parentId) {
+        const parent = next.get(parentId);
+        if (parent) {
+          next.set(parentId, {
+            ...parent,
+            childIds: [...parent.childIds, id],
+          });
+        }
+      }
+
       return {
         agents: next,
         columnOrder: {
@@ -243,15 +305,50 @@ export const useAgentsStore = create<AgentsState>()((set, get) => ({
     return id;
   },
 
+  createChildAgent(parentId, params) {
+    const { agents } = get();
+    const parent = agents.get(parentId);
+    if (!parent || parent.role !== "coordinator") return null;
+    return get().createAgent({ ...params, parentId });
+  },
+
   removeAgent(agentId) {
     set((state) => {
-      const next = new Map(state.agents);
-      next.delete(agentId);
+      const agent = state.agents.get(agentId);
+      if (!agent) return {};
 
-      // Remove from whichever column it appears in
+      // Collect all IDs to remove (the agent + all descendants)
+      const toRemove = new Set<string>();
+      const queue = [agentId];
+      while (queue.length > 0) {
+        const current = queue.shift()!;
+        toRemove.add(current);
+        const node = state.agents.get(current);
+        if (node) {
+          for (const childId of node.childIds) queue.push(childId);
+        }
+      }
+
+      const next = new Map(state.agents);
+
+      // Remove all collected agents
+      for (const id of toRemove) next.delete(id);
+
+      // If the removed agent had a parent, remove it from parent's childIds
+      if (agent.parentId) {
+        const parent = next.get(agent.parentId);
+        if (parent) {
+          next.set(agent.parentId, {
+            ...parent,
+            childIds: parent.childIds.filter((id) => id !== agentId),
+          });
+        }
+      }
+
+      // Remove all deleted IDs from every column's order
       const nextColumnOrder = Object.fromEntries(
         (Object.entries(state.columnOrder) as [KanbanColumn, string[]][]).map(
-          ([col, ids]) => [col, ids.filter((id) => id !== agentId)],
+          ([col, ids]) => [col, ids.filter((id) => !toRemove.has(id))],
         ),
       ) as Record<KanbanColumn, string[]>;
 
@@ -270,6 +367,24 @@ export const useAgentsStore = create<AgentsState>()((set, get) => ({
         lastActivityAt: Date.now(),
         ...(status === "error" ? { errorMessage } : {}),
       });
+
+      // Auto-trigger verifier when a specialist completes
+      if (status === "completed" && agent.role === "specialist" && agent.parentId) {
+        const siblings = [...next.values()].filter(
+          (a) =>
+            a.parentId === agent.parentId &&
+            a.role === "verifier" &&
+            a.status === "idle",
+        );
+        for (const verifier of siblings) {
+          next.set(verifier.id, {
+            ...verifier,
+            status: "working",
+            lastActivityAt: Date.now(),
+          });
+        }
+      }
+
       return { agents: next };
     });
   },
@@ -440,5 +555,37 @@ export const useAgentsStore = create<AgentsState>()((set, get) => ({
       next.set(agentId, { ...agent, checkpoint: undefined });
       return { agents: next };
     });
+  },
+
+  setAgentRole(agentId, role) {
+    set((state) => {
+      const agent = state.agents.get(agentId);
+      if (!agent) return {};
+      const next = new Map(state.agents);
+      next.set(agentId, { ...agent, role });
+      return { agents: next };
+    });
+  },
+
+  promoteToCoordinator(agentId) {
+    get().setAgentRole(agentId, "coordinator");
+  },
+
+  getChildAgents(parentId) {
+    return get()
+      .getAgentsList()
+      .filter((a) => a.parentId === parentId);
+  },
+
+  getParent(agentId) {
+    const agent = get().agents.get(agentId);
+    if (!agent?.parentId) return undefined;
+    return get().agents.get(agent.parentId);
+  },
+
+  getRootAgents() {
+    return get()
+      .getAgentsList()
+      .filter((a) => a.parentId === null);
   },
 }));

@@ -8,7 +8,7 @@ import {
   Circle,
   FileText,
 } from "lucide-react";
-import type { Agent, AgentStatus } from "@/stores/agents";
+import type { Agent, AgentRole, AgentStatus } from "@/stores/agents";
 
 // ── Status icon ──────────────────────────────────────────────────────
 
@@ -57,6 +57,30 @@ function StatusIcon({ status }: { status: AgentStatus }) {
   }
 }
 
+// ── Role badge ───────────────────────────────────────────────────────
+
+const ROLE_BADGE: Record<AgentRole, { label: string; color: string }> = {
+  coordinator: { label: "COORD", color: "var(--color-mauve)" },
+  specialist: { label: "SPEC", color: "var(--color-blue)" },
+  verifier: { label: "VER", color: "var(--color-green)" },
+  builder: { label: "BUILD", color: "var(--color-subtext-0)" },
+};
+
+function RoleBadge({ role }: { role: AgentRole }) {
+  const { label, color } = ROLE_BADGE[role];
+  return (
+    <span
+      className="text-[9px] font-semibold tracking-wide px-1 py-0.5 rounded shrink-0"
+      style={{
+        color,
+        backgroundColor: `color-mix(in srgb, ${color} 15%, transparent)`,
+      }}
+    >
+      {label}
+    </span>
+  );
+}
+
 // ── Agent card ───────────────────────────────────────────────────────
 
 interface AgentCardProps {
@@ -92,7 +116,7 @@ export function AgentCard({ agent }: AgentCardProps) {
         border: "1px solid var(--color-surface-1)",
       }}
     >
-      {/* Header row: color dot + name + status icon */}
+      {/* Header row: color dot + name + role badge + status icon */}
       <div className="flex items-center gap-1.5 mb-1">
         <span
           className="size-2 rounded-full shrink-0"
@@ -104,8 +128,19 @@ export function AgentCard({ agent }: AgentCardProps) {
         >
           {agent.name}
         </span>
+        <RoleBadge role={agent.role} />
         <StatusIcon status={agent.status} />
       </div>
+
+      {/* Coordinator child count */}
+      {agent.role === "coordinator" && agent.childIds.length > 0 && (
+        <div
+          className="text-[10px] mb-1"
+          style={{ color: "var(--color-overlay-1)" }}
+        >
+          {agent.childIds.length} agent{agent.childIds.length !== 1 ? "s" : ""}
+        </div>
+      )}
 
       {/* Task description */}
       {truncatedTask && (
