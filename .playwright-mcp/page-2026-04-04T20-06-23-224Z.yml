@@ -1,0 +1,4 @@
+- generic [ref=e3]:
+  - paragraph [ref=e4]: Something went wrong
+  - paragraph [ref=e5]: Cannot read properties of undefined (reading 'metadata')
+  - button "Try Again" [ref=e6]

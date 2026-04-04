@@ -2,8 +2,6 @@ import {
   Panel,
   Group,
   Separator,
-  PanelSize,
-  useDefaultLayout,
 } from "react-resizable-panels";
 import { useLayoutStore } from "@/stores/layout";
 import { ActivityBar } from "./ActivityBar";
@@ -47,75 +45,45 @@ function ResizeHandle({
 
 export function IDELayout() {
   const primarySidebarVisible = useLayoutStore((s) => s.primarySidebarVisible);
-  const secondarySidebarVisible = useLayoutStore((s) => s.secondarySidebarVisible);
+  const secondarySidebarVisible = useLayoutStore(
+    (s) => s.secondarySidebarVisible
+  );
   const panelVisible = useLayoutStore((s) => s.panelVisible);
-  const setPrimarySidebarSize = useLayoutStore((s) => s.setPrimarySidebarSize);
-  const setSecondarySidebarSize = useLayoutStore((s) => s.setSecondarySidebarSize);
-  const setPanelSize = useLayoutStore((s) => s.setPanelSize);
-
-  const mainLayout = useDefaultLayout({ id: "vantage-main-horizontal", storage: localStorage });
-  const centerLayout = useDefaultLayout({ id: "vantage-center-vertical", storage: localStorage });
-
-  const handlePrimarySidebarResize = (panelSize: PanelSize) => {
-    setPrimarySidebarSize(panelSize.asPercentage);
-  };
-
-  const handleSecondarySidebarResize = (panelSize: PanelSize) => {
-    setSecondarySidebarSize(panelSize.asPercentage);
-  };
-
-  const handlePanelResize = (panelSize: PanelSize) => {
-    setPanelSize(panelSize.asPercentage);
-  };
 
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden">
-      {/* Title Bar */}
       <TitleBar />
 
-      {/* Main content area */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Activity Bar (fixed width, never resizable) */}
         <ActivityBar />
 
-        {/* Resizable panels */}
-        <Group
-          orientation="horizontal"
-          className="flex-1"
-          defaultLayout={mainLayout.defaultLayout}
-          onLayoutChanged={mainLayout.onLayoutChanged}
-        >
+        {/* Main layout using plain flexbox instead of react-resizable-panels
+            for the top-level split. The library's persistence was corrupting
+            panel sizes. We use CSS min/max-width for constraints. */}
+        <div className="flex flex-1 overflow-hidden">
           {/* Primary Sidebar */}
           {primarySidebarVisible && (
             <>
-              <Panel
-                id="primary-sidebar"
-                defaultSize={20}
-                minSize={12}
-                maxSize={40}
-                collapsible
-                collapsedSize={0}
-                onResize={handlePrimarySidebarResize}
+              <div
+                className="shrink-0 overflow-hidden"
+                style={{ width: 240, minWidth: 180, maxWidth: 400 }}
               >
                 <PrimarySidebar />
-              </Panel>
-              <ResizeHandle orientation="horizontal" />
+              </div>
+              <div
+                className="w-[1px] shrink-0 cursor-col-resize hover:bg-[var(--color-blue)] transition-colors"
+                style={{ backgroundColor: "var(--color-surface-0)" }}
+              />
             </>
           )}
 
-          {/* Center area: Editor + Panel stacked vertically */}
-          <Panel id="center" minSize={30}>
-            <Group
-              orientation="vertical"
-              defaultLayout={centerLayout.defaultLayout}
-              onLayoutChanged={centerLayout.onLayoutChanged}
-            >
-              {/* Editor Area */}
+          {/* Center: Editor + Panel stacked vertically */}
+          <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+            <Group orientation="vertical">
               <Panel id="editor" minSize={20}>
                 <EditorArea />
               </Panel>
 
-              {/* Bottom Panel */}
               {panelVisible && (
                 <>
                   <ResizeHandle orientation="vertical" />
@@ -124,38 +92,32 @@ export function IDELayout() {
                     defaultSize={30}
                     minSize={10}
                     maxSize={70}
-                    collapsible
-                    collapsedSize={0}
-                    onResize={handlePanelResize}
                   >
                     <PanelArea />
                   </Panel>
                 </>
               )}
             </Group>
-          </Panel>
+          </div>
 
           {/* Secondary Sidebar (Chat) */}
           {secondarySidebarVisible && (
             <>
-              <ResizeHandle orientation="horizontal" />
-              <Panel
-                id="secondary-sidebar"
-                defaultSize={25}
-                minSize={15}
-                maxSize={45}
-                collapsible
-                collapsedSize={0}
-                onResize={handleSecondarySidebarResize}
+              <div
+                className="w-[1px] shrink-0 cursor-col-resize hover:bg-[var(--color-blue)] transition-colors"
+                style={{ backgroundColor: "var(--color-surface-0)" }}
+              />
+              <div
+                className="shrink-0 overflow-hidden"
+                style={{ width: 300, minWidth: 220, maxWidth: 500 }}
               >
                 <SecondarySidebar />
-              </Panel>
+              </div>
             </>
           )}
-        </Group>
+        </div>
       </div>
 
-      {/* Status Bar */}
       <StatusBar />
     </div>
   );

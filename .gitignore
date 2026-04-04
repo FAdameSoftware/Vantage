@@ -31,3 +31,9 @@ src-tauri/gen/
 src/bindings.ts
 *.db
 *.sqlite
+
+# Playwright
+e2e/screenshots/
+e2e/test-results/
+test-results/
+playwright-report/
