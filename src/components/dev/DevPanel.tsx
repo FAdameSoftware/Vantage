@@ -181,8 +181,8 @@ export function DevPanel() {
         data-testid="dev-panel-toggle"
         style={{
           position: "fixed",
-          bottom: 28,
-          left: 8,
+          bottom: 32,
+          left: 56,
           zIndex: 99999,
           background: "rgba(30,30,40,0.85)",
           color: "#7dd3fc",
