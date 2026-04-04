@@ -1,5 +1,7 @@
 import { useEffect, useCallback } from "react";
 import { useLayoutStore } from "@/stores/layout";
+import { useEditorStore } from "@/stores/editor";
+import { invoke } from "@tauri-apps/api/core";
 import { toast } from "sonner";
 
 interface Keybinding {
@@ -13,9 +15,56 @@ interface Keybinding {
 
 export function useKeybindings() {
   const togglePrimarySidebar = useLayoutStore((s) => s.togglePrimarySidebar);
-  const toggleSecondarySidebar = useLayoutStore((s) => s.toggleSecondarySidebar);
+  const toggleSecondarySidebar = useLayoutStore(
+    (s) => s.toggleSecondarySidebar
+  );
   const togglePanel = useLayoutStore((s) => s.togglePanel);
-  const setActiveActivityBarItem = useLayoutStore((s) => s.setActiveActivityBarItem);
+  const setActiveActivityBarItem = useLayoutStore(
+    (s) => s.setActiveActivityBarItem
+  );
+
+  const closeTab = useEditorStore((s) => s.closeTab);
+  const activeTabId = useEditorStore((s) => s.activeTabId);
+  const tabs = useEditorStore((s) => s.tabs);
+  const setActiveTab = useEditorStore((s) => s.setActiveTab);
+
+  const handleCloseActiveTab = useCallback(() => {
+    if (activeTabId) {
+      closeTab(activeTabId);
+    }
+  }, [activeTabId, closeTab]);
+
+  const handleNextTab = useCallback(() => {
+    if (tabs.length === 0 || !activeTabId) return;
+    const currentIndex = tabs.findIndex((t) => t.id === activeTabId);
+    const nextIndex = (currentIndex + 1) % tabs.length;
+    setActiveTab(tabs[nextIndex].id);
+  }, [tabs, activeTabId, setActiveTab]);
+
+  const handlePrevTab = useCallback(() => {
+    if (tabs.length === 0 || !activeTabId) return;
+    const currentIndex = tabs.findIndex((t) => t.id === activeTabId);
+    const prevIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+    setActiveTab(tabs[prevIndex].id);
+  }, [tabs, activeTabId, setActiveTab]);
+
+  const handleSave = useCallback(async () => {
+    const state = useEditorStore.getState();
+    const activeTab = state.tabs.find((t) => t.id === state.activeTabId);
+    if (!activeTab || !activeTab.isDirty) return;
+
+    try {
+      await invoke("write_file", {
+        path: activeTab.path,
+        content: activeTab.content,
+      });
+      state.markSaved(activeTab.id, activeTab.content);
+    } catch (e) {
+      toast.error("Failed to save file", {
+        description: String(e),
+      });
+    }
+  }, []);
 
   const keybindings: Keybinding[] = [
     // Layout toggles
@@ -52,7 +101,7 @@ export function useKeybindings() {
       shift: true,
       action: () => {
         toast("Command Palette", {
-          description: "Command palette will be implemented in Phase 2.",
+          description: "Command palette will be implemented in Phase 3.",
         });
       },
       description: "Open Command Palette",
@@ -98,36 +147,32 @@ export function useKeybindings() {
       description: "Open Settings",
     },
 
-    // Tab management placeholders
+    // File save
+    {
+      key: "s",
+      ctrl: true,
+      action: handleSave,
+      description: "Save Active File",
+    },
+
+    // Tab management
     {
       key: "w",
       ctrl: true,
-      action: () => {
-        toast("Close Tab", {
-          description: "Tab management will be implemented in Phase 2.",
-        });
-      },
+      action: handleCloseActiveTab,
       description: "Close Active Tab",
     },
     {
       key: "Tab",
       ctrl: true,
-      action: () => {
-        toast("Next Tab", {
-          description: "Tab cycling will be implemented in Phase 2.",
-        });
-      },
+      action: handleNextTab,
       description: "Next Tab",
     },
     {
       key: "Tab",
       ctrl: true,
       shift: true,
-      action: () => {
-        toast("Previous Tab", {
-          description: "Tab cycling will be implemented in Phase 2.",
-        });
-      },
+      action: handlePrevTab,
       description: "Previous Tab",
     },
   ];
@@ -138,7 +183,8 @@ export function useKeybindings() {
         const ctrlMatch = binding.ctrl ? event.ctrlKey : !event.ctrlKey;
         const shiftMatch = binding.shift ? event.shiftKey : !event.shiftKey;
         const altMatch = binding.alt ? event.altKey : !event.altKey;
-        const keyMatch = event.key.toLowerCase() === binding.key.toLowerCase();
+        const keyMatch =
+          event.key.toLowerCase() === binding.key.toLowerCase();
 
         if (ctrlMatch && shiftMatch && altMatch && keyMatch) {
           event.preventDefault();

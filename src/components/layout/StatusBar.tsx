@@ -5,8 +5,20 @@ import {
   Zap,
   CircleDollarSign,
 } from "lucide-react";
+import { useEditorStore } from "@/stores/editor";
 
 export function StatusBar() {
+  const cursorPosition = useEditorStore((s) => s.cursorPosition);
+  const activeTab = useEditorStore((s) => {
+    const tab = s.tabs.find((t) => t.id === s.activeTabId);
+    return tab ?? null;
+  });
+
+  // Map language IDs to display names
+  const languageDisplayName = activeTab
+    ? getLanguageDisplayName(activeTab.language)
+    : "Plain Text";
+
   return (
     <div
       className="flex items-center justify-between h-6 px-2 text-xs shrink-0 select-none"
@@ -51,11 +63,13 @@ export function StatusBar() {
       {/* Right side - file/session scoped */}
       <div className="flex items-center gap-3">
         {/* Line and column */}
-        <span>Ln 1, Col 1</span>
+        <span>
+          Ln {cursorPosition.line}, Col {cursorPosition.column}
+        </span>
 
         {/* Language */}
         <button className="hover:text-[var(--color-text)] transition-colors">
-          TypeScript
+          {languageDisplayName}
         </button>
 
         {/* Claude session status */}
@@ -71,8 +85,48 @@ export function StatusBar() {
         </div>
 
         {/* Model */}
-        <span style={{ color: "var(--color-overlay-1)" }}>claude-opus-4-6</span>
+        <span style={{ color: "var(--color-overlay-1)" }}>
+          claude-opus-4-6
+        </span>
       </div>
     </div>
   );
+}
+
+function getLanguageDisplayName(languageId: string): string {
+  const names: Record<string, string> = {
+    typescript: "TypeScript",
+    javascript: "JavaScript",
+    rust: "Rust",
+    python: "Python",
+    json: "JSON",
+    toml: "TOML",
+    yaml: "YAML",
+    markdown: "Markdown",
+    html: "HTML",
+    css: "CSS",
+    scss: "SCSS",
+    less: "Less",
+    xml: "XML",
+    shell: "Shell Script",
+    powershell: "PowerShell",
+    bat: "Batch",
+    sql: "SQL",
+    go: "Go",
+    java: "Java",
+    c: "C",
+    cpp: "C++",
+    csharp: "C#",
+    ruby: "Ruby",
+    php: "PHP",
+    swift: "Swift",
+    kotlin: "Kotlin",
+    lua: "Lua",
+    r: "R",
+    dockerfile: "Dockerfile",
+    graphql: "GraphQL",
+    ini: "INI",
+    plaintext: "Plain Text",
+  };
+  return names[languageId] ?? languageId;
 }
