@@ -16,6 +16,8 @@ export interface SettingsState {
   terminalFontSize: number;
   terminalScrollback: number;
   vimMode: boolean;
+  /** Whether to show Inkwell the coding buddy in the status bar */
+  showBuddy: boolean;
   setTheme: (theme: ThemeName) => void;
   setFontSizeEditor: (size: number) => void;
   setFontSizeUI: (size: number) => void;
@@ -28,6 +30,7 @@ export interface SettingsState {
   setTerminalFontSize: (size: number) => void;
   setTerminalScrollback: (size: number) => void;
   setVimMode: (value: boolean) => void;
+  toggleBuddy: () => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -45,6 +48,7 @@ export const useSettingsStore = create<SettingsState>()(
       terminalFontSize: 14,
       terminalScrollback: 10000,
       vimMode: false,
+      showBuddy: true,
       setTheme: (theme) => set({ theme }),
       setFontSizeEditor: (size) => set({ fontSizeEditor: Math.max(8, Math.min(32, size)) }),
       setFontSizeUI: (size) => set({ fontSizeUI: Math.max(10, Math.min(24, size)) }),
@@ -57,6 +61,7 @@ export const useSettingsStore = create<SettingsState>()(
       setTerminalFontSize: (size) => set({ terminalFontSize: Math.max(8, Math.min(32, size)) }),
       setTerminalScrollback: (size) => set({ terminalScrollback: Math.max(1000, Math.min(100000, size)) }),
       setVimMode: (value) => set({ vimMode: value }),
+      toggleBuddy: () => set((state) => ({ showBuddy: !state.showBuddy })),
     }),
     {
       name: "vantage-settings",
@@ -73,6 +78,7 @@ export const useSettingsStore = create<SettingsState>()(
         terminalFontSize: state.terminalFontSize,
         terminalScrollback: state.terminalScrollback,
         vimMode: state.vimMode,
+        showBuddy: state.showBuddy,
       }),
     }
   )

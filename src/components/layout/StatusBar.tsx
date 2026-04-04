@@ -18,6 +18,7 @@ import { useSettingsStore } from "@/stores/settings";
 import { useUsageStore } from "@/stores/usage";
 import { useGitStatus } from "@/hooks/useGitStatus";
 import { UsagePanel } from "@/components/shared/UsagePanel";
+import { BuddyWidget } from "@/components/shared/BuddyWidget";
 
 export function StatusBar() {
   const cursorPosition = useEditorStore((s) => s.cursorPosition);
@@ -33,6 +34,7 @@ export function StatusBar() {
 
   const projectRootPath = useLayoutStore((s) => s.projectRootPath);
   const vimMode = useSettingsStore((s) => s.vimMode);
+  const showBuddy = useSettingsStore((s) => s.showBuddy);
   const { branch, isGitRepo } = useGitStatus(projectRootPath);
 
   const sessionStartedAt = useUsageStore((s) => s.sessionStartedAt);
@@ -131,6 +133,9 @@ export function StatusBar() {
               <span>0</span>
             </button>
           </div>
+
+          {/* Coding buddy — Inkwell */}
+          <BuddyWidget visible={showBuddy} />
 
           {/* Index status */}
           <div
