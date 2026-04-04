@@ -130,6 +130,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_pty::init())
+        .plugin(tauri_plugin_dialog::init())
         .manage(Mutex::new(FileWatcherState::new()))
         .invoke_handler(builder.invoke_handler())
         .setup(move |app| {
