@@ -13,6 +13,14 @@ export interface LayoutState {
   panelSize: number;
   /** The currently open project root path (set when a folder is opened) */
   projectRootPath: string | null;
+  /** URL currently shown in the browser preview (null = no preview) */
+  previewUrl: string | null;
+  /** Whether the preview panel is actively showing a webview */
+  previewActive: boolean;
+  /** Active panel tab in the bottom panel area */
+  activePanelTab: "terminal" | "browser";
+  /** View mode for the agents panel: kanban board or tree hierarchy */
+  agentsViewMode: "kanban" | "tree";
   togglePrimarySidebar: () => void;
   toggleSecondarySidebar: () => void;
   togglePanel: () => void;
@@ -21,6 +29,10 @@ export interface LayoutState {
   setSecondarySidebarSize: (size: number) => void;
   setPanelSize: (size: number) => void;
   setProjectRootPath: (path: string | null) => void;
+  setPreviewUrl: (url: string | null) => void;
+  setPreviewActive: (active: boolean) => void;
+  setActivePanelTab: (tab: "terminal" | "browser") => void;
+  setAgentsViewMode: (mode: "kanban" | "tree") => void;
 }
 
 export const useLayoutStore = create<LayoutState>()(
@@ -34,6 +46,10 @@ export const useLayoutStore = create<LayoutState>()(
       secondarySidebarSize: 25,
       panelSize: 30,
       projectRootPath: null,
+      previewUrl: null,
+      previewActive: false,
+      activePanelTab: "terminal",
+      agentsViewMode: "kanban",
       togglePrimarySidebar: () => set({ primarySidebarVisible: !get().primarySidebarVisible }),
       toggleSecondarySidebar: () => set({ secondarySidebarVisible: !get().secondarySidebarVisible }),
       togglePanel: () => set({ panelVisible: !get().panelVisible }),
@@ -49,6 +65,10 @@ export const useLayoutStore = create<LayoutState>()(
       setSecondarySidebarSize: (size) => set({ secondarySidebarSize: size }),
       setPanelSize: (size) => set({ panelSize: size }),
       setProjectRootPath: (path) => set({ projectRootPath: path }),
+      setPreviewUrl: (url) => set({ previewUrl: url, ...(url ? { previewActive: true, activePanelTab: "browser" } : {}) }),
+      setPreviewActive: (active) => set({ previewActive: active }),
+      setActivePanelTab: (tab) => set({ activePanelTab: tab }),
+      setAgentsViewMode: (mode) => set({ agentsViewMode: mode }),
     }),
     {
       name: "vantage-layout",
@@ -61,6 +81,10 @@ export const useLayoutStore = create<LayoutState>()(
         secondarySidebarSize: state.secondarySidebarSize,
         panelSize: state.panelSize,
         projectRootPath: state.projectRootPath,
+        previewUrl: state.previewUrl,
+        previewActive: state.previewActive,
+        activePanelTab: state.activePanelTab,
+        agentsViewMode: state.agentsViewMode,
       }),
     }
   )

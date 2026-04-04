@@ -1,9 +1,10 @@
-import { Search, GitBranch, Bot, Settings, Files } from "lucide-react";
+import { Search, GitBranch as GitBranchIcon, Bot, Settings, Files, LayoutGrid, GitFork } from "lucide-react";
 import { useLayoutStore, type ActivityBarItem } from "@/stores/layout";
 import { FileExplorer } from "@/components/files/FileExplorer";
 import { SearchPanel } from "@/components/search/SearchPanel";
 import { SettingsPanel } from "@/components/settings/SettingsPanel";
 import { KanbanBoard } from "@/components/agents/KanbanBoard";
+import { AgentTreeView } from "@/components/agents/AgentTreeView";
 import { GitLogPanel } from "@/components/git/GitLogPanel";
 
 const panelConfig: Record<
@@ -26,7 +27,7 @@ const panelConfig: Record<
   },
   git: {
     title: "Source Control",
-    icon: <GitBranch size={16} />,
+    icon: <GitBranchIcon size={16} />,
     description: "Git status and changes will appear here.",
   },
   agents: {
@@ -40,6 +41,55 @@ const panelConfig: Record<
     description: "Application settings will appear here.",
   },
 };
+
+// ── Agents view toggle ──────────────────────────────────────────────
+
+function AgentsViewToggle() {
+  const viewMode = useLayoutStore((s) => s.agentsViewMode);
+  const setViewMode = useLayoutStore((s) => s.setAgentsViewMode);
+
+  return (
+    <div className="flex items-center gap-0.5 ml-auto">
+      <button
+        className="p-1 rounded transition-colors"
+        style={{
+          color: viewMode === "kanban" ? "var(--color-blue)" : "var(--color-overlay-1)",
+          backgroundColor: viewMode === "kanban" ? "var(--color-surface-0)" : "transparent",
+        }}
+        onClick={() => setViewMode("kanban")}
+        title="Kanban view"
+        aria-label="Kanban view"
+      >
+        <LayoutGrid size={12} />
+      </button>
+      <button
+        className="p-1 rounded transition-colors"
+        style={{
+          color: viewMode === "tree" ? "var(--color-blue)" : "var(--color-overlay-1)",
+          backgroundColor: viewMode === "tree" ? "var(--color-surface-0)" : "transparent",
+        }}
+        onClick={() => setViewMode("tree")}
+        title="Tree view"
+        aria-label="Tree view"
+      >
+        <GitFork size={12} />
+      </button>
+    </div>
+  );
+}
+
+// ── Agents panel content ────────────────────────────────────────────
+
+function AgentsPanel() {
+  const viewMode = useLayoutStore((s) => s.agentsViewMode);
+
+  if (viewMode === "tree") {
+    return <AgentTreeView />;
+  }
+  return <KanbanBoard />;
+}
+
+// ── Primary sidebar ─────────────────────────────────────────────────
 
 export function PrimarySidebar() {
   const activeItem = useLayoutStore((s) => s.activeActivityBarItem);
@@ -60,6 +110,7 @@ export function PrimarySidebar() {
       >
         {config.icon}
         <span>{config.title}</span>
+        {activeItem === "agents" && <AgentsViewToggle />}
       </div>
 
       {/* Content */}
@@ -71,7 +122,7 @@ export function PrimarySidebar() {
         ) : activeItem === "git" ? (
           <GitLogPanel />
         ) : activeItem === "agents" ? (
-          <KanbanBoard />
+          <AgentsPanel />
         ) : activeItem === "settings" ? (
           <SettingsPanel />
         ) : (
