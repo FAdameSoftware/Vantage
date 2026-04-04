@@ -1,0 +1,254 @@
+import { useState, useCallback, useEffect } from "react";
+import { invoke } from "@tauri-apps/api/core";
+import {
+  Terminal as TerminalIcon,
+  Plus,
+  X,
+  Maximize2,
+} from "lucide-react";
+import { useLayoutStore } from "@/stores/layout";
+import { TerminalInstance } from "./TerminalInstance";
+
+interface ShellInfo {
+  name: string;
+  path: string;
+  args: string[];
+  is_default: boolean;
+}
+
+interface TerminalTab {
+  id: string;
+  label: string;
+  shellName: string;
+  shellPath: string;
+  shellArgs: string[];
+  cwd?: string;
+}
+
+let nextTerminalId = 1;
+
+export function TerminalPanel() {
+  const togglePanel = useLayoutStore((s) => s.togglePanel);
+  const [tabs, setTabs] = useState<TerminalTab[]>([]);
+  const [activeTabId, setActiveTabId] = useState<string | null>(null);
+  const [shells, setShells] = useState<ShellInfo[]>([]);
+  const [showShellPicker, setShowShellPicker] = useState(false);
+
+  const createTerminal = useCallback(
+    (shell: ShellInfo, cwd?: string) => {
+      const id = `term-${nextTerminalId++}`;
+      const newTab: TerminalTab = {
+        id,
+        label: `Terminal ${nextTerminalId - 1}`,
+        shellName: shell.name,
+        shellPath: shell.path,
+        shellArgs: shell.args,
+        cwd,
+      };
+      setTabs((prev) => [...prev, newTab]);
+      setActiveTabId(id);
+      setShowShellPicker(false);
+    },
+    []
+  );
+
+  // Fetch available shells on mount
+  useEffect(() => {
+    invoke<ShellInfo[]>("list_shells")
+      .then((shellList) => {
+        setShells(shellList);
+        // Create initial terminal with default shell
+        if (shellList.length > 0) {
+          const defaultShell =
+            shellList.find((s) => s.is_default) ?? shellList[0];
+          createTerminal(defaultShell);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to list shells:", err);
+        // Fallback: create a PowerShell terminal
+        createTerminal({
+          name: "PowerShell",
+          path: "powershell.exe",
+          args: ["-NoLogo"],
+          is_default: true,
+        });
+      });
+  }, [createTerminal]);
+
+  const closeTerminal = useCallback(
+    (id: string) => {
+      setTabs((prev) => {
+        const newTabs = prev.filter((t) => t.id !== id);
+        if (activeTabId === id && newTabs.length > 0) {
+          setActiveTabId(newTabs[newTabs.length - 1].id);
+        } else if (newTabs.length === 0) {
+          setActiveTabId(null);
+        }
+        return newTabs;
+      });
+    },
+    [activeTabId]
+  );
+
+  const handleNewTerminal = useCallback(() => {
+    if (shells.length > 1) {
+      setShowShellPicker((prev) => !prev);
+    } else if (shells.length === 1) {
+      createTerminal(shells[0]);
+    }
+  }, [shells, createTerminal]);
+
+  return (
+    <div
+      className="flex flex-col h-full overflow-hidden"
+      style={{
+        backgroundColor: "var(--color-base)",
+        borderTop: "1px solid var(--color-surface-0)",
+      }}
+    >
+      {/* Tab bar */}
+      <div
+        className="flex items-center justify-between h-9 shrink-0 px-2"
+        style={{ backgroundColor: "var(--color-mantle)" }}
+      >
+        {/* Tabs */}
+        <div className="flex items-center gap-0.5 overflow-x-auto" role="tablist">
+          {tabs.map((tab) => (
+            <div
+              key={tab.id}
+              className="flex items-center gap-1.5 px-2.5 h-7 text-xs rounded-t cursor-pointer transition-colors group shrink-0"
+              style={{
+                backgroundColor:
+                  tab.id === activeTabId
+                    ? "var(--color-base)"
+                    : "transparent",
+                color:
+                  tab.id === activeTabId
+                    ? "var(--color-text)"
+                    : "var(--color-subtext-0)",
+              }}
+              role="tab"
+              aria-selected={tab.id === activeTabId}
+              onClick={() => setActiveTabId(tab.id)}
+            >
+              <TerminalIcon size={12} />
+              <span>{tab.label}</span>
+              <span
+                className="text-xs"
+                style={{ color: "var(--color-overlay-0)" }}
+              >
+                ({tab.shellName})
+              </span>
+              <button
+                className="p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-[var(--color-surface-1)] transition-all ml-1"
+                style={{ color: "var(--color-overlay-1)" }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  closeTerminal(tab.id);
+                }}
+                aria-label={`Close ${tab.label}`}
+              >
+                <X size={10} />
+              </button>
+            </div>
+          ))}
+
+          {/* New terminal button */}
+          <div className="relative">
+            <button
+              className="flex items-center justify-center w-7 h-7 rounded hover:bg-[var(--color-surface-1)] transition-colors"
+              style={{ color: "var(--color-overlay-1)" }}
+              onClick={handleNewTerminal}
+              aria-label="New Terminal"
+              title="New Terminal (Ctrl+Shift+`)"
+            >
+              <Plus size={14} />
+            </button>
+
+            {/* Shell picker dropdown */}
+            {showShellPicker && (
+              <div
+                className="absolute top-full left-0 mt-1 rounded-md shadow-lg py-1 z-50 min-w-[160px]"
+                style={{
+                  backgroundColor: "var(--color-surface-0)",
+                  border: "1px solid var(--color-surface-1)",
+                }}
+              >
+                {shells.map((shell) => (
+                  <button
+                    key={shell.path}
+                    className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-left hover:bg-[var(--color-surface-1)] transition-colors"
+                    style={{ color: "var(--color-text)" }}
+                    onClick={() => createTerminal(shell)}
+                  >
+                    <TerminalIcon size={12} />
+                    <span>{shell.name}</span>
+                    {shell.is_default && (
+                      <span
+                        className="text-xs ml-auto"
+                        style={{ color: "var(--color-overlay-0)" }}
+                      >
+                        default
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Panel actions */}
+        <div className="flex items-center gap-0.5">
+          <button
+            className="flex items-center justify-center w-7 h-7 rounded hover:bg-[var(--color-surface-1)] transition-colors"
+            style={{ color: "var(--color-overlay-1)" }}
+            aria-label="Maximize Panel"
+          >
+            <Maximize2 size={12} />
+          </button>
+          <button
+            className="flex items-center justify-center w-7 h-7 rounded hover:bg-[var(--color-surface-1)] transition-colors"
+            style={{ color: "var(--color-overlay-1)" }}
+            onClick={togglePanel}
+            aria-label="Close Panel (Ctrl+J)"
+            title="Close Panel (Ctrl+J)"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      </div>
+
+      {/* Close shell picker when clicking outside */}
+      {showShellPicker && (
+        <div
+          className="fixed inset-0 z-40"
+          onClick={() => setShowShellPicker(false)}
+        />
+      )}
+
+      {/* Terminal instances */}
+      <div className="flex-1 overflow-hidden">
+        {tabs.length === 0 ? (
+          <div
+            className="flex items-center justify-center h-full text-xs"
+            style={{ color: "var(--color-overlay-1)" }}
+          >
+            No terminals open. Click + to create one.
+          </div>
+        ) : (
+          tabs.map((tab) => (
+            <TerminalInstance
+              key={tab.id}
+              shellPath={tab.shellPath}
+              shellArgs={tab.shellArgs}
+              cwd={tab.cwd}
+              isVisible={tab.id === activeTabId}
+            />
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
