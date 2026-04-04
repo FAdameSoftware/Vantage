@@ -4,8 +4,10 @@ import {
   XCircle,
   Zap,
   CircleDollarSign,
+  Loader2,
 } from "lucide-react";
 import { useEditorStore } from "@/stores/editor";
+import { useConversationStore } from "@/stores/conversation";
 
 export function StatusBar() {
   const cursorPosition = useEditorStore((s) => s.cursorPosition);
@@ -14,10 +16,21 @@ export function StatusBar() {
     return tab ?? null;
   });
 
+  const isStreaming = useConversationStore((s) => s.isStreaming);
+  const session = useConversationStore((s) => s.session);
+  const totalCost = useConversationStore((s) => s.totalCost);
+
   // Map language IDs to display names
   const languageDisplayName = activeTab
     ? getLanguageDisplayName(activeTab.language)
     : "Plain Text";
+
+  const connectionStatus = isStreaming ? "Streaming" : session ? "Connected" : "Ready";
+  const statusColor = isStreaming
+    ? "var(--color-peach)"
+    : session
+      ? "var(--color-green)"
+      : "var(--color-overlay-1)";
 
   return (
     <div
@@ -74,19 +87,23 @@ export function StatusBar() {
 
         {/* Claude session status */}
         <div className="flex items-center gap-1">
-          <Zap size={12} style={{ color: "var(--color-green)" }} />
-          <span>Ready</span>
+          {isStreaming ? (
+            <Loader2 size={12} className="animate-spin" style={{ color: statusColor }} />
+          ) : (
+            <Zap size={12} style={{ color: statusColor }} />
+          )}
+          <span>{connectionStatus}</span>
         </div>
 
         {/* Cost */}
         <div className="flex items-center gap-1">
           <CircleDollarSign size={12} />
-          <span>$0.00</span>
+          <span>${totalCost.toFixed(4)}</span>
         </div>
 
         {/* Model */}
         <span style={{ color: "var(--color-overlay-1)" }}>
-          claude-opus-4-6
+          {session?.model ?? "claude-opus-4-6"}
         </span>
       </div>
     </div>
