@@ -1,25 +1,44 @@
-import { useRef, useCallback } from "react";
+import { useRef, useCallback, useState } from "react";
 import Editor, { type OnMount, type OnChange } from "@monaco-editor/react";
 import type { editor as monacoEditor } from "monaco-editor";
 import { loader } from "@monaco-editor/react";
 import * as monaco from "monaco-editor";
 import { catppuccinMochaTheme } from "./monacoTheme";
+import { catppuccinLatteTheme } from "./monacoThemeLatte";
+import { highContrastTheme } from "./monacoThemeHighContrast";
 import { useSettingsStore } from "@/stores/settings";
+import type { ThemeName } from "@/stores/settings";
 import { useEditorStore } from "@/stores/editor";
+import { useVimMode } from "@/hooks/useVimMode";
 
 // Configure the loader to use the local monaco-editor package
 // instead of loading from CDN
 loader.config({ monaco });
 
-// Register theme once at module level
-let themeRegistered = false;
+// Register all themes once at module level
+let themesRegistered = false;
 function ensureThemeRegistered() {
-  if (!themeRegistered) {
+  if (!themesRegistered) {
     monaco.editor.defineTheme("catppuccin-mocha", catppuccinMochaTheme);
-    themeRegistered = true;
+    monaco.editor.defineTheme("catppuccin-latte", catppuccinLatteTheme);
+    monaco.editor.defineTheme("high-contrast", highContrastTheme);
+    themesRegistered = true;
   }
 }
 ensureThemeRegistered();
+
+/** Map settings theme name to registered Monaco theme name */
+function getMonacoTheme(theme: ThemeName): string {
+  switch (theme) {
+    case "vantage-light":
+      return "catppuccin-latte";
+    case "vantage-high-contrast":
+      return "high-contrast";
+    case "vantage-dark":
+    default:
+      return "catppuccin-mocha";
+  }
+}
 
 interface MonacoEditorProps {
   /** File path used as the editor model URI */
@@ -41,7 +60,12 @@ export function MonacoEditor({
   onChange,
   readOnly = false,
 }: MonacoEditorProps) {
+  // Store the mounted editor instance in state so the vim hook re-runs when it
+  // becomes available (useEffect deps work on state, not mutable refs).
+  const [editorInstance, setEditorInstance] =
+    useState<monacoEditor.IStandaloneCodeEditor | null>(null);
   const editorRef = useRef<monacoEditor.IStandaloneCodeEditor | null>(null);
+  const vimStatusbarRef = useRef<HTMLDivElement | null>(null);
 
   // Read settings
   const fontFamily = useSettingsStore((s) => s.fontFamily);
@@ -51,13 +75,26 @@ export function MonacoEditor({
   const wordWrap = useSettingsStore((s) => s.wordWrap);
   const minimapEnabled = useSettingsStore((s) => s.minimap);
   const lineNumbers = useSettingsStore((s) => s.lineNumbers);
+  const themeName = useSettingsStore((s) => s.theme);
+  const vimMode = useSettingsStore((s) => s.vimMode);
+  const monacoTheme = getMonacoTheme(themeName);
 
   const setCursorPosition = useEditorStore((s) => s.setCursorPosition);
   const pinTab = useEditorStore((s) => s.pinTab);
+  const setVimModeLabel = useEditorStore((s) => s.setVimModeLabel);
+
+  // Attach/detach the vim adapter whenever the editor instance or vimMode changes
+  useVimMode({
+    editor: editorInstance,
+    enabled: vimMode,
+    statusbarRef: vimStatusbarRef,
+    onModeChange: setVimModeLabel,
+  });
 
   const handleEditorDidMount: OnMount = useCallback(
     (editor) => {
       editorRef.current = editor;
+      setEditorInstance(editor);
 
       // Listen for cursor position changes
       editor.onDidChangeCursorPosition((e) => {
@@ -91,39 +128,48 @@ export function MonacoEditor({
   );
 
   return (
-    <div className="w-full h-full" data-allow-select="true">
-      <Editor
-        path={filePath}
-        language={language}
-        value={value}
-        theme="catppuccin-mocha"
-        onChange={handleChange}
-        onMount={handleEditorDidMount}
-        options={{
-          fontFamily,
-          fontSize: fontSizeEditor,
-          tabSize,
-          insertSpaces,
-          wordWrap: wordWrap ? "on" : "off",
-          minimap: { enabled: minimapEnabled },
-          lineNumbers: lineNumbers ? "on" : "off",
-          readOnly,
-          automaticLayout: true,
-          scrollBeyondLastLine: false,
-          smoothScrolling: true,
-          cursorBlinking: "smooth",
-          cursorSmoothCaretAnimation: "on",
-          renderLineHighlight: "line",
-          renderWhitespace: "selection",
-          bracketPairColorization: { enabled: true },
-          guides: {
-            bracketPairs: true,
-            indentation: true,
-          },
-          padding: { top: 8 },
-          overviewRulerLanes: 0,
-          fixedOverflowWidgets: true,
-        }}
+    <div className="w-full h-full flex flex-col" data-allow-select="true">
+      <div className="flex-1 min-h-0">
+        <Editor
+          path={filePath}
+          language={language}
+          value={value}
+          theme={monacoTheme}
+          onChange={handleChange}
+          onMount={handleEditorDidMount}
+          options={{
+            fontFamily,
+            fontSize: fontSizeEditor,
+            tabSize,
+            insertSpaces,
+            wordWrap: wordWrap ? "on" : "off",
+            minimap: { enabled: minimapEnabled },
+            lineNumbers: lineNumbers ? "on" : "off",
+            readOnly,
+            automaticLayout: true,
+            scrollBeyondLastLine: false,
+            smoothScrolling: true,
+            cursorBlinking: "smooth",
+            cursorSmoothCaretAnimation: "on",
+            renderLineHighlight: "line",
+            renderWhitespace: "selection",
+            bracketPairColorization: { enabled: true },
+            guides: {
+              bracketPairs: true,
+              indentation: true,
+            },
+            padding: { top: 8 },
+            overviewRulerLanes: 0,
+            fixedOverflowWidgets: true,
+          }}
+        />
+      </div>
+      {/* Hidden div that monaco-vim uses as its internal status bar DOM node.
+          The StatusBar component reads the mode from the editor store. */}
+      <div
+        ref={vimStatusbarRef}
+        aria-hidden="true"
+        style={{ display: "none" }}
       />
     </div>
   );

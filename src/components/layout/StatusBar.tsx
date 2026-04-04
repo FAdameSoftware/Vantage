@@ -9,10 +9,12 @@ import {
 import { useEditorStore } from "@/stores/editor";
 import { useConversationStore } from "@/stores/conversation";
 import { useLayoutStore } from "@/stores/layout";
+import { useSettingsStore } from "@/stores/settings";
 import { useGitStatus } from "@/hooks/useGitStatus";
 
 export function StatusBar() {
   const cursorPosition = useEditorStore((s) => s.cursorPosition);
+  const vimModeLabel = useEditorStore((s) => s.vimModeLabel);
   const activeTab = useEditorStore((s) => {
     const tab = s.tabs.find((t) => t.id === s.activeTabId);
     return tab ?? null;
@@ -23,6 +25,7 @@ export function StatusBar() {
   const totalCost = useConversationStore((s) => s.totalCost);
 
   const projectRootPath = useLayoutStore((s) => s.projectRootPath);
+  const vimMode = useSettingsStore((s) => s.vimMode);
   const { branch, isGitRepo } = useGitStatus(projectRootPath);
 
   // Map language IDs to display names
@@ -84,6 +87,20 @@ export function StatusBar() {
 
       {/* Right side - file/session scoped */}
       <div className="flex items-center gap-3">
+        {/* Vim mode indicator */}
+        {vimMode && (
+          <span
+            className="font-mono font-semibold px-1 rounded text-[10px]"
+            style={{
+              backgroundColor: vimModeLabelColor(vimModeLabel),
+              color: "var(--color-base)",
+            }}
+            aria-label={`Vim mode: ${vimModeLabel}`}
+          >
+            {vimModeLabel}
+          </span>
+        )}
+
         {/* Line and column */}
         <span>
           Ln {cursorPosition.line}, Col {cursorPosition.column}
@@ -117,6 +134,22 @@ export function StatusBar() {
       </div>
     </div>
   );
+}
+
+function vimModeLabelColor(label: string): string {
+  switch (label) {
+    case "INSERT":
+      return "var(--color-green)";
+    case "VISUAL":
+    case "V-LINE":
+    case "V-BLOCK":
+      return "var(--color-mauve)";
+    case "REPLACE":
+      return "var(--color-red)";
+    case "NORMAL":
+    default:
+      return "var(--color-blue)";
+  }
 }
 
 function getLanguageDisplayName(languageId: string): string {

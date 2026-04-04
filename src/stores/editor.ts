@@ -42,6 +42,8 @@ export interface EditorState {
   activeTabId: string | null;
   /** Current cursor position in the active editor */
   cursorPosition: CursorPosition;
+  /** Current vim mode label (only meaningful when vim mode is enabled) */
+  vimModeLabel: string;
 
   // ── Actions ─────────────────────────────────────────────────────
 
@@ -65,6 +67,8 @@ export interface EditorState {
   pinTab: (id: string) => void;
   /** Update cursor position for the status bar */
   setCursorPosition: (position: CursorPosition) => void;
+  /** Update the vim mode label (NORMAL / INSERT / VISUAL / etc.) */
+  setVimModeLabel: (label: string) => void;
   /** Reload a tab's content from disk (external change) */
   reloadTab: (id: string, content: string) => void;
   /** Get the currently active tab, or null */
@@ -116,6 +120,7 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
   tabs: [],
   activeTabId: null,
   cursorPosition: { line: 1, column: 1 },
+  vimModeLabel: "NORMAL",
   markdownPreviewTabs: new Set<string>(),
   pendingDiffs: new Map<string, PendingDiff>(),
 
@@ -211,6 +216,10 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
 
   setCursorPosition: (position) => {
     set({ cursorPosition: position });
+  },
+
+  setVimModeLabel: (label) => {
+    set({ vimModeLabel: label });
   },
 
   reloadTab: (id, content) => {

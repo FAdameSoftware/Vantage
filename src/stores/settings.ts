@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-export type ThemeName = "vantage-dark";
+export type ThemeName = "vantage-dark" | "vantage-light" | "vantage-high-contrast";
 
 export interface SettingsState {
   theme: ThemeName;
@@ -15,6 +15,7 @@ export interface SettingsState {
   lineNumbers: boolean;
   terminalFontSize: number;
   terminalScrollback: number;
+  vimMode: boolean;
   setTheme: (theme: ThemeName) => void;
   setFontSizeEditor: (size: number) => void;
   setFontSizeUI: (size: number) => void;
@@ -26,6 +27,7 @@ export interface SettingsState {
   setLineNumbers: (value: boolean) => void;
   setTerminalFontSize: (size: number) => void;
   setTerminalScrollback: (size: number) => void;
+  setVimMode: (value: boolean) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -42,6 +44,7 @@ export const useSettingsStore = create<SettingsState>()(
       lineNumbers: true,
       terminalFontSize: 14,
       terminalScrollback: 10000,
+      vimMode: false,
       setTheme: (theme) => set({ theme }),
       setFontSizeEditor: (size) => set({ fontSizeEditor: Math.max(8, Math.min(32, size)) }),
       setFontSizeUI: (size) => set({ fontSizeUI: Math.max(10, Math.min(24, size)) }),
@@ -53,6 +56,7 @@ export const useSettingsStore = create<SettingsState>()(
       setLineNumbers: (value) => set({ lineNumbers: value }),
       setTerminalFontSize: (size) => set({ terminalFontSize: Math.max(8, Math.min(32, size)) }),
       setTerminalScrollback: (size) => set({ terminalScrollback: Math.max(1000, Math.min(100000, size)) }),
+      setVimMode: (value) => set({ vimMode: value }),
     }),
     {
       name: "vantage-settings",
@@ -68,6 +72,7 @@ export const useSettingsStore = create<SettingsState>()(
         lineNumbers: state.lineNumbers,
         terminalFontSize: state.terminalFontSize,
         terminalScrollback: state.terminalScrollback,
+        vimMode: state.vimMode,
       }),
     }
   )
