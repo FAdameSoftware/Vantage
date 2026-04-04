@@ -223,6 +223,12 @@ const mockInvokeHandlers: Record<string, MockInvokeHandler> = {
   claude_list_sessions: () => [],
   search_sessions: () => [],
 
+  // ── PR list ──
+  get_pr_list: () => [
+    { number: 42, title: "feat: example pull request", state: "OPEN" },
+    { number: 41, title: "fix: another example PR", state: "OPEN" },
+  ],
+
   // ── MCP config ──
   read_mcp_config: () => [],
   write_mcp_config: () => null,

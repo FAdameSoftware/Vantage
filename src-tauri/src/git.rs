@@ -390,3 +390,60 @@ fn unix_to_iso8601(secs: i64) -> String {
 fn is_leap_year(year: i64) -> bool {
     (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)
 }
+
+/// A GitHub pull request summary from `gh pr list`.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct PrInfo {
+    pub number: u32,
+    pub title: String,
+    /// "OPEN", "CLOSED", "MERGED"
+    pub state: String,
+}
+
+/// List recent pull requests using the `gh` CLI.
+/// Returns up to `limit` PRs (default 10) for the repo at `cwd`.
+/// Returns an empty list (not an error) when `gh` is unavailable or the
+/// directory is not a GitHub repo.
+pub fn get_pr_list(cwd: &str, limit: u32) -> Result<Vec<PrInfo>, String> {
+    let output = Command::new("gh")
+        .args([
+            "pr",
+            "list",
+            "--json",
+            "number,title,state",
+            "--limit",
+            &limit.to_string(),
+            "--state",
+            "open",
+        ])
+        .current_dir(cwd)
+        .output();
+
+    let output = match output {
+        Ok(o) => o,
+        // gh not installed or not on PATH — return empty list gracefully
+        Err(_) => return Ok(Vec::new()),
+    };
+
+    if !output.status.success() {
+        // Not a GitHub repo, no auth, etc. — return empty list gracefully
+        return Ok(Vec::new());
+    }
+
+    let json = String::from_utf8_lossy(&output.stdout);
+    // Parse array of { number, title, state }
+    let parsed: Vec<serde_json::Value> =
+        serde_json::from_str(&json).unwrap_or_default();
+
+    let prs = parsed
+        .into_iter()
+        .filter_map(|v| {
+            let number = v["number"].as_u64()? as u32;
+            let title = v["title"].as_str()?.to_string();
+            let state = v["state"].as_str().unwrap_or("OPEN").to_string();
+            Some(PrInfo { number, title, state })
+        })
+        .collect();
+
+    Ok(prs)
+}

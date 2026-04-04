@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useLayoutStore } from "@/stores/layout";
 import { useEditorStore } from "@/stores/editor";
+import { ResumeFromPR } from "./ResumeFromPR";
 
 // ── Types matching Rust structs ──────────────────────────────────────
 
@@ -357,14 +358,17 @@ export function GitLogPanel() {
         >
           History
         </span>
-        {entries.length > 0 && (
-          <span
-            className="text-[10px] ml-auto"
-            style={{ color: "var(--color-overlay-0)" }}
-          >
-            {entries.length} commits
-          </span>
-        )}
+        <div className="ml-auto flex items-center gap-2">
+          {entries.length > 0 && (
+            <span
+              className="text-[10px]"
+              style={{ color: "var(--color-overlay-0)" }}
+            >
+              {entries.length} commits
+            </span>
+          )}
+          <ResumeFromPR />
+        </div>
       </div>
 
       {/* Scrollable list */}

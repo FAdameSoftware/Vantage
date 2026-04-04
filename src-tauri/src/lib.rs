@@ -231,6 +231,14 @@ fn get_git_status(cwd: String) -> Result<Vec<git::GitFileStatus>, String> {
     git::get_status(&cwd)
 }
 
+// ── PR List Command ─────────────────────────────────────────────────
+
+#[tauri::command]
+#[specta::specta]
+fn get_pr_list(cwd: String, limit: Option<u32>) -> Result<Vec<git::PrInfo>, String> {
+    git::get_pr_list(&cwd, limit.unwrap_or(10))
+}
+
 // ── Git Show Command ────────────────────────────────────────────────
 
 #[tauri::command]
@@ -560,6 +568,7 @@ pub fn run() {
             git_log,
             git_blame,
             git_diff_commit,
+            get_pr_list,
             get_analytics,
             read_theme_file,
             write_theme_file,
