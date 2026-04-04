@@ -1,6 +1,9 @@
 import { Search, GitBranch, Bot, Settings, Files } from "lucide-react";
 import { useLayoutStore, type ActivityBarItem } from "@/stores/layout";
 import { FileExplorer } from "@/components/files/FileExplorer";
+import { SearchPanel } from "@/components/search/SearchPanel";
+import { ClaudeMdEditor } from "@/components/settings/ClaudeMdEditor";
+import { KanbanBoard } from "@/components/agents/KanbanBoard";
 
 const panelConfig: Record<
   ActivityBarItem,
@@ -62,6 +65,12 @@ export function PrimarySidebar() {
       <div className="flex-1 overflow-hidden">
         {activeItem === "explorer" ? (
           <FileExplorer />
+        ) : activeItem === "search" ? (
+          <SearchPanel />
+        ) : activeItem === "agents" ? (
+          <KanbanBoard />
+        ) : activeItem === "settings" ? (
+          <ClaudeMdEditor />
         ) : (
           <div className="flex items-center justify-center h-full p-4">
             <p
