@@ -24,6 +24,8 @@ import {
   Download,
   BarChart3,
   Palette,
+  BookOpen,
+  Globe,
 } from "lucide-react";
 import { useCommandPaletteStore } from "@/stores/commandPalette";
 import { useLayoutStore } from "@/stores/layout";
@@ -408,6 +410,31 @@ export function CommandPalette() {
         } catch (err) {
           console.error("Failed to open theme file:", err);
         }
+      },
+    },
+    {
+      id: "open-spec-viewer",
+      label: "Open Spec Viewer (BMAD Document Sharding)",
+      icon: <BookOpen className="size-4 shrink-0 text-muted-foreground" />,
+      category: "View",
+      action: () => {
+        setActiveActivityBarItem("settings");
+        // The SettingsPanel will be visible; user clicks "Spec Viewer" tab.
+        // We fire a custom event so SettingsPanel can auto-switch its tab.
+        window.dispatchEvent(new CustomEvent("vantage:open-spec-viewer"));
+      },
+    },
+    {
+      id: "open-browser-preview",
+      label: "Open Browser Preview",
+      icon: <Globe className="size-4 shrink-0 text-muted-foreground" />,
+      category: "View",
+      action: () => {
+        const { useLayoutStore } = require("@/stores/layout");
+        useLayoutStore.getState().setActivePanelTab("browser");
+        // Ensure panel is visible
+        const state = useLayoutStore.getState();
+        if (!state.panelVisible) state.togglePanel();
       },
     },
   ];
