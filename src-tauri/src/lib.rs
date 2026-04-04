@@ -4,6 +4,7 @@ mod claude;
 mod files;
 mod git;
 mod mcp;
+mod merge_queue;
 mod prerequisites;
 mod search;
 mod session_search;
@@ -425,6 +426,43 @@ fn get_theme_file_path() -> Result<String, String> {
     theme::get_theme_file_path()
 }
 
+// ── Merge Queue Commands ──────────────────────────────────────────
+
+#[tauri::command]
+#[specta::specta]
+fn run_quality_gate(
+    cwd: String,
+    gate_name: String,
+    command: String,
+) -> Result<merge_queue::QualityGateResult, String> {
+    merge_queue::run_quality_gate(&cwd, &gate_name, &command)
+}
+
+#[tauri::command]
+#[specta::specta]
+fn detect_quality_gates(cwd: String) -> Result<Vec<merge_queue::DetectedGate>, String> {
+    merge_queue::detect_quality_gates(&cwd)
+}
+
+#[tauri::command]
+#[specta::specta]
+fn merge_branch(
+    repo_path: String,
+    branch_name: String,
+    no_ff: bool,
+) -> Result<merge_queue::MergeResult, String> {
+    merge_queue::merge_branch(&repo_path, &branch_name, no_ff)
+}
+
+#[tauri::command]
+#[specta::specta]
+fn rebase_branch(
+    worktree_path: String,
+    onto_branch: String,
+) -> Result<bool, String> {
+    merge_queue::rebase_branch(&worktree_path, &onto_branch)
+}
+
 // ── Application Setup ───────────────────────────────────────────────
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -479,6 +517,10 @@ pub fn run() {
             list_checkpoints,
             restore_checkpoint,
             delete_checkpoint,
+            run_quality_gate,
+            detect_quality_gates,
+            merge_branch,
+            rebase_branch,
         ],
     );
 
