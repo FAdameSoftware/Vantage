@@ -75,7 +75,17 @@ export function ChatInput({
   }, [text, isStreaming, disabled, onSend, ultrathink]);
 
   const handleSlashSelect = useCallback((cmd: SlashCommand) => {
-    setText("/" + cmd.name + " ");
+    if (cmd.name === "interview") {
+      // Inject the interview prompt template instead of the raw command
+      const template =
+        "Before building anything, interview me to understand the requirements. " +
+        "Ask me questions one at a time about: the problem I'm solving, " +
+        "who the users are, what constraints exist, what the acceptance criteria are, " +
+        "and any technical preferences. Only start building after I say 'go ahead'.";
+      setText(template);
+    } else {
+      setText("/" + cmd.name + " ");
+    }
     setShowSlash(false);
     setSlashQuery("");
     textareaRef.current?.focus();

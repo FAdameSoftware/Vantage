@@ -100,6 +100,8 @@ pub fn create_worktree(
         .map_err(|e| format!("Failed to run git: {}", e))?;
 
     if output.status.success() {
+        // Apply .worktreeinclude files
+        let _ = apply_worktree_includes(repo_path, worktree_path);
         return Ok(WorktreeCreateResult {
             path: worktree_path.to_string(),
             branch: branch_name.to_string(),
@@ -116,6 +118,8 @@ pub fn create_worktree(
             .map_err(|e| format!("Failed to run git: {}", e))?;
 
         if output.status.success() {
+            // Apply .worktreeinclude files
+            let _ = apply_worktree_includes(repo_path, worktree_path);
             return Ok(WorktreeCreateResult {
                 path: worktree_path.to_string(),
                 branch: branch_name.to_string(),
@@ -325,6 +329,43 @@ pub fn agent_worktree_path(repo_path: &str, agent_name: &str, agent_id: &str) ->
         .join(".vantage-worktrees")
         .join(format!("{}-{}", sanitized_name, short_id));
     worktree_dir.to_string_lossy().to_string()
+}
+
+/// Read `.worktreeinclude` from the project root and copy listed files
+/// into the given worktree directory. Lines starting with `#` are comments.
+/// Empty lines are skipped. Each non-comment line is a relative path from
+/// the project root.
+pub fn apply_worktree_includes(project_root: &str, worktree_path: &str) -> Result<Vec<String>, String> {
+    let include_path = Path::new(project_root).join(".worktreeinclude");
+    if !include_path.exists() {
+        return Ok(vec![]);
+    }
+
+    let contents = fs::read_to_string(&include_path)
+        .map_err(|e| format!("Failed to read .worktreeinclude: {e}"))?;
+
+    let mut copied = Vec::new();
+    for line in contents.lines() {
+        let line = line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+
+        let src = Path::new(project_root).join(line);
+        let dest = Path::new(worktree_path).join(line);
+
+        if src.exists() {
+            // Create parent directories in the worktree
+            if let Some(parent) = dest.parent() {
+                let _ = fs::create_dir_all(parent);
+            }
+            fs::copy(&src, &dest)
+                .map_err(|e| format!("Failed to copy {line}: {e}"))?;
+            copied.push(line.to_string());
+        }
+    }
+
+    Ok(copied)
 }
 
 /// Generate a branch name for an agent worktree.

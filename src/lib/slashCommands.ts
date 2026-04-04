@@ -19,6 +19,7 @@ export const BUILTIN_COMMANDS: SlashCommand[] = [
   { name: "doctor", description: "Check Claude Code installation health", source: "built-in", isSkill: false },
   { name: "help", description: "Show available commands and usage information", source: "built-in", isSkill: false },
   { name: "init", description: "Initialize CLAUDE.md in the current project", source: "built-in", isSkill: false },
+  { name: "interview", description: "Claude interviews you to gather requirements before building", source: "built-in", isSkill: false },
   { name: "login", description: "Log in to your Anthropic account", source: "built-in", isSkill: false },
   { name: "logout", description: "Log out of your Anthropic account", source: "built-in", isSkill: false },
   { name: "memory", description: "View or edit CLAUDE.md project memory", source: "built-in", isSkill: false },
