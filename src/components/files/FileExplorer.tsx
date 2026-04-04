@@ -4,6 +4,7 @@ import { FolderOpen, RefreshCw } from "lucide-react";
 import { useFileTree } from "@/hooks/useFileTree";
 import { useGitStatus } from "@/hooks/useGitStatus";
 import { FileTreeNode } from "./FileTreeNode";
+import { ConflictBanner } from "@/components/agents/ConflictBanner";
 import { useEditorStore } from "@/stores/editor";
 import {
   ContextMenu,
@@ -222,6 +223,9 @@ export function FileExplorer() {
           <RefreshCw size={12} />
         </button>
       </div>
+
+      {/* Conflict banner */}
+      <ConflictBanner />
 
       {/* Error state */}
       {error && (

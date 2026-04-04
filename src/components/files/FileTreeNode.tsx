@@ -1,5 +1,6 @@
-import { ChevronRight, ChevronDown } from "lucide-react";
+import { ChevronRight, ChevronDown, AlertTriangle } from "lucide-react";
 import { FileIcon } from "./FileIcon";
+import { useAgentsStore } from "@/stores/agents";
 import type { FileNode } from "@/hooks/useFileTree";
 import type { GitFileStatus } from "@/hooks/useGitStatus";
 
@@ -30,6 +31,11 @@ export function FileTreeNode({
   // Look up git status for this file
   const normalizedPath = node.path.replace(/\\/g, "/");
   const gitStatus = gitStatuses?.get(normalizedPath)?.status;
+
+  // Agent ownership: find agents that have this file assigned
+  const agentsForFile = useAgentsStore((s) => s.getAgentsForFile)(normalizedPath);
+  const hasConflict = agentsForFile.length > 1;
+  const ownerAgent = agentsForFile.length === 1 ? agentsForFile[0] : null;
 
   const handleClick = () => {
     if (node.is_dir) {
@@ -110,6 +116,22 @@ export function FileTreeNode({
         >
           {node.name}
         </span>
+
+        {/* Agent ownership indicator */}
+        {hasConflict ? (
+          <span
+            className="ml-1 shrink-0"
+            title={`Conflict: ${agentsForFile.map((a) => a.name).join(", ")}`}
+          >
+            <AlertTriangle size={10} style={{ color: "var(--color-yellow)" }} />
+          </span>
+        ) : ownerAgent ? (
+          <span
+            className="ml-1 inline-block w-2 h-2 rounded-full shrink-0"
+            style={{ backgroundColor: ownerAgent.color }}
+            title={`Assigned to ${ownerAgent.name}`}
+          />
+        ) : null}
 
         {/* Git status indicator */}
         {gitStatus && (
