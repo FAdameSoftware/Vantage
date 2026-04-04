@@ -3,6 +3,7 @@ mod checkpoint;
 mod claude;
 mod files;
 mod git;
+mod indexer;
 mod mcp;
 mod merge_queue;
 mod plugins;
@@ -400,6 +401,20 @@ fn toggle_plugin(plugin_name: String, enabled: bool) -> Result<(), String> {
     plugins::toggle_plugin(&plugin_name, enabled)
 }
 
+// ── Indexer Commands ──────────────────────────────────────────────
+
+#[tauri::command]
+#[specta::specta]
+fn index_project(root_path: String, force: bool) -> Result<indexer::ProjectIndex, String> {
+    indexer::index_project_cached(&root_path, force)
+}
+
+#[tauri::command]
+#[specta::specta]
+fn get_project_index(root_path: String) -> Result<Option<indexer::ProjectIndex>, String> {
+    indexer::get_cached_index(&root_path)
+}
+
 // ── Checkpoint Commands ────────────────────────────────────────────
 
 #[tauri::command]
@@ -552,6 +567,8 @@ pub fn run() {
             list_installed_skills,
             get_plugin_config,
             toggle_plugin,
+            index_project,
+            get_project_index,
         ],
     );
 

@@ -300,6 +300,66 @@ const mockInvokeHandlers: Record<string, MockInvokeHandler> = {
   }),
   toggle_plugin: () => null,
 
+  // ── Indexer ──
+  index_project: () => ({
+    rootPath: "/mock-project",
+    indexedAt: Date.now(),
+    totalFiles: 247,
+    totalDirs: 38,
+    totalLines: 18420,
+    filesByExtension: { ts: 85, tsx: 62, rs: 34, json: 18, css: 12, md: 8 },
+    directoryTree:
+      "mock-project\n|-- src\n|   |-- components\n|   |-- stores\n|   `-- lib\n|-- src-tauri\n|   `-- src\n`-- public\n",
+    keyFiles: [
+      { name: "package.json", category: "manifest", path: "/mock-project/package.json" },
+      { name: "Cargo.toml", category: "manifest", path: "/mock-project/Cargo.toml" },
+      { name: "tsconfig.json", category: "config", path: "/mock-project/tsconfig.json" },
+      { name: "README.md", category: "readme", path: "/mock-project/README.md" },
+    ],
+    dependencies: [
+      { name: "react", version: "^19.0.0", ecosystem: "npm" },
+      { name: "zustand", version: "^5.0.0", ecosystem: "npm" },
+      { name: "tauri", version: "2", ecosystem: "cargo" },
+      { name: "serde", version: "1", ecosystem: "cargo" },
+    ],
+    languages: [
+      { name: "TypeScript", extension: "ts", fileCount: 147, percentage: 59.5 },
+      { name: "Rust", extension: "rs", fileCount: 34, percentage: 13.8 },
+      { name: "JSON", extension: "json", fileCount: 18, percentage: 7.3 },
+      { name: "CSS", extension: "css", fileCount: 12, percentage: 4.9 },
+      { name: "Markdown", extension: "md", fileCount: 8, percentage: 3.2 },
+    ],
+  }),
+  get_project_index: () => ({
+    rootPath: "/mock-project",
+    indexedAt: Date.now(),
+    totalFiles: 247,
+    totalDirs: 38,
+    totalLines: 18420,
+    filesByExtension: { ts: 85, tsx: 62, rs: 34, json: 18, css: 12, md: 8 },
+    directoryTree:
+      "mock-project\n|-- src\n|   |-- components\n|   |-- stores\n|   `-- lib\n|-- src-tauri\n|   `-- src\n`-- public\n",
+    keyFiles: [
+      { name: "package.json", category: "manifest", path: "/mock-project/package.json" },
+      { name: "Cargo.toml", category: "manifest", path: "/mock-project/Cargo.toml" },
+      { name: "tsconfig.json", category: "config", path: "/mock-project/tsconfig.json" },
+      { name: "README.md", category: "readme", path: "/mock-project/README.md" },
+    ],
+    dependencies: [
+      { name: "react", version: "^19.0.0", ecosystem: "npm" },
+      { name: "zustand", version: "^5.0.0", ecosystem: "npm" },
+      { name: "tauri", version: "2", ecosystem: "cargo" },
+      { name: "serde", version: "1", ecosystem: "cargo" },
+    ],
+    languages: [
+      { name: "TypeScript", extension: "ts", fileCount: 147, percentage: 59.5 },
+      { name: "Rust", extension: "rs", fileCount: 34, percentage: 13.8 },
+      { name: "JSON", extension: "json", fileCount: 18, percentage: 7.3 },
+      { name: "CSS", extension: "css", fileCount: 12, percentage: 4.9 },
+      { name: "Markdown", extension: "md", fileCount: 8, percentage: 3.2 },
+    ],
+  }),
+
   // ── Analytics ──
   get_analytics: () => ({
     total_sessions: 0,
