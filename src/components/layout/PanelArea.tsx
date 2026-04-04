@@ -111,7 +111,7 @@ export function PanelArea() {
         )}
 
         {activePanelTab === "verification" && (
-          <div className="absolute inset-0">
+          <div className="absolute inset-0 overflow-auto flex flex-col">
             <VerificationDashboard />
           </div>
         )}

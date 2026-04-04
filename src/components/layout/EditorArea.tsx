@@ -1,7 +1,9 @@
 import { useCallback, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { FileCode } from "lucide-react";
+import { FileCode, FolderOpen } from "lucide-react";
+import { open } from "@tauri-apps/plugin-dialog";
 import { useEditorStore } from "@/stores/editor";
+import { useLayoutStore } from "@/stores/layout";
 import { MonacoEditor } from "@/components/editor/MonacoEditor";
 import { DiffViewer } from "@/components/editor/DiffViewer";
 import { EditorTabs } from "@/components/editor/EditorTabs";
@@ -51,32 +53,57 @@ function Breadcrumbs() {
 }
 
 function WelcomeScreen() {
+  const setProjectRootPath = useLayoutStore((s) => s.setProjectRootPath);
+
+  const handleOpenFolder = async () => {
+    try {
+      const selected = await open({ directory: true, multiple: false });
+      if (selected) {
+        setProjectRootPath(selected as string);
+      }
+    } catch (e) {
+      console.error("Failed to open folder:", e);
+    }
+  };
+
   return (
-    <div className="flex-1 flex flex-col items-center justify-center gap-4">
+    <div className="flex-1 flex flex-col items-center justify-center gap-6">
       <div
-        className="w-16 h-16 rounded-xl flex items-center justify-center"
+        className="w-20 h-20 rounded-2xl flex items-center justify-center"
         style={{ backgroundColor: "var(--color-surface-0)" }}
       >
-        <FileCode size={32} style={{ color: "var(--color-blue)" }} />
+        <FileCode size={40} style={{ color: "var(--color-blue)" }} />
       </div>
       <div className="text-center">
         <h2
-          className="text-lg font-semibold mb-1"
+          className="text-xl font-semibold mb-2"
           style={{ color: "var(--color-text)" }}
         >
           Welcome to Vantage
         </h2>
         <p
-          className="text-xs max-w-md"
+          className="text-sm max-w-md leading-relaxed"
           style={{ color: "var(--color-overlay-1)" }}
         >
-          Open a project folder to get started. Use the Explorer (Ctrl+Shift+E)
-          to browse files, or press Ctrl+Shift+P for the Command Palette.
+          Your AI-native IDE for Claude Code.
         </p>
       </div>
-      <div className="flex gap-3 mt-2">
+
+      <button
+        onClick={handleOpenFolder}
+        className="flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-medium transition-colors hover:opacity-90"
+        style={{
+          backgroundColor: "var(--color-blue)",
+          color: "var(--color-crust)",
+        }}
+      >
+        <FolderOpen size={18} />
+        Open Folder
+      </button>
+
+      <div className="flex gap-4 mt-4">
         <KeyboardHint keys="Ctrl+Shift+P" label="Command Palette" />
-        <KeyboardHint keys="Ctrl+Shift+E" label="Explorer" />
+        <KeyboardHint keys="Ctrl+P" label="Quick Open" />
         <KeyboardHint keys="Ctrl+`" label="Terminal" />
       </div>
     </div>

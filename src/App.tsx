@@ -9,6 +9,7 @@ import { PermissionDialog } from "@/components/permissions/PermissionDialog";
 import { CommandPalette } from "@/components/shared/CommandPalette";
 import { PrerequisiteCheck } from "@/components/shared/PrerequisiteCheck";
 import { PopoutEditor } from "@/components/editor/PopoutEditor";
+import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 import { useSettingsStore } from "@/stores/settings";
 import type { ThemeName } from "@/stores/settings";
 
@@ -52,7 +53,7 @@ function App() {
   }
 
   return (
-    <>
+    <ErrorBoundary>
       <IDELayout />
       <CommandPalette />
       <PermissionDialog />
@@ -67,7 +68,7 @@ function App() {
           },
         }}
       />
-    </>
+    </ErrorBoundary>
   );
 }
 
