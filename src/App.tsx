@@ -2,6 +2,7 @@ import { IDELayout } from "@/components/layout";
 import { Toaster } from "@/components/ui/sonner";
 import { useKeybindings } from "@/hooks/useKeybindings";
 import { PermissionDialog } from "@/components/permissions/PermissionDialog";
+import { CommandPalette } from "@/components/shared/CommandPalette";
 
 function App() {
   useKeybindings();
@@ -9,6 +10,7 @@ function App() {
   return (
     <>
       <IDELayout />
+      <CommandPalette />
       <PermissionDialog />
       <Toaster
         position="bottom-right"

@@ -1,6 +1,7 @@
 import { useEffect, useCallback } from "react";
 import { useLayoutStore } from "@/stores/layout";
 import { useEditorStore } from "@/stores/editor";
+import { useCommandPaletteStore } from "@/stores/commandPalette";
 import { invoke } from "@tauri-apps/api/core";
 import { toast } from "sonner";
 
@@ -22,6 +23,7 @@ export function useKeybindings() {
   const setActiveActivityBarItem = useLayoutStore(
     (s) => s.setActiveActivityBarItem
   );
+  const openPalette = useCommandPaletteStore((s) => s.open);
 
   const closeTab = useEditorStore((s) => s.closeTab);
   const activeTabId = useEditorStore((s) => s.activeTabId);
@@ -94,17 +96,25 @@ export function useKeybindings() {
       description: "Toggle Secondary Sidebar (Chat)",
     },
 
-    // Command palette placeholder
+    // Command palette
     {
       key: "p",
       ctrl: true,
       shift: true,
-      action: () => {
-        toast("Command Palette", {
-          description: "Command palette will be implemented in Phase 3.",
-        });
-      },
+      action: () => openPalette("commands"),
       description: "Open Command Palette",
+    },
+    {
+      key: "p",
+      ctrl: true,
+      action: () => openPalette("files"),
+      description: "Quick Open File",
+    },
+    {
+      key: "g",
+      ctrl: true,
+      action: () => openPalette("goto"),
+      description: "Go to Line",
     },
 
     // Activity bar focus shortcuts

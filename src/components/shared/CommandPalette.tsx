@@ -1,0 +1,405 @@
+import { useCallback, useEffect, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
+import {
+  CommandDialog,
+  Command,
+  CommandInput,
+  CommandList,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+  CommandShortcut,
+} from "@/components/ui/command";
+import {
+  Terminal,
+  PanelLeft,
+  PanelRight,
+  PanelBottom,
+  Settings,
+  Search,
+  GitBranch,
+  Bot,
+  Hash,
+  FileCode,
+} from "lucide-react";
+import { useCommandPaletteStore } from "@/stores/commandPalette";
+import { useLayoutStore } from "@/stores/layout";
+import { useEditorStore } from "@/stores/editor";
+import type { FileNode } from "@/hooks/useFileTree";
+import * as monaco from "monaco-editor";
+
+// ── Types ─────────────────────────────────────────────────────────────
+
+interface CommandDef {
+  id: string;
+  label: string;
+  shortcut?: string;
+  icon: React.ReactNode;
+  category: string;
+  action: () => void;
+}
+
+interface FlatFile {
+  name: string;
+  path: string;
+  extension: string | null;
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────
+
+function flattenTree(
+  nodes: FileNode[],
+  result: FlatFile[] = []
+): FlatFile[] {
+  for (const node of nodes) {
+    if (node.is_file) {
+      result.push({ name: node.name, path: node.path, extension: node.extension });
+    }
+    if (node.children) {
+      flattenTree(node.children, result);
+    }
+  }
+  return result;
+}
+
+function getRelativePath(filePath: string, rootPath: string | null): string {
+  if (!rootPath) return filePath;
+  const norm = filePath.replace(/\\/g, "/");
+  const root = rootPath.replace(/\\/g, "/");
+  if (norm.startsWith(root)) {
+    return norm.slice(root.length).replace(/^\//, "");
+  }
+  return norm;
+}
+
+function getFileIcon(_extension: string | null): React.ReactNode {
+  return <FileCode className="size-4 shrink-0 text-muted-foreground" />;
+}
+
+// ── Sub-views ─────────────────────────────────────────────────────────
+
+interface CommandsViewProps {
+  commands: CommandDef[];
+  searchText: string;
+  onSelect: (action: () => void) => void;
+}
+
+function CommandsView({ commands, searchText, onSelect }: CommandsViewProps) {
+  const query = searchText.startsWith(">")
+    ? searchText.slice(1).trimStart().toLowerCase()
+    : searchText.toLowerCase();
+
+  const filtered = query
+    ? commands.filter((c) => c.label.toLowerCase().includes(query))
+    : commands;
+
+  // Group by category
+  const byCategory = filtered.reduce<Record<string, CommandDef[]>>((acc, cmd) => {
+    (acc[cmd.category] ??= []).push(cmd);
+    return acc;
+  }, {});
+
+  if (filtered.length === 0) {
+    return null;
+  }
+
+  return (
+    <>
+      {Object.entries(byCategory).map(([category, cmds]) => (
+        <CommandGroup key={category} heading={category}>
+          {cmds.map((cmd) => (
+            <CommandItem
+              key={cmd.id}
+              value={cmd.id}
+              onSelect={() => onSelect(cmd.action)}
+            >
+              {cmd.icon}
+              <span>{cmd.label}</span>
+              {cmd.shortcut && (
+                <CommandShortcut>{cmd.shortcut}</CommandShortcut>
+              )}
+            </CommandItem>
+          ))}
+        </CommandGroup>
+      ))}
+    </>
+  );
+}
+
+interface FilesViewProps {
+  files: FlatFile[];
+  rootPath: string | null;
+  onSelect: (file: FlatFile) => void;
+}
+
+function FilesView({ files, rootPath, onSelect }: FilesViewProps) {
+  return (
+    <CommandGroup heading="Files">
+      {files.map((file) => (
+        <CommandItem
+          key={file.path}
+          value={file.path}
+          onSelect={() => onSelect(file)}
+        >
+          {getFileIcon(file.extension)}
+          <span className="truncate">{getRelativePath(file.path, rootPath)}</span>
+        </CommandItem>
+      ))}
+    </CommandGroup>
+  );
+}
+
+interface GoToLineViewProps {
+  searchText: string;
+  onSelect: (lineNumber: number) => void;
+}
+
+function GoToLineView({ searchText, onSelect }: GoToLineViewProps) {
+  const raw = searchText.startsWith(":") ? searchText.slice(1).trim() : searchText.trim();
+  const lineNumber = parseInt(raw, 10);
+  const isValid = !isNaN(lineNumber) && lineNumber > 0;
+
+  if (!isValid && raw !== "") return null;
+
+  return (
+    <CommandGroup heading="Go to Line">
+      <CommandItem
+        value={isValid ? `goto-line-${lineNumber}` : "goto-line-prompt"}
+        onSelect={() => isValid && onSelect(lineNumber)}
+        disabled={!isValid}
+      >
+        <Hash className="size-4 shrink-0 text-muted-foreground" />
+        <span>
+          {isValid
+            ? `Go to Line ${lineNumber}`
+            : "Type a line number after ':'"}
+        </span>
+      </CommandItem>
+    </CommandGroup>
+  );
+}
+
+// ── Main Component ────────────────────────────────────────────────────
+
+export function CommandPalette() {
+  const { isOpen, mode, searchText, close, setSearchText } =
+    useCommandPaletteStore();
+
+  const togglePrimarySidebar = useLayoutStore((s) => s.togglePrimarySidebar);
+  const toggleSecondarySidebar = useLayoutStore((s) => s.toggleSecondarySidebar);
+  const togglePanel = useLayoutStore((s) => s.togglePanel);
+  const setActiveActivityBarItem = useLayoutStore((s) => s.setActiveActivityBarItem);
+  const projectRootPath = useLayoutStore((s) => s.projectRootPath);
+
+  const openFile = useEditorStore((s) => s.openFile);
+
+  const [fileList, setFileList] = useState<FlatFile[]>([]);
+  const [isLoadingFiles, setIsLoadingFiles] = useState(false);
+
+  // Build the commands list inside the component so it closes over store actions
+  const commands: CommandDef[] = [
+    {
+      id: "toggle-primary-sidebar",
+      label: "Toggle Primary Sidebar",
+      shortcut: "Ctrl+B",
+      icon: <PanelLeft className="size-4 shrink-0 text-muted-foreground" />,
+      category: "View",
+      action: togglePrimarySidebar,
+    },
+    {
+      id: "toggle-secondary-sidebar",
+      label: "Toggle Secondary Sidebar / Chat",
+      shortcut: "Ctrl+Shift+B",
+      icon: <PanelRight className="size-4 shrink-0 text-muted-foreground" />,
+      category: "View",
+      action: toggleSecondarySidebar,
+    },
+    {
+      id: "toggle-panel",
+      label: "Toggle Panel / Terminal",
+      shortcut: "Ctrl+J",
+      icon: <PanelBottom className="size-4 shrink-0 text-muted-foreground" />,
+      category: "View",
+      action: togglePanel,
+    },
+    {
+      id: "focus-explorer",
+      label: "Focus File Explorer",
+      shortcut: "Ctrl+Shift+E",
+      icon: <FileCode className="size-4 shrink-0 text-muted-foreground" />,
+      category: "View",
+      action: () => setActiveActivityBarItem("explorer"),
+    },
+    {
+      id: "focus-search",
+      label: "Focus Search",
+      shortcut: "Ctrl+Shift+F",
+      icon: <Search className="size-4 shrink-0 text-muted-foreground" />,
+      category: "View",
+      action: () => setActiveActivityBarItem("search"),
+    },
+    {
+      id: "focus-git",
+      label: "Focus Source Control",
+      shortcut: "Ctrl+Shift+G",
+      icon: <GitBranch className="size-4 shrink-0 text-muted-foreground" />,
+      category: "View",
+      action: () => setActiveActivityBarItem("git"),
+    },
+    {
+      id: "focus-agents",
+      label: "Focus Agents",
+      shortcut: "Ctrl+Shift+A",
+      icon: <Bot className="size-4 shrink-0 text-muted-foreground" />,
+      category: "View",
+      action: () => setActiveActivityBarItem("agents"),
+    },
+    {
+      id: "open-settings",
+      label: "Open Settings",
+      shortcut: "Ctrl+,",
+      icon: <Settings className="size-4 shrink-0 text-muted-foreground" />,
+      category: "Preferences",
+      action: () => setActiveActivityBarItem("settings"),
+    },
+    {
+      id: "new-terminal",
+      label: "New Terminal",
+      shortcut: "Ctrl+Shift+`",
+      icon: <Terminal className="size-4 shrink-0 text-muted-foreground" />,
+      category: "Terminal",
+      action: togglePanel,
+    },
+    {
+      id: "close-active-tab",
+      label: "Close Active Tab",
+      shortcut: "Ctrl+W",
+      icon: <FileCode className="size-4 shrink-0 text-muted-foreground" />,
+      category: "Editor",
+      action: () => {
+        const state = useEditorStore.getState();
+        if (state.activeTabId) {
+          state.closeTab(state.activeTabId);
+        }
+      },
+    },
+  ];
+
+  // Fetch files when mode switches to "files" and palette opens
+  useEffect(() => {
+    if (!isOpen || mode !== "files") return;
+    if (!projectRootPath) return;
+
+    setIsLoadingFiles(true);
+    const fetchFiles = async () => {
+      try {
+        const tree = await invoke<FileNode[]>("get_file_tree", {
+          path: projectRootPath,
+          depth: 10,
+        });
+        setFileList(flattenTree(tree));
+      } catch {
+        setFileList([]);
+      } finally {
+        setIsLoadingFiles(false);
+      }
+    };
+    fetchFiles();
+  }, [isOpen, mode, projectRootPath]);
+
+  // Handle selecting a file: read it from disk then open in editor
+  const handleFileSelect = useCallback(
+    async (file: FlatFile) => {
+      try {
+        const result = await invoke<{
+          path: string;
+          content: string;
+          language: string;
+        }>("read_file", { path: file.path });
+        openFile(result.path, file.name, result.language, result.content);
+      } catch (e) {
+        console.error("Failed to open file from command palette:", e);
+      } finally {
+        close();
+      }
+    },
+    [openFile, close]
+  );
+
+  // Handle go-to-line
+  const handleGoToLine = useCallback(
+    (lineNumber: number) => {
+      const editors = monaco.editor.getEditors();
+      if (editors.length > 0) {
+        const editor = editors[0];
+        editor.revealLineInCenter(lineNumber);
+        editor.setPosition({ lineNumber, column: 1 });
+        editor.focus();
+      }
+      close();
+    },
+    [close]
+  );
+
+  // Handle command execution
+  const handleCommandSelect = useCallback(
+    (action: () => void) => {
+      close();
+      // Small delay so the palette closes before executing the action
+      setTimeout(action, 0);
+    },
+    [close]
+  );
+
+  const placeholder =
+    mode === "commands"
+      ? "Type a command..."
+      : mode === "goto"
+      ? "Type a line number (e.g. :42)..."
+      : "Search files by name...";
+
+  return (
+    <CommandDialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) close();
+      }}
+    >
+      <Command shouldFilter={mode === "files"}>
+        <CommandInput
+          placeholder={placeholder}
+          value={searchText}
+          onValueChange={setSearchText}
+        />
+        <CommandList>
+          <CommandEmpty>
+            {isLoadingFiles ? "Loading files..." : "No results found."}
+          </CommandEmpty>
+
+          {mode === "commands" && (
+            <CommandsView
+              commands={commands}
+              searchText={searchText}
+              onSelect={handleCommandSelect}
+            />
+          )}
+
+          {mode === "files" && (
+            <FilesView
+              files={fileList}
+              rootPath={projectRootPath}
+              onSelect={handleFileSelect}
+            />
+          )}
+
+          {mode === "goto" && (
+            <GoToLineView
+              searchText={searchText}
+              onSelect={handleGoToLine}
+            />
+          )}
+        </CommandList>
+      </Command>
+    </CommandDialog>
+  );
+}

@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { useLayoutStore } from "@/stores/layout";
 
 export interface FileNode {
   name: string;
@@ -57,6 +58,9 @@ export function useFileTree(): UseFileTreeReturn {
       setRootPathState(path);
       setExpandedPaths(new Set());
       loadTree(path);
+
+      // Sync to layout store so command palette can read it globally
+      useLayoutStore.getState().setProjectRootPath(path);
 
       // Start file watcher for the new root
       invoke("start_file_watcher", { path }).catch((err) =>
