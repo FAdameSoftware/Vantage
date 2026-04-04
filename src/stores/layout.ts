@@ -18,7 +18,7 @@ export interface LayoutState {
   /** Whether the preview panel is actively showing a webview */
   previewActive: boolean;
   /** Active panel tab in the bottom panel area */
-  activePanelTab: "terminal" | "browser";
+  activePanelTab: "terminal" | "browser" | "verification";
   /** View mode for the agents panel: kanban board or tree hierarchy */
   agentsViewMode: "kanban" | "tree";
   togglePrimarySidebar: () => void;
@@ -31,7 +31,7 @@ export interface LayoutState {
   setProjectRootPath: (path: string | null) => void;
   setPreviewUrl: (url: string | null) => void;
   setPreviewActive: (active: boolean) => void;
-  setActivePanelTab: (tab: "terminal" | "browser") => void;
+  setActivePanelTab: (tab: "terminal" | "browser" | "verification") => void;
   setAgentsViewMode: (mode: "kanban" | "tree") => void;
 }
 

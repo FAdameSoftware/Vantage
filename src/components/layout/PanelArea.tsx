@@ -1,14 +1,50 @@
-import { Globe, Terminal as TerminalIcon } from "lucide-react";
+import { Globe, Terminal as TerminalIcon, ShieldCheck } from "lucide-react";
 import { TerminalPanel } from "@/components/terminal/TerminalTabs";
 import { BrowserPreview } from "@/components/preview/BrowserPreview";
+import { VerificationDashboard } from "@/components/agents/VerificationDashboard";
 import { useLayoutStore } from "@/stores/layout";
+import { useVerificationStore } from "@/stores/verification";
 
-type PanelTab = "terminal" | "browser";
+type PanelTab = "terminal" | "browser" | "verification";
 
 const panelTabs: { id: PanelTab; label: string; icon: React.ReactNode }[] = [
   { id: "terminal", label: "Terminal", icon: <TerminalIcon size={12} /> },
   { id: "browser", label: "Browser", icon: <Globe size={12} /> },
+  { id: "verification", label: "Verification", icon: <ShieldCheck size={12} /> },
 ];
+
+function VerificationBadge() {
+  const failCount = useVerificationStore((s) => s.getFailCount());
+  const passCount = useVerificationStore((s) => s.getPassCount());
+  const totalCount = useVerificationStore((s) => s.getTotalCount());
+
+  if (totalCount === 0) return null;
+
+  if (failCount > 0) {
+    return (
+      <span
+        className="text-[9px] font-semibold px-1 rounded-full"
+        style={{
+          backgroundColor: "var(--color-red)",
+          color: "var(--color-base)",
+        }}
+      >
+        {failCount}
+      </span>
+    );
+  }
+
+  if (passCount === totalCount) {
+    return (
+      <span
+        className="size-1.5 rounded-full inline-block"
+        style={{ backgroundColor: "var(--color-green)" }}
+      />
+    );
+  }
+
+  return null;
+}
 
 export function PanelArea() {
   const activePanelTab = useLayoutStore((s) => s.activePanelTab);
@@ -22,7 +58,7 @@ export function PanelArea() {
         borderTop: "1px solid var(--color-surface-0)",
       }}
     >
-      {/* Panel-level mode tabs (Terminal | Browser) */}
+      {/* Panel-level mode tabs (Terminal | Browser | Verification) */}
       <div
         className="flex items-center shrink-0 gap-0 px-1"
         style={{
@@ -48,6 +84,7 @@ export function PanelArea() {
           >
             {tab.icon}
             {tab.label}
+            {tab.id === "verification" && <VerificationBadge />}
             {activePanelTab === tab.id && (
               <span
                 className="absolute bottom-0 left-0 right-0 h-[2px]"
@@ -70,6 +107,12 @@ export function PanelArea() {
         {activePanelTab === "browser" && (
           <div className="absolute inset-0">
             <BrowserPreview />
+          </div>
+        )}
+
+        {activePanelTab === "verification" && (
+          <div className="absolute inset-0">
+            <VerificationDashboard />
           </div>
         )}
       </div>
