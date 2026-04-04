@@ -9,12 +9,12 @@
     "typescript-lsp@claude-plugins-official": true,
     "commit-commands@claude-plugins-official": true,
     "claude-md-management@claude-plugins-official": true,
-    "semgrep@claude-plugins-official": true,
+    "semgrep@claude-plugins-official": false,
     "firecrawl@claude-plugins-official": true,
     "plugin-dev@claude-plugins-official": true,
     "code-review@claude-plugins-official": true,
     "skill-creator@claude-plugins-official": true,
-    "github@claude-plugins-official": true,
+    "github@claude-plugins-official": false,
     "vercel@claude-plugins-official": true,
     "feature-dev@claude-plugins-official": true,
     "code-simplifier@claude-plugins-official": true,
@@ -37,5 +37,6 @@
     "hookify@claude-plugins-official": false,
     "playground@claude-plugins-official": false,
     "serena@claude-plugins-official": false
-  }
+  },
+  "disableAllHooks": false
 }
