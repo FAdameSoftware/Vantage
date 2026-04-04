@@ -29,3 +29,7 @@ tauri-plugin-dialog = "2"
 # --- Phase 3: Claude Code integration ---
 dirs = "6"
 uuid = { version = "1", features = ["v4"] }
+# --- Phase 5: Project-wide search ---
+regex = "1"
+# --- Phase 5: System notifications ---
+tauri-plugin-notification = "2"
