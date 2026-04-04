@@ -17,6 +17,7 @@ import { useAgentConversationsStore } from "@/stores/agentConversations";
 import { MessageBubble } from "@/components/chat/MessageBubble";
 import { AgentTimeline } from "./AgentTimeline";
 import { MultiFileDiffReview } from "@/components/diff/MultiFileDiffReview";
+import { CheckpointControls } from "./CheckpointControls";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -390,6 +391,13 @@ export function AgentDetailPanel({ agentId, onClose }: AgentDetailPanelProps) {
     >
       {/* Agent info header */}
       <AgentHeader agentId={agentId} onClose={onClose} />
+
+      {/* Checkpoint controls */}
+      {agent.checkpoint && (
+        <div className="px-3 py-2 shrink-0">
+          <CheckpointControls agent={agent} />
+        </div>
+      )}
 
       {/* Tab bar */}
       <TabBar active={activeTab} onChange={setActiveTab} counts={counts} />

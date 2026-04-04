@@ -1,4 +1,5 @@
 mod analytics;
+mod checkpoint;
 mod claude;
 mod files;
 mod git;
@@ -371,6 +372,39 @@ fn get_analytics(days: u32) -> Result<analytics::AnalyticsSummary, String> {
     analytics::get_analytics(days)
 }
 
+// ── Checkpoint Commands ────────────────────────────────────────────
+
+#[tauri::command]
+#[specta::specta]
+fn create_checkpoint(
+    cwd: String,
+    agent_id: String,
+    agent_name: String,
+) -> Result<checkpoint::Checkpoint, String> {
+    checkpoint::create_checkpoint(&cwd, &agent_id, &agent_name)
+}
+
+#[tauri::command]
+#[specta::specta]
+fn list_checkpoints(
+    cwd: String,
+    agent_id: Option<String>,
+) -> Result<Vec<checkpoint::Checkpoint>, String> {
+    checkpoint::list_checkpoints(&cwd, agent_id.as_deref())
+}
+
+#[tauri::command]
+#[specta::specta]
+fn restore_checkpoint(cwd: String, tag_name: String) -> Result<(), String> {
+    checkpoint::restore_checkpoint(&cwd, &tag_name)
+}
+
+#[tauri::command]
+#[specta::specta]
+fn delete_checkpoint(cwd: String, tag_name: String) -> Result<(), String> {
+    checkpoint::delete_checkpoint(&cwd, &tag_name)
+}
+
 // ── Theme File Commands ────────────────────────────────────────────
 
 #[tauri::command]
@@ -441,6 +475,10 @@ pub fn run() {
             read_theme_file,
             write_theme_file,
             get_theme_file_path,
+            create_checkpoint,
+            list_checkpoints,
+            restore_checkpoint,
+            delete_checkpoint,
         ],
     );
 

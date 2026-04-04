@@ -89,6 +89,12 @@ export interface Agent {
   timeline: AgentTimelineEvent[];
   /** Error message, if status is "error" */
   errorMessage?: string;
+  /** Checkpoint created before agent started working */
+  checkpoint?: {
+    tagName: string;
+    commitHash: string;
+    createdAt: string;
+  };
 }
 
 // ── Store state and actions ─────────────────────────────────────────
@@ -173,6 +179,15 @@ export interface AgentsState {
 
   /** Check if a file is touched by multiple agents (conflict) */
   hasFileConflict: (filePath: string) => boolean;
+
+  /** Set checkpoint metadata for an agent */
+  setCheckpoint: (
+    agentId: string,
+    checkpoint: { tagName: string; commitHash: string; createdAt: string },
+  ) => void;
+
+  /** Clear checkpoint metadata for an agent */
+  clearCheckpoint: (agentId: string) => void;
 }
 
 // ── Store implementation ────────────────────────────────────────────
@@ -405,5 +420,25 @@ export const useAgentsStore = create<AgentsState>()((set, get) => ({
 
   hasFileConflict(filePath) {
     return get().getAgentsForFile(filePath).length > 1;
+  },
+
+  setCheckpoint(agentId, checkpoint) {
+    set((state) => {
+      const agent = state.agents.get(agentId);
+      if (!agent) return {};
+      const next = new Map(state.agents);
+      next.set(agentId, { ...agent, checkpoint });
+      return { agents: next };
+    });
+  },
+
+  clearCheckpoint(agentId) {
+    set((state) => {
+      const agent = state.agents.get(agentId);
+      if (!agent) return {};
+      const next = new Map(state.agents);
+      next.set(agentId, { ...agent, checkpoint: undefined });
+      return { agents: next };
+    });
   },
 }));
