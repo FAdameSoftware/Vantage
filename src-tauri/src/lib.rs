@@ -1,10 +1,12 @@
 mod files;
+mod terminal;
 
 use files::operations::{self, FileContent};
 use files::tree::{self, FileNode};
 use files::watcher::{self, FileWatcherState};
 use std::sync::Mutex;
 use tauri::Manager;
+use terminal::shell_detect::ShellInfo;
 
 // ── File Tree Commands ──────────────────────────────────────────────
 
@@ -80,6 +82,20 @@ fn stop_file_watcher(app_handle: tauri::AppHandle) -> Result<(), String> {
     watcher::stop_watching(&state)
 }
 
+// ── Terminal Commands ───────────────────────────────────────────────
+
+#[tauri::command]
+#[specta::specta]
+fn list_shells() -> Vec<ShellInfo> {
+    terminal::pty_manager::list_shells()
+}
+
+#[tauri::command]
+#[specta::specta]
+fn get_default_shell() -> ShellInfo {
+    terminal::pty_manager::default_shell()
+}
+
 // ── Application Setup ───────────────────────────────────────────────
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -97,6 +113,8 @@ pub fn run() {
             delete_dir,
             start_file_watcher,
             stop_file_watcher,
+            list_shells,
+            get_default_shell,
         ],
     );
 
@@ -111,6 +129,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_store::Builder::new().build())
+        .plugin(tauri_plugin_pty::init())
         .manage(Mutex::new(FileWatcherState::new()))
         .invoke_handler(builder.invoke_handler())
         .setup(move |app| {
