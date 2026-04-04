@@ -112,7 +112,7 @@ export function TerminalPanel() {
         className="flex items-center justify-between h-7 shrink-0 px-1"
         style={{ backgroundColor: "var(--color-mantle)" }}
       >
-        {/* Tabs */}
+        {/* Tabs — role="tablist" must only contain role="tab" children */}
         <div className="flex items-center gap-0.5 overflow-x-auto" role="tablist">
           {tabs.map((tab) => (
             <div
@@ -140,6 +140,8 @@ export function TerminalPanel() {
               >
                 ({tab.shellName})
               </span>
+              {/* aria-roledescription tells AT this is a closeable tab; the
+                  button is visually hidden until hover to reduce clutter */}
               <button
                 className="p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-[var(--color-surface-1)] transition-all ml-1"
                 style={{ color: "var(--color-overlay-1)" }}
@@ -148,55 +150,57 @@ export function TerminalPanel() {
                   closeTerminal(tab.id);
                 }}
                 aria-label={`Close ${tab.label}`}
+                tabIndex={-1}
               >
                 <X size={10} />
               </button>
             </div>
           ))}
+        </div>
 
-          {/* New terminal button */}
-          <div className="relative">
-            <button
-              className="flex items-center justify-center w-6 h-6 rounded hover:bg-[var(--color-surface-1)] transition-colors"
-              style={{ color: "var(--color-overlay-1)" }}
-              onClick={handleNewTerminal}
-              aria-label="New Terminal"
-              title="New Terminal (Ctrl+Shift+`)"
+        {/* New terminal button — lives outside the tablist to satisfy
+            aria-required-children (tablist must only own tab children) */}
+        <div className="relative">
+          <button
+            className="flex items-center justify-center w-6 h-6 rounded hover:bg-[var(--color-surface-1)] transition-colors"
+            style={{ color: "var(--color-overlay-1)" }}
+            onClick={handleNewTerminal}
+            aria-label="New Terminal"
+            title="New Terminal (Ctrl+Shift+`)"
+          >
+            <Plus size={14} />
+          </button>
+
+          {/* Shell picker dropdown */}
+          {showShellPicker && (
+            <div
+              className="absolute top-full left-0 mt-1 rounded-md shadow-lg py-1 z-50 min-w-[160px]"
+              style={{
+                backgroundColor: "var(--color-surface-0)",
+                border: "1px solid var(--color-surface-1)",
+              }}
             >
-              <Plus size={14} />
-            </button>
-
-            {/* Shell picker dropdown */}
-            {showShellPicker && (
-              <div
-                className="absolute top-full left-0 mt-1 rounded-md shadow-lg py-1 z-50 min-w-[160px]"
-                style={{
-                  backgroundColor: "var(--color-surface-0)",
-                  border: "1px solid var(--color-surface-1)",
-                }}
-              >
-                {shells.map((shell) => (
-                  <button
-                    key={shell.path}
-                    className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-left hover:bg-[var(--color-surface-1)] transition-colors"
-                    style={{ color: "var(--color-text)" }}
-                    onClick={() => createTerminal(shell)}
-                  >
-                    <TerminalIcon size={12} />
-                    <span>{shell.name}</span>
-                    {shell.is_default && (
-                      <span
-                        className="text-xs ml-auto"
-                        style={{ color: "var(--color-overlay-0)" }}
-                      >
-                        default
-                      </span>
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+              {shells.map((shell) => (
+                <button
+                  key={shell.path}
+                  className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-left hover:bg-[var(--color-surface-1)] transition-colors"
+                  style={{ color: "var(--color-text)" }}
+                  onClick={() => createTerminal(shell)}
+                >
+                  <TerminalIcon size={12} />
+                  <span>{shell.name}</span>
+                  {shell.is_default && (
+                    <span
+                      className="text-xs ml-auto"
+                      style={{ color: "var(--color-overlay-0)" }}
+                    >
+                      default
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Panel actions */}
