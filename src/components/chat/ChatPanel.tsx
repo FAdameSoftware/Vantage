@@ -9,6 +9,8 @@ import { SessionSelector } from "./SessionSelector";
 import { QuickQuestionOverlay } from "./QuickQuestionOverlay";
 import { useQuickQuestionStore } from "@/stores/quickQuestion";
 import { CompactDialog } from "./CompactDialog";
+import { PlanModeToggle } from "./PlanModeToggle";
+import { WriterReviewerLauncher } from "@/components/agents/WriterReviewerLauncher";
 
 // ─── Streaming preview (live text accumulation) ─────────────────────────────
 
@@ -160,6 +162,8 @@ export function ChatPanel() {
           </span>
         </div>
         <div className="flex items-center gap-2">
+          <PlanModeToggle />
+          <WriterReviewerLauncher />
           <CompactDialog onSend={handleSend} />
           <SessionSelector
             cwd={session?.cwd ?? ""}

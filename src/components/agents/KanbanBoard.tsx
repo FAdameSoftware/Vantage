@@ -17,6 +17,7 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AgentCard } from "@/components/agents/AgentCard";
 import { CreateAgentDialog } from "@/components/agents/CreateAgentDialog";
+import { WriterReviewerLauncher } from "@/components/agents/WriterReviewerLauncher";
 import { useAgentsStore, type Agent, type KanbanColumn } from "@/stores/agents";
 
 // ── Column config ────────────────────────────────────────────────────
@@ -167,15 +168,18 @@ export function KanbanBoard() {
         >
           {agents.size} agent{agents.size !== 1 ? "s" : ""}
         </span>
-        <Button
-          size="xs"
-          variant="ghost"
-          onClick={() => setDialogOpen(true)}
-          className="gap-1"
-        >
-          <Plus size={12} />
-          Create Agent
-        </Button>
+        <div className="flex items-center gap-1">
+          <WriterReviewerLauncher />
+          <Button
+            size="xs"
+            variant="ghost"
+            onClick={() => setDialogOpen(true)}
+            className="gap-1"
+          >
+            <Plus size={12} />
+            Create Agent
+          </Button>
+        </div>
       </div>
 
       {/* Board */}
