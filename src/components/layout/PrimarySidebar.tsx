@@ -4,6 +4,7 @@ import { FileExplorer } from "@/components/files/FileExplorer";
 import { SearchPanel } from "@/components/search/SearchPanel";
 import { SettingsPanel } from "@/components/settings/SettingsPanel";
 import { KanbanBoard } from "@/components/agents/KanbanBoard";
+import { GitLogPanel } from "@/components/git/GitLogPanel";
 
 const panelConfig: Record<
   ActivityBarItem,
@@ -67,6 +68,8 @@ export function PrimarySidebar() {
           <FileExplorer />
         ) : activeItem === "search" ? (
           <SearchPanel />
+        ) : activeItem === "git" ? (
+          <GitLogPanel />
         ) : activeItem === "agents" ? (
           <KanbanBoard />
         ) : activeItem === "settings" ? (
