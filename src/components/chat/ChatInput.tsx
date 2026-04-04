@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, Square } from "lucide-react";
+import { Send, Square, Brain } from "lucide-react";
 import { SlashAutocomplete } from "./SlashAutocomplete";
 import {
   buildCommandList,
   filterCommands,
   type SlashCommand,
 } from "@/lib/slashCommands";
+import { useQuickQuestionStore } from "@/stores/quickQuestion";
 
 interface ChatInputProps {
   onSend: (message: string) => void;
@@ -25,6 +26,7 @@ export function ChatInput({
   installedSkills,
 }: ChatInputProps) {
   const [text, setText] = useState("");
+  const [ultrathink, setUltrathink] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Slash autocomplete state
@@ -60,7 +62,9 @@ export function ChatInput({
   const handleSend = useCallback(() => {
     const trimmed = text.trim();
     if (!trimmed || isStreaming || disabled) return;
-    onSend(trimmed);
+    // Prepend ultrathink keyword when Deep Think is enabled
+    const message = ultrathink ? `ultrathink ${trimmed}` : trimmed;
+    onSend(message);
     setText("");
     setShowSlash(false);
     setSlashQuery("");
@@ -68,7 +72,7 @@ export function ChatInput({
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
     }
-  }, [text, isStreaming, disabled, onSend]);
+  }, [text, isStreaming, disabled, onSend, ultrathink]);
 
   const handleSlashSelect = useCallback((cmd: SlashCommand) => {
     setText("/" + cmd.name + " ");
@@ -80,6 +84,16 @@ export function ChatInput({
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       const val = e.target.value;
+
+      // If user has typed "/btw <something>", route to quick question overlay
+      if (val.startsWith("/btw ") && val.length > 5) {
+        useQuickQuestionStore.getState().ask(val.slice(5));
+        setText("");
+        setShowSlash(false);
+        setSlashQuery("");
+        return;
+      }
+
       setText(val);
 
       if (val.startsWith("/")) {
@@ -175,6 +189,21 @@ export function ChatInput({
             disabled={disabled}
           />
 
+          {/* Deep Think toggle — always visible */}
+          <button
+            type="button"
+            className="p-1 rounded transition-colors hover:bg-[var(--color-surface-1)]"
+            style={{
+              color: ultrathink ? "var(--color-mauve)" : "var(--color-overlay-0)",
+              boxShadow: ultrathink ? "0 0 0 1px var(--color-mauve)" : undefined,
+            }}
+            onClick={() => setUltrathink((u) => !u)}
+            aria-label={ultrathink ? "Disable Deep Think" : "Enable Deep Think"}
+            title={ultrathink ? "Deep Think ON — max reasoning" : "Deep Think OFF"}
+          >
+            <Brain size={14} />
+          </button>
+
           {isStreaming ? (
             <button
               type="button"
@@ -203,9 +232,9 @@ export function ChatInput({
       </div>
       <p
         className="text-center mt-1 text-[10px]"
-        style={{ color: "var(--color-overlay-0)" }}
+        style={{ color: ultrathink ? "var(--color-mauve)" : "var(--color-overlay-0)" }}
       >
-        {hintText}
+        {ultrathink ? "Deep Think enabled — maximum reasoning budget" : hintText}
       </p>
     </div>
   );
