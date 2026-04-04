@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { FolderOpen, RefreshCw } from "lucide-react";
 import { useFileTree } from "@/hooks/useFileTree";
+import { useGitStatus } from "@/hooks/useGitStatus";
 import { FileTreeNode } from "./FileTreeNode";
 import { useEditorStore } from "@/stores/editor";
 import {
@@ -26,6 +27,7 @@ export function FileExplorer() {
   } = useFileTree();
 
   const openFile = useEditorStore((s) => s.openFile);
+  const { fileStatuses } = useGitStatus(rootPath);
 
   const [contextNode, setContextNode] = useState<FileNode | null>(null);
 
@@ -256,6 +258,7 @@ export function FileExplorer() {
                 onFileClick={handleFileClick}
                 onFileDoubleClick={handleFileDoubleClick}
                 onContextMenu={handleContextMenu}
+                gitStatuses={fileStatuses}
               />
             ))}
           </div>

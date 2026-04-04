@@ -1,6 +1,7 @@
 import { ChevronRight, ChevronDown } from "lucide-react";
 import { FileIcon } from "./FileIcon";
 import type { FileNode } from "@/hooks/useFileTree";
+import type { GitFileStatus } from "@/hooks/useGitStatus";
 
 interface FileTreeNodeProps {
   node: FileNode;
@@ -10,6 +11,7 @@ interface FileTreeNodeProps {
   onFileClick: (node: FileNode) => void;
   onFileDoubleClick: (node: FileNode) => void;
   onContextMenu: (e: React.MouseEvent, node: FileNode) => void;
+  gitStatuses?: Map<string, GitFileStatus>;
 }
 
 export function FileTreeNode({
@@ -20,9 +22,14 @@ export function FileTreeNode({
   onFileClick,
   onFileDoubleClick,
   onContextMenu,
+  gitStatuses,
 }: FileTreeNodeProps) {
   const paddingLeft = 8 + depth * 16;
   const isExpanded = expandedPaths.has(node.path);
+
+  // Look up git status for this file
+  const normalizedPath = node.path.replace(/\\/g, "/");
+  const gitStatus = gitStatuses?.get(normalizedPath)?.status;
 
   const handleClick = () => {
     if (node.is_dir) {
@@ -103,6 +110,27 @@ export function FileTreeNode({
         >
           {node.name}
         </span>
+
+        {/* Git status indicator */}
+        {gitStatus && (
+          <span
+            className="ml-auto mr-2 text-[10px] font-mono font-bold shrink-0"
+            style={{
+              color:
+                gitStatus === "M"
+                  ? "var(--color-yellow)"
+                  : gitStatus === "A"
+                    ? "var(--color-green)"
+                    : gitStatus === "D"
+                      ? "var(--color-red)"
+                      : gitStatus === "?"
+                        ? "var(--color-overlay-1)"
+                        : "var(--color-subtext-0)",
+            }}
+          >
+            {gitStatus}
+          </span>
+        )}
       </div>
 
       {/* Render children if expanded */}
@@ -118,6 +146,7 @@ export function FileTreeNode({
               onFileClick={onFileClick}
               onFileDoubleClick={onFileDoubleClick}
               onContextMenu={onContextMenu}
+              gitStatuses={gitStatuses}
             />
           ))}
         </div>

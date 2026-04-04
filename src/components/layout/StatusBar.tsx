@@ -8,6 +8,8 @@ import {
 } from "lucide-react";
 import { useEditorStore } from "@/stores/editor";
 import { useConversationStore } from "@/stores/conversation";
+import { useLayoutStore } from "@/stores/layout";
+import { useGitStatus } from "@/hooks/useGitStatus";
 
 export function StatusBar() {
   const cursorPosition = useEditorStore((s) => s.cursorPosition);
@@ -19,6 +21,9 @@ export function StatusBar() {
   const isStreaming = useConversationStore((s) => s.isStreaming);
   const session = useConversationStore((s) => s.session);
   const totalCost = useConversationStore((s) => s.totalCost);
+
+  const projectRootPath = useLayoutStore((s) => s.projectRootPath);
+  const { branch, isGitRepo } = useGitStatus(projectRootPath);
 
   // Map language IDs to display names
   const languageDisplayName = activeTab
@@ -46,13 +51,17 @@ export function StatusBar() {
       {/* Left side - workspace scoped */}
       <div className="flex items-center gap-3">
         {/* Git branch */}
-        <button
-          className="flex items-center gap-1 hover:text-[var(--color-text)] transition-colors"
-          aria-label="Git branch: main"
-        >
-          <GitBranch size={12} />
-          <span>main</span>
-        </button>
+        {isGitRepo && branch?.branch && (
+          <button
+            className="flex items-center gap-1 hover:text-[var(--color-text)] transition-colors"
+            aria-label={`Git branch: ${branch.branch}`}
+          >
+            <GitBranch size={12} />
+            <span>
+              {branch.is_detached ? `(${branch.branch})` : branch.branch}
+            </span>
+          </button>
+        )}
 
         {/* Errors and warnings */}
         <div className="flex items-center gap-2">
