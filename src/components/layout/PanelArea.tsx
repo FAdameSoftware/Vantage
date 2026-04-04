@@ -70,7 +70,7 @@ export function PanelArea() {
           <button
             key={tab.id}
             onClick={() => setActivePanelTab(tab.id)}
-            className="flex items-center gap-1.5 px-3 h-8 text-xs transition-colors relative"
+            className="flex items-center gap-1 px-2 h-6 text-[11px] transition-colors relative"
             style={{
               color:
                 activePanelTab === tab.id

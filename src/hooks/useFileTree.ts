@@ -36,6 +36,9 @@ export function useFileTree(): UseFileTreeReturn {
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set());
   const [rootPath, setRootPathState] = useState<string | null>(null);
 
+  // Read the persisted projectRootPath from the layout store
+  const storeProjectRootPath = useLayoutStore((s) => s.projectRootPath);
+
   const loadTree = useCallback(async (path: string) => {
     setIsLoading(true);
     setError(null);
@@ -52,6 +55,21 @@ export function useFileTree(): UseFileTreeReturn {
       setIsLoading(false);
     }
   }, []);
+
+  // When the layout store's projectRootPath changes (e.g. set from WelcomeScreen
+  // or restored from persistence), sync it into local state and load the tree.
+  useEffect(() => {
+    if (storeProjectRootPath && storeProjectRootPath !== rootPath) {
+      setRootPathState(storeProjectRootPath);
+      setExpandedPaths(new Set());
+      loadTree(storeProjectRootPath);
+
+      // Start file watcher for the restored/new root
+      invoke("start_file_watcher", { path: storeProjectRootPath }).catch((err) =>
+        console.error("Failed to start file watcher:", err)
+      );
+    }
+  }, [storeProjectRootPath, rootPath, loadTree]);
 
   const setRootPath = useCallback(
     (path: string) => {

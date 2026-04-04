@@ -54,12 +54,15 @@ function Breadcrumbs() {
 
 function WelcomeScreen() {
   const setProjectRootPath = useLayoutStore((s) => s.setProjectRootPath);
+  const setActiveActivityBarItem = useLayoutStore((s) => s.setActiveActivityBarItem);
 
   const handleOpenFolder = async () => {
     try {
       const selected = await open({ directory: true, multiple: false });
       if (selected) {
         setProjectRootPath(selected as string);
+        // Switch to the Explorer panel so the file tree is visible
+        setActiveActivityBarItem("explorer");
       }
     } catch (e) {
       console.error("Failed to open folder:", e);

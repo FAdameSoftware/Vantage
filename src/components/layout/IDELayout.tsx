@@ -97,8 +97,8 @@ export function IDELayout() {
                   <VerticalResizeHandle />
                   <Panel
                     id="panel"
-                    defaultSize={30}
-                    minSize={10}
+                    defaultSize={35}
+                    minSize={15}
                     maxSize={70}
                   >
                     <PanelArea />

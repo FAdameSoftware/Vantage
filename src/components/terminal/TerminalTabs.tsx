@@ -109,7 +109,7 @@ export function TerminalPanel() {
     >
       {/* Tab bar */}
       <div
-        className="flex items-center justify-between h-9 shrink-0 px-2"
+        className="flex items-center justify-between h-7 shrink-0 px-1"
         style={{ backgroundColor: "var(--color-mantle)" }}
       >
         {/* Tabs */}
@@ -117,7 +117,7 @@ export function TerminalPanel() {
           {tabs.map((tab) => (
             <div
               key={tab.id}
-              className="flex items-center gap-1.5 px-2.5 h-7 text-xs rounded-t cursor-pointer transition-colors group shrink-0"
+              className="flex items-center gap-1 px-2 h-6 text-[11px] rounded-t cursor-pointer transition-colors group shrink-0"
               style={{
                 backgroundColor:
                   tab.id === activeTabId
@@ -157,7 +157,7 @@ export function TerminalPanel() {
           {/* New terminal button */}
           <div className="relative">
             <button
-              className="flex items-center justify-center w-7 h-7 rounded hover:bg-[var(--color-surface-1)] transition-colors"
+              className="flex items-center justify-center w-6 h-6 rounded hover:bg-[var(--color-surface-1)] transition-colors"
               style={{ color: "var(--color-overlay-1)" }}
               onClick={handleNewTerminal}
               aria-label="New Terminal"
@@ -202,14 +202,14 @@ export function TerminalPanel() {
         {/* Panel actions */}
         <div className="flex items-center gap-0.5">
           <button
-            className="flex items-center justify-center w-7 h-7 rounded hover:bg-[var(--color-surface-1)] transition-colors"
+            className="flex items-center justify-center w-6 h-6 rounded hover:bg-[var(--color-surface-1)] transition-colors"
             style={{ color: "var(--color-overlay-1)" }}
             aria-label="Maximize Panel"
           >
             <Maximize2 size={12} />
           </button>
           <button
-            className="flex items-center justify-center w-7 h-7 rounded hover:bg-[var(--color-surface-1)] transition-colors"
+            className="flex items-center justify-center w-6 h-6 rounded hover:bg-[var(--color-surface-1)] transition-colors"
             style={{ color: "var(--color-overlay-1)" }}
             onClick={togglePanel}
             aria-label="Close Panel (Ctrl+J)"

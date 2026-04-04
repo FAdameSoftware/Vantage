@@ -66,11 +66,11 @@ export function ChatInput({
 
   return (
     <div
-      className="shrink-0 p-3"
+      className="shrink-0 px-2 py-1.5"
       style={{ borderTop: "1px solid var(--color-surface-0)" }}
     >
       <div
-        className="flex items-end gap-2 rounded-lg p-2"
+        className="flex items-end gap-1.5 rounded-md p-1.5"
         style={{
           backgroundColor: "var(--color-surface-0)",
           border: "1px solid var(--color-surface-1)",
@@ -82,7 +82,7 @@ export function ChatInput({
           style={{
             color: "var(--color-text)",
             fontFamily: "var(--font-sans)",
-            maxHeight: "200px",
+            maxHeight: "150px",
           }}
           placeholder={placeholder}
           rows={1}
@@ -95,7 +95,7 @@ export function ChatInput({
         {isStreaming ? (
           <button
             type="button"
-            className="p-1.5 rounded transition-colors hover:bg-[var(--color-surface-1)]"
+            className="p-1 rounded transition-colors hover:bg-[var(--color-surface-1)]"
             style={{ color: "var(--color-red)" }}
             onClick={onStop}
             aria-label="Stop generation"
@@ -105,7 +105,7 @@ export function ChatInput({
         ) : (
           <button
             type="button"
-            className="p-1.5 rounded transition-colors hover:bg-[var(--color-surface-1)]"
+            className="p-1 rounded transition-colors hover:bg-[var(--color-surface-1)]"
             style={{
               color: hasText ? "var(--color-blue)" : "var(--color-overlay-0)",
             }}
@@ -118,7 +118,7 @@ export function ChatInput({
         )}
       </div>
       <p
-        className="text-center mt-2 text-xs"
+        className="text-center mt-1 text-[10px]"
         style={{ color: "var(--color-overlay-0)" }}
       >
         {hintText}
