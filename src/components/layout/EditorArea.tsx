@@ -6,6 +6,7 @@ import { MonacoEditor } from "@/components/editor/MonacoEditor";
 import { DiffViewer } from "@/components/editor/DiffViewer";
 import { EditorTabs } from "@/components/editor/EditorTabs";
 import { MarkdownPreview } from "@/components/editor/MarkdownPreview";
+import { UsageDashboard } from "@/components/analytics/UsageDashboard";
 
 function Breadcrumbs() {
   const activeTab = useEditorStore((s) => {
@@ -116,9 +117,12 @@ export function EditorArea() {
   //       setPendingDiff(tabId, originalContent, modifiedContent, description).
   const activeDiff = activeTab ? pendingDiffs.get(activeTab.id) : undefined;
 
+  const isSpecialTab = activeTab?.path.startsWith("__vantage://") ?? false;
+
   const isMarkdownPreview =
     activeTab !== null &&
     !activeDiff &&
+    !isSpecialTab &&
     activeTab.language === "markdown" &&
     markdownPreviewTabs.has(activeTab.id);
 
@@ -171,7 +175,12 @@ export function EditorArea() {
 
       {/* Editor content */}
       {activeTab ? (
-        activeDiff ? (
+        isSpecialTab ? (
+          /* Special built-in tabs (analytics, etc.) */
+          <div className="flex-1 overflow-hidden">
+            {activeTab.path === "__vantage://analytics" && <UsageDashboard />}
+          </div>
+        ) : activeDiff ? (
           /* Diff viewer — replaces the normal editor when a pending diff exists */
           <div className="flex-1 overflow-hidden">
             <DiffViewer

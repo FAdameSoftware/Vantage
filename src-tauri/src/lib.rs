@@ -1,3 +1,4 @@
+mod analytics;
 mod claude;
 mod files;
 mod git;
@@ -361,6 +362,14 @@ fn write_mcp_config(
     mcp::write_mcp_config(&scope, servers, project_root.as_deref())
 }
 
+// ── Analytics Commands ─────────────────────────────────────────────
+
+#[tauri::command]
+#[specta::specta]
+fn get_analytics(days: u32) -> Result<analytics::AnalyticsSummary, String> {
+    analytics::get_analytics(days)
+}
+
 // ── Application Setup ───────────────────────────────────────────────
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -407,6 +416,7 @@ pub fn run() {
             git_log,
             git_blame,
             git_diff_commit,
+            get_analytics,
         ],
     );
 
