@@ -3,7 +3,7 @@ use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{Child, ChildStdin, Command};
 use tokio::sync::Mutex;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tauri::{AppHandle, Emitter};
 
@@ -11,6 +11,18 @@ use super::protocol::{
     parse_claude_message, ClaudeEventPayload, ClaudeMessage, ClaudeStatusPayload,
     ControlResponseMessage, PermissionRequestPayload, UserInputMessage,
 };
+
+/// Options that control how a Claude Code CLI session is spawned.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, specta::Type)]
+pub struct SpawnOptions {
+    /// Effort level: "low", "medium", or "high".
+    /// Sets CLAUDE_CODE_EFFORT_LEVEL env var.
+    pub effort_level: Option<String>,
+    /// If true, pass --permission-mode plan to the CLI.
+    pub plan_mode: bool,
+    /// If set, pass --from-pr <number> to the CLI.
+    pub from_pr: Option<u32>,
+}
 
 /// Manages a single Claude Code CLI child process.
 pub struct ClaudeProcess {
@@ -37,6 +49,7 @@ impl ClaudeProcess {
         session_id: &str,
         resume_session_id: Option<&str>,
         resume: bool,
+        options: &SpawnOptions,
     ) -> Result<Self, String> {
         let binary = if cfg!(windows) {
             "claude.exe"
@@ -64,6 +77,21 @@ impl ClaudeProcess {
             }
         } else if resume {
             cmd.arg("--continue");
+        }
+
+        // Effort level via environment variable
+        if let Some(ref level) = options.effort_level {
+            cmd.env("CLAUDE_CODE_EFFORT_LEVEL", level);
+        }
+
+        // Plan mode
+        if options.plan_mode {
+            cmd.arg("--permission-mode").arg("plan");
+        }
+
+        // Resume from PR
+        if let Some(pr_number) = options.from_pr {
+            cmd.arg("--from-pr").arg(pr_number.to_string());
         }
 
         cmd.current_dir(cwd);

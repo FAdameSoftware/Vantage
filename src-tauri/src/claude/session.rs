@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use tauri::AppHandle;
 use tokio::sync::Mutex;
 
-use super::process::ClaudeProcess;
+use super::process::{ClaudeProcess, SpawnOptions};
 
 // ── Session info (returned to frontend for session list) ───────────
 
@@ -43,6 +43,7 @@ impl SessionManager {
         cwd: &str,
         resume_session_id: Option<&str>,
         resume: bool,
+        options: SpawnOptions,
     ) -> Result<String, String> {
         let internal_id = uuid::Uuid::new_v4().to_string();
 
@@ -52,6 +53,7 @@ impl SessionManager {
             &internal_id,
             resume_session_id,
             resume,
+            &options,
         )?;
 
         let mut procs = self.processes.lock().await;

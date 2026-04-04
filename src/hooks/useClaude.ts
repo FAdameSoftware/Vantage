@@ -6,6 +6,7 @@ import {
   type SessionMetadata,
   type ActiveBlock,
 } from "@/stores/conversation";
+import { useSettingsStore } from "@/stores/settings";
 import { useAgentsStore } from "@/stores/agents";
 import { useAgentConversationsStore } from "@/stores/agentConversations";
 import type {
@@ -508,9 +509,13 @@ export function useClaude() {
     async (cwd: string, resumeSessionId?: string) => {
       setConnectionStatus("starting");
       try {
+        const settings = useSettingsStore.getState();
         const id = await invoke<string>("start_claude_session", {
           cwd,
           resumeSessionId: resumeSessionId ?? null,
+          effortLevel: settings.effortLevel,
+          planMode: settings.planMode,
+          fromPr: null,
         });
         sessionIdRef.current = id;
         const session: SessionMetadata = {
@@ -537,9 +542,13 @@ export function useClaude() {
           "C:/CursorProjects/Vantage";
         setConnectionStatus("starting");
         try {
+          const settings = useSettingsStore.getState();
           const id = await invoke<string>("start_claude_session", {
             cwd: sessionCwd,
             resumeSessionId: null,
+            effortLevel: settings.effortLevel,
+            planMode: settings.planMode,
+            fromPr: null,
           });
           sessionIdRef.current = id;
           const session: SessionMetadata = {
@@ -630,6 +639,9 @@ export function useClaude() {
         cwd,
         sessionId: null,
         resume: false,
+        effortLevel: useSettingsStore.getState().effortLevel,
+        planMode: false,
+        fromPr: null,
       });
       agentsStore.linkSession(agentId, sessionId);
     } catch (err) {

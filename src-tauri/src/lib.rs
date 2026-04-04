@@ -14,6 +14,7 @@ mod terminal;
 mod theme;
 mod worktree;
 
+use claude::process::SpawnOptions;
 use claude::session::{self, SessionInfo, SessionManager};
 use files::operations::{self, FileContent};
 use files::tree::{self, FileNode};
@@ -120,11 +121,19 @@ async fn claude_start_session(
     cwd: String,
     session_id: Option<String>,
     resume: bool,
+    effort_level: Option<String>,
+    plan_mode: bool,
+    from_pr: Option<u32>,
 ) -> Result<String, String> {
+    let options = SpawnOptions {
+        effort_level,
+        plan_mode,
+        from_pr,
+    };
     let state = app_handle.state::<TokioMutex<SessionManager>>();
     let manager = state.lock().await;
     manager
-        .start_session(&cwd, session_id.as_deref(), resume)
+        .start_session(&cwd, session_id.as_deref(), resume, options)
         .await
 }
 

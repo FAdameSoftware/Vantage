@@ -18,6 +18,10 @@ export interface SettingsState {
   vimMode: boolean;
   /** Whether to show Inkwell the coding buddy in the status bar */
   showBuddy: boolean;
+  /** Claude Code effort level: controls reasoning depth */
+  effortLevel: "low" | "medium" | "high";
+  /** Whether to start sessions in plan mode (--permission-mode plan) */
+  planMode: boolean;
   setTheme: (theme: ThemeName) => void;
   setFontSizeEditor: (size: number) => void;
   setFontSizeUI: (size: number) => void;
@@ -31,6 +35,8 @@ export interface SettingsState {
   setTerminalScrollback: (size: number) => void;
   setVimMode: (value: boolean) => void;
   toggleBuddy: () => void;
+  setEffortLevel: (level: "low" | "medium" | "high") => void;
+  setPlanMode: (value: boolean) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -49,6 +55,8 @@ export const useSettingsStore = create<SettingsState>()(
       terminalScrollback: 10000,
       vimMode: false,
       showBuddy: true,
+      effortLevel: "high",
+      planMode: false,
       setTheme: (theme) => set({ theme }),
       setFontSizeEditor: (size) => set({ fontSizeEditor: Math.max(8, Math.min(32, size)) }),
       setFontSizeUI: (size) => set({ fontSizeUI: Math.max(10, Math.min(24, size)) }),
@@ -62,6 +70,8 @@ export const useSettingsStore = create<SettingsState>()(
       setTerminalScrollback: (size) => set({ terminalScrollback: Math.max(1000, Math.min(100000, size)) }),
       setVimMode: (value) => set({ vimMode: value }),
       toggleBuddy: () => set((state) => ({ showBuddy: !state.showBuddy })),
+      setEffortLevel: (level) => set({ effortLevel: level }),
+      setPlanMode: (value) => set({ planMode: value }),
     }),
     {
       name: "vantage-settings",
@@ -79,6 +89,8 @@ export const useSettingsStore = create<SettingsState>()(
         terminalScrollback: state.terminalScrollback,
         vimMode: state.vimMode,
         showBuddy: state.showBuddy,
+        effortLevel: state.effortLevel,
+        planMode: state.planMode,
       }),
     }
   )

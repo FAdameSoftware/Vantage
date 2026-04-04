@@ -14,6 +14,8 @@ beforeEach(() => {
     lineNumbers: true,
     terminalFontSize: 14,
     terminalScrollback: 10000,
+    effortLevel: "high",
+    planMode: false,
   });
 });
 
@@ -68,5 +70,29 @@ describe("Settings Store", () => {
 
     setInsertSpaces(false);
     expect(useSettingsStore.getState().insertSpaces).toBe(false);
+  });
+
+  it("has correct Claude session defaults", () => {
+    const state = useSettingsStore.getState();
+    expect(state.effortLevel).toBe("high");
+    expect(state.planMode).toBe(false);
+  });
+
+  it("updates effort level", () => {
+    const { setEffortLevel } = useSettingsStore.getState();
+    setEffortLevel("low");
+    expect(useSettingsStore.getState().effortLevel).toBe("low");
+    setEffortLevel("medium");
+    expect(useSettingsStore.getState().effortLevel).toBe("medium");
+    setEffortLevel("high");
+    expect(useSettingsStore.getState().effortLevel).toBe("high");
+  });
+
+  it("updates plan mode", () => {
+    const { setPlanMode } = useSettingsStore.getState();
+    setPlanMode(true);
+    expect(useSettingsStore.getState().planMode).toBe(true);
+    setPlanMode(false);
+    expect(useSettingsStore.getState().planMode).toBe(false);
   });
 });
