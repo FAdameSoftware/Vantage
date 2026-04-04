@@ -2,7 +2,7 @@ import { Search, GitBranch, Bot, Settings, Files } from "lucide-react";
 import { useLayoutStore, type ActivityBarItem } from "@/stores/layout";
 import { FileExplorer } from "@/components/files/FileExplorer";
 import { SearchPanel } from "@/components/search/SearchPanel";
-import { ClaudeMdEditor } from "@/components/settings/ClaudeMdEditor";
+import { SettingsPanel } from "@/components/settings/SettingsPanel";
 import { KanbanBoard } from "@/components/agents/KanbanBoard";
 
 const panelConfig: Record<
@@ -70,7 +70,7 @@ export function PrimarySidebar() {
         ) : activeItem === "agents" ? (
           <KanbanBoard />
         ) : activeItem === "settings" ? (
-          <ClaudeMdEditor />
+          <SettingsPanel />
         ) : (
           <div className="flex items-center justify-center h-full p-4">
             <p
