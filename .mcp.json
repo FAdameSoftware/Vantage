@@ -1,18 +1,18 @@
 {
   "mcpServers": {
     "shadcn": {
-      "command": "npx",
-      "args": ["shadcn@latest", "mcp"],
+      "command": "cmd",
+      "args": ["/c", "npx", "shadcn@latest", "mcp"],
       "env": {}
     },
     "a11y": {
-      "command": "npx",
-      "args": ["-y", "a11y-mcp"],
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "a11y-mcp"],
       "env": {}
     },
     "memory": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-memory"],
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "@modelcontextprotocol/server-memory"],
       "env": {}
     }
   }
