@@ -4,7 +4,7 @@ import { useLayoutStore } from "../layout";
 beforeEach(() => {
   useLayoutStore.setState({
     primarySidebarVisible: true,
-    secondarySidebarVisible: false,
+    secondarySidebarVisible: true,
     panelVisible: true,
     activeActivityBarItem: "explorer",
     primarySidebarSize: 20,
@@ -17,7 +17,7 @@ describe("Layout Store", () => {
   it("has correct defaults", () => {
     const state = useLayoutStore.getState();
     expect(state.primarySidebarVisible).toBe(true);
-    expect(state.secondarySidebarVisible).toBe(false);
+    expect(state.secondarySidebarVisible).toBe(true);
     expect(state.panelVisible).toBe(true);
     expect(state.activeActivityBarItem).toBe("explorer");
     expect(state.primarySidebarSize).toBe(20);
@@ -36,9 +36,9 @@ describe("Layout Store", () => {
   it("toggles secondary sidebar", () => {
     const { toggleSecondarySidebar } = useLayoutStore.getState();
     toggleSecondarySidebar();
-    expect(useLayoutStore.getState().secondarySidebarVisible).toBe(true);
-    toggleSecondarySidebar();
     expect(useLayoutStore.getState().secondarySidebarVisible).toBe(false);
+    toggleSecondarySidebar();
+    expect(useLayoutStore.getState().secondarySidebarVisible).toBe(true);
   });
 
   it("toggles panel", () => {

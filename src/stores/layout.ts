@@ -24,7 +24,7 @@ export const useLayoutStore = create<LayoutState>()(
   persist(
     (set, get) => ({
       primarySidebarVisible: true,
-      secondarySidebarVisible: false,
+      secondarySidebarVisible: true,
       panelVisible: true,
       activeActivityBarItem: "explorer",
       primarySidebarSize: 20,
