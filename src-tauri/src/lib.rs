@@ -5,6 +5,7 @@ mod files;
 mod git;
 mod mcp;
 mod merge_queue;
+mod plugins;
 mod prerequisites;
 mod search;
 mod session_search;
@@ -373,6 +374,32 @@ fn get_analytics(days: u32) -> Result<analytics::AnalyticsSummary, String> {
     analytics::get_analytics(days)
 }
 
+// ── Plugin Commands ────────────────────────────────────────────────
+
+#[tauri::command]
+#[specta::specta]
+fn list_installed_plugins() -> Result<Vec<plugins::PluginInfo>, String> {
+    plugins::list_installed_plugins()
+}
+
+#[tauri::command]
+#[specta::specta]
+fn list_installed_skills() -> Result<Vec<plugins::SkillInfo>, String> {
+    plugins::list_installed_skills()
+}
+
+#[tauri::command]
+#[specta::specta]
+fn get_plugin_config(plugin_name: String) -> Result<plugins::PluginInfo, String> {
+    plugins::get_plugin_config(&plugin_name)
+}
+
+#[tauri::command]
+#[specta::specta]
+fn toggle_plugin(plugin_name: String, enabled: bool) -> Result<(), String> {
+    plugins::toggle_plugin(&plugin_name, enabled)
+}
+
 // ── Checkpoint Commands ────────────────────────────────────────────
 
 #[tauri::command]
@@ -521,6 +548,10 @@ pub fn run() {
             detect_quality_gates,
             merge_branch,
             rebase_branch,
+            list_installed_plugins,
+            list_installed_skills,
+            get_plugin_config,
+            toggle_plugin,
         ],
     );
 

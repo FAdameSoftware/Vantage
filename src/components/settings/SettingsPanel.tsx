@@ -1,14 +1,16 @@
 import { useState, useEffect } from "react";
-import { FileText, Server, BookOpen } from "lucide-react";
+import { FileText, Server, BookOpen, Puzzle } from "lucide-react";
 import { ClaudeMdEditor } from "./ClaudeMdEditor";
 import { McpManager } from "./McpManager";
+import { PluginManager } from "./PluginManager";
 import { SpecViewer } from "./SpecViewer";
 
-type SettingsTab = "claude-md" | "mcp-servers" | "spec-viewer";
+type SettingsTab = "claude-md" | "mcp-servers" | "plugins" | "spec-viewer";
 
 const tabs: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
   { id: "claude-md", label: "CLAUDE.md", icon: <FileText size={12} /> },
   { id: "mcp-servers", label: "MCP Servers", icon: <Server size={12} /> },
+  { id: "plugins", label: "Plugins", icon: <Puzzle size={12} /> },
   { id: "spec-viewer", label: "Spec Viewer", icon: <BookOpen size={12} /> },
 ];
 
@@ -66,6 +68,8 @@ export function SettingsPanel() {
           <ClaudeMdEditor />
         ) : activeTab === "mcp-servers" ? (
           <McpManager />
+        ) : activeTab === "plugins" ? (
+          <PluginManager />
         ) : (
           <SpecViewer />
         )}
