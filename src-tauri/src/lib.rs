@@ -7,6 +7,7 @@ mod prerequisites;
 mod search;
 mod session_search;
 mod terminal;
+mod theme;
 mod worktree;
 
 use claude::session::{self, SessionInfo, SessionManager};
@@ -370,6 +371,26 @@ fn get_analytics(days: u32) -> Result<analytics::AnalyticsSummary, String> {
     analytics::get_analytics(days)
 }
 
+// ── Theme File Commands ────────────────────────────────────────────
+
+#[tauri::command]
+#[specta::specta]
+fn read_theme_file() -> Result<Option<String>, String> {
+    theme::read_theme_file()
+}
+
+#[tauri::command]
+#[specta::specta]
+fn write_theme_file(content: String) -> Result<(), String> {
+    theme::write_theme_file(&content)
+}
+
+#[tauri::command]
+#[specta::specta]
+fn get_theme_file_path() -> Result<String, String> {
+    theme::get_theme_file_path()
+}
+
 // ── Application Setup ───────────────────────────────────────────────
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -417,6 +438,9 @@ pub fn run() {
             git_blame,
             git_diff_commit,
             get_analytics,
+            read_theme_file,
+            write_theme_file,
+            get_theme_file_path,
         ],
     );
 
