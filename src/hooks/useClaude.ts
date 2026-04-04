@@ -506,7 +506,7 @@ export function useClaude() {
   // ── Action: start a session ──
 
   const startSession = useCallback(
-    async (cwd: string, resumeSessionId?: string) => {
+    async (cwd: string, resumeSessionId?: string, fromPr?: number) => {
       setConnectionStatus("starting");
       try {
         const settings = useSettingsStore.getState();
@@ -515,7 +515,7 @@ export function useClaude() {
           resumeSessionId: resumeSessionId ?? null,
           effortLevel: settings.effortLevel,
           planMode: settings.planMode,
-          fromPr: null,
+          fromPr: fromPr ?? null,
         });
         sessionIdRef.current = id;
         const session: SessionMetadata = {
@@ -700,6 +700,25 @@ export function useClaude() {
     useAgentsStore.getState().updateAgentStatus(agentId, "completed");
     useAgentsStore.getState().linkSession(agentId, "");
   }, []);
+
+  // ── Listen for "Investigate with Claude" events from file explorer ──
+
+  useEffect(() => {
+    const handler = async (e: Event) => {
+      const detail = (e as CustomEvent).detail as {
+        agentId: string;
+        taskDescription: string;
+        cwd: string;
+      };
+      await startAgentSession(detail.agentId, detail.cwd);
+      // Small delay to let session initialize before sending the prompt
+      setTimeout(() => {
+        void sendAgentMessage(detail.agentId, detail.taskDescription);
+      }, 1000);
+    };
+    window.addEventListener("vantage:investigate", handler);
+    return () => window.removeEventListener("vantage:investigate", handler);
+  }, [startAgentSession, sendAgentMessage]);
 
   return {
     startSession,

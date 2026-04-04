@@ -6,6 +6,7 @@ import { useGitStatus } from "@/hooks/useGitStatus";
 import { FileTreeNode } from "./FileTreeNode";
 import { ConflictBanner } from "@/components/agents/ConflictBanner";
 import { useEditorStore } from "@/stores/editor";
+import { useAgentsStore } from "@/stores/agents";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -156,6 +157,33 @@ export function FileExplorer() {
     if (!contextNode) return;
     navigator.clipboard.writeText(contextNode.path);
   }, [contextNode]);
+
+  const handleInvestigate = useCallback(() => {
+    if (!contextNode) return;
+
+    const isDir = !contextNode.is_file;
+    const targetDesc = isDir
+      ? `the directory ${contextNode.path}`
+      : `the file ${contextNode.path}`;
+
+    const taskDescription = `Investigate ${targetDesc}. Analyze its structure, purpose, key patterns, and report a concise summary. Do not modify any files.`;
+
+    // Create a subagent with role "specialist"
+    const agentId = useAgentsStore.getState().createAgent({
+      name: `Investigate: ${contextNode.name}`,
+      taskDescription,
+      role: "specialist",
+    });
+
+    // Dispatch custom event so useClaude or the agents panel can start the session
+    if (rootPath) {
+      window.dispatchEvent(
+        new CustomEvent("vantage:investigate", {
+          detail: { agentId, taskDescription, cwd: rootPath },
+        }),
+      );
+    }
+  }, [contextNode, rootPath]);
 
   const handleOpenFolder = useCallback(async () => {
     try {
@@ -310,6 +338,14 @@ export function FileExplorer() {
             style={{ color: "var(--color-text)" }}
           >
             Copy Path
+          </ContextMenuItem>
+          <ContextMenuSeparator />
+          <ContextMenuItem
+            onClick={handleInvestigate}
+            className="text-xs"
+            style={{ color: "var(--color-blue)" }}
+          >
+            Investigate with Claude
           </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
