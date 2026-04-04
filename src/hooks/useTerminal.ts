@@ -4,7 +4,7 @@ import { WebglAddon } from "@xterm/addon-webgl";
 import { FitAddon } from "@xterm/addon-fit";
 import { SearchAddon } from "@xterm/addon-search";
 import { WebLinksAddon } from "@xterm/addon-web-links";
-import { catppuccinMochaTerminalTheme } from "@/components/terminal/terminalTheme";
+import { getTerminalTheme } from "@/components/terminal/terminalTheme";
 import { useSettingsStore } from "@/stores/settings";
 
 import "@xterm/xterm/css/xterm.css";
@@ -41,6 +41,7 @@ export function useTerminal(options: UseTerminalOptions): UseTerminalReturn {
   const fontFamily = useSettingsStore((s) => s.fontFamily);
   const terminalFontSize = useSettingsStore((s) => s.terminalFontSize);
   const terminalScrollback = useSettingsStore((s) => s.terminalScrollback);
+  const themeName = useSettingsStore((s) => s.theme);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -52,7 +53,7 @@ export function useTerminal(options: UseTerminalOptions): UseTerminalReturn {
       cursorBlink: true,
       cursorStyle: "block",
       scrollback: terminalScrollback,
-      theme: catppuccinMochaTerminalTheme,
+      theme: getTerminalTheme(themeName),
       allowProposedApi: true,
       convertEol: true,
     });
@@ -164,6 +165,14 @@ export function useTerminal(options: UseTerminalOptions): UseTerminalReturn {
     terminal.options.fontSize = terminalFontSize;
     fitAddonRef.current?.fit();
   }, [fontFamily, terminalFontSize]);
+
+  // Update terminal theme without recreating the terminal
+  useEffect(() => {
+    const terminal = terminalRef.current;
+    if (!terminal) return;
+
+    terminal.options.theme = getTerminalTheme(themeName);
+  }, [themeName]);
 
   const fit = useCallback(() => {
     fitAddonRef.current?.fit();

@@ -2,8 +2,12 @@ import { useEffect, useCallback } from "react";
 import { useLayoutStore } from "@/stores/layout";
 import { useEditorStore } from "@/stores/editor";
 import { useCommandPaletteStore } from "@/stores/commandPalette";
+import { useSettingsStore } from "@/stores/settings";
+import type { ThemeName } from "@/stores/settings";
 import { invoke } from "@tauri-apps/api/core";
 import { toast } from "sonner";
+
+const THEME_CYCLE: ThemeName[] = ["vantage-dark", "vantage-light", "vantage-high-contrast"];
 
 interface Keybinding {
   key: string;
@@ -24,6 +28,15 @@ export function useKeybindings() {
     (s) => s.setActiveActivityBarItem
   );
   const openPalette = useCommandPaletteStore((s) => s.open);
+
+  const currentTheme = useSettingsStore((s) => s.theme);
+  const setTheme = useSettingsStore((s) => s.setTheme);
+
+  const handleCycleTheme = useCallback(() => {
+    const currentIndex = THEME_CYCLE.indexOf(currentTheme);
+    const nextIndex = (currentIndex + 1) % THEME_CYCLE.length;
+    setTheme(THEME_CYCLE[nextIndex]);
+  }, [currentTheme, setTheme]);
 
   const closeTab = useEditorStore((s) => s.closeTab);
   const activeTabId = useEditorStore((s) => s.activeTabId);
@@ -164,6 +177,16 @@ export function useKeybindings() {
         setActiveActivityBarItem("settings");
       },
       description: "Open Settings",
+    },
+
+    // Theme cycle
+    {
+      key: "k",
+      ctrl: true,
+      shift: true,
+      alt: true,
+      action: handleCycleTheme,
+      description: "Cycle Color Theme",
     },
 
     // File save
