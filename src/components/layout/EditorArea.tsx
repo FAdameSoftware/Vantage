@@ -4,6 +4,7 @@ import { FileCode } from "lucide-react";
 import { useEditorStore } from "@/stores/editor";
 import { MonacoEditor } from "@/components/editor/MonacoEditor";
 import { EditorTabs } from "@/components/editor/EditorTabs";
+import { MarkdownPreview } from "@/components/editor/MarkdownPreview";
 
 function Breadcrumbs() {
   const activeTab = useEditorStore((s) => {
@@ -103,8 +104,14 @@ export function EditorArea() {
   const activeTabId = useEditorStore((s) => s.activeTabId);
   const updateContent = useEditorStore((s) => s.updateContent);
   const markSaved = useEditorStore((s) => s.markSaved);
+  const markdownPreviewTabs = useEditorStore((s) => s.markdownPreviewTabs);
 
   const activeTab = tabs.find((t) => t.id === activeTabId) ?? null;
+
+  const isMarkdownPreview =
+    activeTab !== null &&
+    activeTab.language === "markdown" &&
+    markdownPreviewTabs.has(activeTab.id);
 
   // Handle Ctrl+S to save the active file
   const handleSave = useCallback(async () => {
@@ -155,14 +162,30 @@ export function EditorArea() {
 
       {/* Editor content */}
       {activeTab ? (
-        <div className="flex-1 overflow-hidden">
-          <MonacoEditor
-            key={activeTab.id}
-            filePath={activeTab.path}
-            language={activeTab.language}
-            value={activeTab.content}
-            onChange={handleContentChange}
-          />
+        <div className="flex-1 overflow-hidden flex">
+          {/* Monaco editor — full width or left half */}
+          <div
+            className={isMarkdownPreview ? "w-1/2" : "w-full"}
+            style={{ overflow: "hidden" }}
+          >
+            <MonacoEditor
+              key={activeTab.id}
+              filePath={activeTab.path}
+              language={activeTab.language}
+              value={activeTab.content}
+              onChange={handleContentChange}
+            />
+          </div>
+
+          {/* Markdown preview — right half, only when toggled */}
+          {isMarkdownPreview && (
+            <div
+              className="w-1/2 overflow-hidden"
+              style={{ borderLeft: "1px solid var(--color-surface-0)" }}
+            >
+              <MarkdownPreview content={activeTab.content} />
+            </div>
+          )}
         </div>
       ) : (
         <WelcomeScreen />

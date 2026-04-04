@@ -1,0 +1,94 @@
+.markdown-preview h1,
+.markdown-preview h2,
+.markdown-preview h3,
+.markdown-preview h4,
+.markdown-preview h5,
+.markdown-preview h6 {
+  color: var(--color-text);
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+}
+
+.markdown-preview h1 { font-size: 1.75rem; border-bottom: 1px solid var(--color-surface-1); padding-bottom: 0.3em; }
+.markdown-preview h2 { font-size: 1.4rem; border-bottom: 1px solid var(--color-surface-1); padding-bottom: 0.3em; }
+.markdown-preview h3 { font-size: 1.15rem; }
+
+.markdown-preview p { margin: 0.75em 0; line-height: 1.7; }
+
+.markdown-preview a { color: var(--color-blue); text-decoration: underline; }
+
+.markdown-preview code {
+  background: var(--color-surface-0);
+  color: var(--color-peach);
+  padding: 0.2em 0.4em;
+  border-radius: 4px;
+  font-size: 0.875em;
+  font-family: "JetBrains Mono", "Cascadia Code", monospace;
+}
+
+.markdown-preview pre {
+  background: var(--color-mantle);
+  border: 1px solid var(--color-surface-0);
+  border-radius: 6px;
+  padding: 1em;
+  overflow-x: auto;
+}
+
+.markdown-preview pre code {
+  background: none;
+  color: var(--color-text);
+  padding: 0;
+}
+
+.markdown-preview blockquote {
+  border-left: 3px solid var(--color-blue);
+  padding-left: 1em;
+  margin-left: 0;
+  color: var(--color-subtext-0);
+}
+
+.markdown-preview table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1em 0;
+}
+
+.markdown-preview th,
+.markdown-preview td {
+  border: 1px solid var(--color-surface-1);
+  padding: 0.5em 0.75em;
+  text-align: left;
+}
+
+.markdown-preview th {
+  background: var(--color-surface-0);
+  font-weight: 600;
+}
+
+.markdown-preview ul,
+.markdown-preview ol {
+  padding-left: 1.5em;
+  margin: 0.5em 0;
+}
+
+.markdown-preview li { margin: 0.25em 0; }
+
+.markdown-preview input[type="checkbox"] {
+  margin-right: 0.5em;
+  accent-color: var(--color-blue);
+}
+
+.markdown-preview hr {
+  border: none;
+  border-top: 1px solid var(--color-surface-1);
+  margin: 1.5em 0;
+}
+
+.markdown-preview img {
+  max-width: 100%;
+  border-radius: 6px;
+}
+
+.markdown-preview del {
+  color: var(--color-overlay-1);
+}

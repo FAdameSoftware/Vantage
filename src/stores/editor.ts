@@ -62,6 +62,12 @@ export interface EditorState {
   closeAllTabs: () => void;
   /** Close all tabs except the given one */
   closeOtherTabs: (id: string) => void;
+  /** Set of tab IDs that have markdown preview active */
+  markdownPreviewTabs: Set<string>;
+  /** Toggle markdown preview for a tab */
+  toggleMarkdownPreview: (tabId: string) => void;
+  /** Check if a tab has markdown preview active */
+  isMarkdownPreviewActive: (tabId: string) => boolean;
 }
 
 /** Normalize a file path to use as a tab ID (forward slashes, lowercase drive letter) */
@@ -78,6 +84,7 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
   tabs: [],
   activeTabId: null,
   cursorPosition: { line: 1, column: 1 },
+  markdownPreviewTabs: new Set<string>(),
 
   openFile: (path, name, language, content, preview = false) => {
     const id = normalizeTabId(path);
@@ -198,5 +205,21 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
       tabs: tabs.filter((t) => t.id === id),
       activeTabId: id,
     });
+  },
+
+  toggleMarkdownPreview: (tabId) => {
+    set((state) => {
+      const next = new Set(state.markdownPreviewTabs);
+      if (next.has(tabId)) {
+        next.delete(tabId);
+      } else {
+        next.add(tabId);
+      }
+      return { markdownPreviewTabs: next };
+    });
+  },
+
+  isMarkdownPreviewActive: (tabId) => {
+    return get().markdownPreviewTabs.has(tabId);
   },
 }));
