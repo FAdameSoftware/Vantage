@@ -337,17 +337,36 @@ export function SpecViewer() {
       >
         <BookOpen size={14} style={{ color: "var(--color-blue)", flexShrink: 0 }} />
         <select
-          className="flex-1 bg-transparent text-xs outline-none cursor-pointer min-w-0 truncate"
-          style={{ color: "var(--color-text)" }}
+          className="flex-1 text-xs outline-none cursor-pointer min-w-0 truncate rounded px-1 py-0.5"
+          style={{
+            backgroundColor: "var(--color-surface-0)",
+            color: "var(--color-text)",
+            border: "1px solid var(--color-surface-1)",
+          }}
           value={selectedFilePath}
           onChange={(e) => setSelectedFilePath(e.target.value)}
           aria-label="Select markdown file"
         >
           {mdFiles.length === 0 && (
-            <option value="">No .md files found in project</option>
+            <option
+              value=""
+              style={{
+                backgroundColor: "var(--color-surface-0)",
+                color: "var(--color-text)",
+              }}
+            >
+              No .md files found in project
+            </option>
           )}
           {mdFiles.map((f) => (
-            <option key={f.path} value={f.path}>
+            <option
+              key={f.path}
+              value={f.path}
+              style={{
+                backgroundColor: "var(--color-surface-0)",
+                color: "var(--color-text)",
+              }}
+            >
               {f.name}
             </option>
           ))}

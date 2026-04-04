@@ -525,11 +525,34 @@ export function useClaude() {
     [setConnectionStatus, setSession],
   );
 
-  // ── Action: send a message ──
+  // ── Action: send a message (auto-starts session if needed) ──
 
   const sendMessage = useCallback(
-    async (content: string) => {
-      if (!sessionIdRef.current) return;
+    async (content: string, cwd?: string) => {
+      // If no active session, auto-start one first
+      if (!sessionIdRef.current) {
+        const sessionCwd =
+          cwd ??
+          useConversationStore.getState().session?.cwd ??
+          "C:/CursorProjects/Vantage";
+        setConnectionStatus("starting");
+        try {
+          const id = await invoke<string>("start_claude_session", {
+            cwd: sessionCwd,
+            resumeSessionId: null,
+          });
+          sessionIdRef.current = id;
+          const session: SessionMetadata = {
+            sessionId: id,
+            cwd: sessionCwd,
+          };
+          setSession(session);
+        } catch (err) {
+          setConnectionStatus("error", String(err));
+          return;
+        }
+      }
+
       // Optimistically add the user message to the store
       addUserMessage(content);
       try {
@@ -541,7 +564,7 @@ export function useClaude() {
         setConnectionStatus("error", String(err));
       }
     },
-    [addUserMessage, setConnectionStatus],
+    [addUserMessage, setConnectionStatus, setSession],
   );
 
   // ── Action: respond to a permission request ──

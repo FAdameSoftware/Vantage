@@ -81,13 +81,6 @@ export function ChatPanel() {
     autoScrollRef.current = distanceFromBottom < 50;
   }, []);
 
-  // ── Start session ──
-
-  const handleStartSession = useCallback(() => {
-    const cwd = session?.cwd ?? "C:/CursorProjects/Vantage";
-    startSession(cwd);
-  }, [session?.cwd, startSession]);
-
   // ── New session ──
 
   const handleNewSession = useCallback(() => {
@@ -105,14 +98,15 @@ export function ChatPanel() {
     [stopSession, startSession, session?.cwd],
   );
 
-  // ── Send message ──
+  // ── Send message (auto-starts session if needed) ──
 
   const handleSend = useCallback(
     (content: string) => {
       autoScrollRef.current = true;
-      sendMessage(content);
+      const cwd = session?.cwd ?? "C:/CursorProjects/Vantage";
+      sendMessage(content, cwd);
     },
-    [sendMessage],
+    [sendMessage, session?.cwd],
   );
 
   // ── Stop streaming ──
@@ -198,34 +192,14 @@ export function ChatPanel() {
                 style={{ color: "var(--color-mauve)" }}
               />
             </div>
-            {isDisconnected ? (
-              <>
-                <p
-                  className="text-xs mb-3"
-                  style={{ color: "var(--color-overlay-1)" }}
-                >
-                  Start a Claude Code session
-                </p>
-                <button
-                  type="button"
-                  className="text-xs px-3 py-1.5 rounded-md transition-colors"
-                  style={{
-                    backgroundColor: "var(--color-blue)",
-                    color: "var(--color-crust)",
-                  }}
-                  onClick={handleStartSession}
-                >
-                  Start Session
-                </button>
-              </>
-            ) : (
-              <p
-                className="text-xs leading-relaxed max-w-48 text-center"
-                style={{ color: "var(--color-overlay-1)" }}
-              >
-                Ask Claude anything about your codebase.
-              </p>
-            )}
+            <p
+              className="text-xs leading-relaxed max-w-48 text-center"
+              style={{ color: "var(--color-overlay-1)" }}
+            >
+              {isDisconnected
+                ? "Type a message below to start a Claude Code session."
+                : "Ask Claude anything about your codebase."}
+            </p>
           </div>
         )}
 
@@ -268,7 +242,7 @@ export function ChatPanel() {
         onSend={handleSend}
         onStop={handleStop}
         isStreaming={isStreaming}
-        disabled={isDisconnected}
+        disabled={false}
         connectionStatus={connectionStatus}
       />
     </div>
