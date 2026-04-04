@@ -22,4 +22,8 @@ export default defineConfig(async () => ({
       : undefined,
     watch: { ignored: ["**/src-tauri/**"] },
   },
+  test: {
+    environment: "jsdom",
+    globals: true,
+  },
 }));
