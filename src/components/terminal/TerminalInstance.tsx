@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { Search, X, ChevronUp, ChevronDown } from "lucide-react";
+import { Search, X, ChevronUp, ChevronDown, Layers } from "lucide-react";
 import { useTerminal } from "@/hooks/useTerminal";
+import { useCommandBlocks } from "@/hooks/useCommandBlocks";
+import { CommandBlockList } from "./CommandBlock";
 
 interface TerminalInstanceProps {
   /** Shell executable path */
@@ -115,14 +117,43 @@ export function TerminalInstance({
   cwd,
   isVisible,
 }: TerminalInstanceProps) {
-  const { containerRef, fit, search, searchPrevious, clearSearch, focus } = useTerminal({
+  const { containerRef, terminalRef, fit, search, searchPrevious, clearSearch, focus } = useTerminal({
     shellPath,
     shellArgs,
     cwd,
   });
   const rafRef = useRef<number | null>(null);
   const [findBarOpen, setFindBarOpen] = useState(false);
+  const [blocksVisible, setBlocksVisible] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
+
+  // Command blocks integration
+  const { blocks, hasShellIntegration, clearBlocks } = useCommandBlocks({
+    terminal: terminalRef.current,
+    enabled: true,
+  });
+
+  // Re-run a command by writing it to the terminal
+  const handleRerun = useCallback(
+    (command: string) => {
+      const terminal = terminalRef.current;
+      if (!terminal) return;
+      // Write the command followed by Enter
+      // We use the terminal's input event to send to the PTY
+      terminal.input(command + "\r");
+    },
+    [terminalRef],
+  );
+
+  // Scroll terminal to a specific line
+  const handleScrollTo = useCallback(
+    (line: number) => {
+      const terminal = terminalRef.current;
+      if (!terminal) return;
+      terminal.scrollToLine(line);
+    },
+    [terminalRef],
+  );
 
   // Debounced fit to avoid calling fitAddon.fit() on every frame during a drag resize
   const debouncedFit = () => {
@@ -197,9 +228,9 @@ export function TerminalInstance({
   return (
     <div
       ref={wrapperRef}
-      className="w-full h-full relative"
+      className="w-full h-full relative flex flex-col"
       style={{
-        display: isVisible ? "block" : "none",
+        display: isVisible ? "flex" : "none",
       }}
     >
       {findBarOpen && (
@@ -210,11 +241,42 @@ export function TerminalInstance({
           onClose={handleCloseFindBar}
         />
       )}
+      {/* Blocks toggle button */}
+      {blocks.length > 0 && (
+        <button
+          type="button"
+          className="absolute top-1 left-1 z-10 p-1 rounded transition-colors"
+          style={{
+            backgroundColor: blocksVisible
+              ? "var(--color-surface-1)"
+              : "var(--color-surface-0)",
+            color: blocksVisible
+              ? "var(--color-mauve)"
+              : "var(--color-overlay-1)",
+            border: "1px solid var(--color-surface-1)",
+          }}
+          onClick={() => setBlocksVisible(!blocksVisible)}
+          aria-label={blocksVisible ? "Hide command blocks" : "Show command blocks"}
+          title={`${blocks.length} commands detected`}
+        >
+          <Layers size={12} />
+        </button>
+      )}
       <div
         ref={containerRef}
-        className="w-full h-full"
+        className="flex-1 min-h-0"
         data-allow-select="true"
       />
+      {/* Command blocks panel (collapsible, below terminal) */}
+      {blocksVisible && (
+        <CommandBlockList
+          blocks={blocks}
+          hasShellIntegration={hasShellIntegration}
+          onRerun={handleRerun}
+          onScrollTo={handleScrollTo}
+          onClear={clearBlocks}
+        />
+      )}
     </div>
   );
 }
