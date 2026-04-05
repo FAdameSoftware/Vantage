@@ -602,11 +602,11 @@ export function StatusBar() {
               onClick={handleModelClick}
               title="Select Model"
             >
-              {session?.model ?? "claude-opus-4-6"}
+              {session?.model ?? lastSessionModel ?? "claude-opus-4-6"}
             </button>
             {showModelSelector && (
               <ModelSelectorDropdown
-                currentModel={session?.model ?? "claude-opus-4-6"}
+                currentModel={session?.model ?? lastSessionModel ?? "claude-opus-4-6"}
                 onClose={() => setShowModelSelector(false)}
               />
             )}

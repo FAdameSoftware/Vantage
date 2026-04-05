@@ -389,6 +389,14 @@ fn get_session_stats(
     session_search::get_session_stats(&session_path)
 }
 
+#[tauri::command]
+#[specta::specta]
+fn get_project_usage(
+    cwd: String,
+) -> Result<session_search::ProjectUsage, String> {
+    session_search::get_project_usage(&cwd)
+}
+
 // ── Git Log/Blame Commands ─────────────────────────────────────────
 
 #[tauri::command]
@@ -702,6 +710,7 @@ pub fn run() {
             write_mcp_config,
             search_sessions,
             get_session_stats,
+            get_project_usage,
             git_log,
             git_blame,
             git_diff_commit,

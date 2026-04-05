@@ -292,6 +292,19 @@ const mockInvokeHandlers: Record<string, MockInvokeHandler> = {
   claude_is_session_alive: () => false,
   claude_list_sessions: () => [],
   search_sessions: () => [],
+  get_project_usage: () => ({
+    session_id: "mock-session-abc123",
+    session_cost: 0.1842,
+    session_input_tokens: 45200,
+    session_output_tokens: 12800,
+    session_cache_tokens: 8400,
+    model: "claude-opus-4-6",
+    session_turn_count: 14,
+    last_activity: "2026-04-04T15:30:00Z",
+    all_time_cost: 2.4731,
+    all_time_tokens: 892400,
+    session_count: 23,
+  }),
 
   // ── PR list ──
   get_pr_list: () => [

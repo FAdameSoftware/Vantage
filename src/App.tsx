@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { useKeybindings } from "@/hooks/useKeybindings";
 import { useAgentNotifications } from "@/hooks/useAgentNotifications";
 import { useAutoUpdate } from "@/hooks/useAutoUpdate";
+import { useProjectUsage } from "@/hooks/useProjectUsage";
 import { useCustomTheme } from "@/hooks/useCustomTheme";
 import { PermissionDialog } from "@/components/permissions/PermissionDialog";
 import { CommandPalette } from "@/components/shared/CommandPalette";
@@ -46,6 +47,7 @@ function App() {
   useAgentNotifications();
   useAutoUpdate();
   useCustomTheme();
+  useProjectUsage();
 
   const theme = useSettingsStore((s) => s.theme);
 

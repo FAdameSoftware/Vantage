@@ -17,6 +17,32 @@ pub struct SessionSearchResult {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct ProjectUsage {
+    /// Latest session ID (file stem of the most recent JSONL)
+    pub session_id: String,
+    /// Total cost in USD for the latest session
+    pub session_cost: f64,
+    /// Total input tokens for the latest session
+    pub session_input_tokens: u64,
+    /// Total output tokens for the latest session
+    pub session_output_tokens: u64,
+    /// Total cache creation tokens for the latest session
+    pub session_cache_tokens: u64,
+    /// Model used in the latest session
+    pub model: Option<String>,
+    /// Number of result messages in the latest session (turn count)
+    pub session_turn_count: u32,
+    /// ISO 8601 timestamp of the latest session's last modification
+    pub last_activity: String,
+    /// Aggregate cost across ALL sessions for this project
+    pub all_time_cost: f64,
+    /// Aggregate total tokens (input + output) across ALL sessions
+    pub all_time_tokens: u64,
+    /// Number of session files found
+    pub session_count: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct SessionStats {
     pub message_count: u32,
     pub total_cost_usd: f64,
@@ -211,7 +237,202 @@ pub fn get_session_stats(session_path: &str) -> Result<SessionStats, String> {
     })
 }
 
+/// Read usage data from session JSONL files for a given project CWD.
+/// Returns aggregate usage for the latest session and all-time totals.
+pub fn get_project_usage(cwd: &str) -> Result<ProjectUsage, String> {
+    let projects_dir = get_claude_projects_dir()
+        .ok_or_else(|| "Could not determine home directory".to_string())?;
+
+    let encoded = encode_cwd(cwd);
+    let project_dir = projects_dir.join(&encoded);
+
+    if !project_dir.exists() {
+        return Err(format!(
+            "No session directory found for project: {}",
+            project_dir.display()
+        ));
+    }
+
+    // Collect all JSONL files with their modification times
+    let mut jsonl_files: Vec<(PathBuf, std::time::SystemTime)> = Vec::new();
+
+    let entries = std::fs::read_dir(&project_dir)
+        .map_err(|e| format!("Failed to read session directory: {}", e))?;
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.extension().and_then(|e| e.to_str()) != Some("jsonl") {
+            continue;
+        }
+        if let Ok(meta) = std::fs::metadata(&path) {
+            if let Ok(modified) = meta.modified() {
+                jsonl_files.push((path, modified));
+            }
+        }
+    }
+
+    if jsonl_files.is_empty() {
+        return Err("No session files found for this project".to_string());
+    }
+
+    // Sort by modification time descending (newest first)
+    jsonl_files.sort_by(|a, b| b.1.cmp(&a.1));
+
+    let session_count = jsonl_files.len() as u32;
+
+    // Parse the latest session in detail
+    let (latest_path, latest_modified) = &jsonl_files[0];
+    let latest_parsed = parse_session_for_usage(latest_path);
+
+    let latest_session_id = latest_path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("unknown")
+        .to_string();
+
+    let last_activity = latest_modified
+        .duration_since(std::time::UNIX_EPOCH)
+        .ok()
+        .map(|d| time_from_unix_secs(d.as_secs()))
+        .unwrap_or_default();
+
+    // Aggregate all-time totals across all sessions
+    let mut all_time_cost: f64 = 0.0;
+    let mut all_time_tokens: u64 = 0;
+
+    // Latest session is already parsed, add its totals
+    all_time_cost += latest_parsed.total_cost;
+    all_time_tokens += latest_parsed.input_tokens + latest_parsed.output_tokens;
+
+    // Parse remaining sessions (just cost + tokens, lighter scan)
+    for (path, _) in jsonl_files.iter().skip(1) {
+        let parsed = parse_session_for_usage(path);
+        all_time_cost += parsed.total_cost;
+        all_time_tokens += parsed.input_tokens + parsed.output_tokens;
+    }
+
+    Ok(ProjectUsage {
+        session_id: latest_session_id,
+        session_cost: latest_parsed.total_cost,
+        session_input_tokens: latest_parsed.input_tokens,
+        session_output_tokens: latest_parsed.output_tokens,
+        session_cache_tokens: latest_parsed.cache_creation_tokens,
+        model: latest_parsed.model,
+        session_turn_count: latest_parsed.turn_count,
+        last_activity,
+        all_time_cost,
+        all_time_tokens,
+        session_count,
+    })
+}
+
 // ── Internal helpers ─────────────────────────────────────────────────
+
+struct ParsedSessionUsage {
+    total_cost: f64,
+    input_tokens: u64,
+    output_tokens: u64,
+    cache_creation_tokens: u64,
+    model: Option<String>,
+    turn_count: u32,
+}
+
+/// Parse a JSONL session file to extract usage data (cost, tokens).
+fn parse_session_for_usage(path: &PathBuf) -> ParsedSessionUsage {
+    let file = match std::fs::File::open(path) {
+        Ok(f) => f,
+        Err(_) => {
+            return ParsedSessionUsage {
+                total_cost: 0.0,
+                input_tokens: 0,
+                output_tokens: 0,
+                cache_creation_tokens: 0,
+                model: None,
+                turn_count: 0,
+            }
+        }
+    };
+
+    let reader = BufReader::new(file);
+    let mut total_cost: f64 = 0.0;
+    let mut input_tokens: u64 = 0;
+    let mut output_tokens: u64 = 0;
+    let mut cache_creation_tokens: u64 = 0;
+    let mut model: Option<String> = None;
+    let mut turn_count: u32 = 0;
+
+    for line in reader.lines() {
+        let line = match line {
+            Ok(l) => l,
+            Err(_) => continue,
+        };
+
+        if let Ok(val) = serde_json::from_str::<serde_json::Value>(&line) {
+            let msg_type = val.get("type").and_then(|t| t.as_str()).unwrap_or("");
+
+            if msg_type == "result" {
+                turn_count += 1;
+
+                if let Some(cost) = val
+                    .get("cost_usd")
+                    .or_else(|| val.get("costUsd"))
+                    .and_then(|c| c.as_f64())
+                {
+                    total_cost += cost;
+                }
+
+                // Token usage from result messages
+                if let Some(usage) = val.get("usage") {
+                    if let Some(inp) = usage.get("input_tokens").and_then(|t| t.as_u64()) {
+                        input_tokens += inp;
+                    }
+                    if let Some(out) = usage.get("output_tokens").and_then(|t| t.as_u64()) {
+                        output_tokens += out;
+                    }
+                    if let Some(cache) = usage
+                        .get("cache_creation_input_tokens")
+                        .and_then(|t| t.as_u64())
+                    {
+                        cache_creation_tokens += cache;
+                    }
+                }
+
+                // Also check top-level token fields (some formats put them here)
+                if let Some(inp) = val.get("input_tokens").and_then(|t| t.as_u64()) {
+                    if val.get("usage").is_none() {
+                        input_tokens += inp;
+                    }
+                }
+                if let Some(out) = val.get("output_tokens").and_then(|t| t.as_u64()) {
+                    if val.get("usage").is_none() {
+                        output_tokens += out;
+                    }
+                }
+                if let Some(cache) = val.get("cache_creation_input_tokens").and_then(|t| t.as_u64()) {
+                    if val.get("usage").is_none() {
+                        cache_creation_tokens += cache;
+                    }
+                }
+            }
+
+            // Extract model from any message that has it
+            if model.is_none() {
+                if let Some(m) = val.get("model").and_then(|m| m.as_str()) {
+                    model = Some(m.to_string());
+                }
+            }
+        }
+    }
+
+    ParsedSessionUsage {
+        total_cost,
+        input_tokens,
+        output_tokens,
+        cache_creation_tokens,
+        model,
+        turn_count,
+    }
+}
 
 struct ParsedSession {
     message_count: u32,

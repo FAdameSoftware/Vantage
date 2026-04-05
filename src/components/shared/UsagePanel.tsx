@@ -28,6 +28,10 @@ export function UsagePanel() {
   const totalCostUsd = useUsageStore((s) => s.totalCostUsd);
   const turnCount = useUsageStore((s) => s.turnCount);
   const session = useConversationStore((s) => s.session);
+  const allTimeCost = useUsageStore((s) => s.allTimeCost);
+  const allTimeTokens = useUsageStore((s) => s.allTimeTokens);
+  const sessionCount = useUsageStore((s) => s.sessionCount);
+  const lastSessionModel = useUsageStore((s) => s.lastSessionModel);
 
   const [elapsed, setElapsed] = useState("");
   const [elapsedMs, setElapsedMs] = useState(0);
@@ -170,6 +174,39 @@ export function UsagePanel() {
         </div>
       </div>
 
+      {/* Project-level totals */}
+      {allTimeCost > 0 && (
+        <div
+          className="p-3"
+          style={{ borderBottom: "1px solid var(--color-surface-1)" }}
+        >
+          <div className="flex items-center gap-1.5 mb-1" style={{ color: "var(--color-subtext-0)" }}>
+            <Coins size={12} />
+            <span className="font-medium">Project Total</span>
+          </div>
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center justify-between">
+              <span style={{ color: "var(--color-subtext-0)" }}>All sessions</span>
+              <span style={{ color: "var(--color-text)" }}>
+                ${allTimeCost.toFixed(4)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span style={{ color: "var(--color-subtext-0)" }}>Total tokens</span>
+              <span style={{ color: "var(--color-text)" }}>
+                {formatNumber(allTimeTokens)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span style={{ color: "var(--color-subtext-0)" }}>Sessions</span>
+              <span style={{ color: "var(--color-text)" }}>
+                {sessionCount}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Model */}
       <div className="p-3">
         <div
@@ -178,7 +215,7 @@ export function UsagePanel() {
         >
           <span>Model</span>
           <span style={{ color: "var(--color-text)" }}>
-            {session?.model ?? "claude-opus-4-6"}
+            {session?.model ?? lastSessionModel ?? "claude-opus-4-6"}
           </span>
         </div>
       </div>
