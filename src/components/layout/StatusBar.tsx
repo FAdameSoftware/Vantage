@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   GitBranch,
   AlertTriangle,
@@ -9,6 +9,7 @@ import {
   Hash,
   Database,
   Loader2,
+  Bell,
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { useEditorStore, selectActiveTab, selectCursorPosition } from "@/stores/editor";
@@ -16,10 +17,13 @@ import { useConversationStore } from "@/stores/conversation";
 import { useLayoutStore } from "@/stores/layout";
 import { useSettingsStore } from "@/stores/settings";
 import { useUsageStore } from "@/stores/usage";
+import { useNotificationStore } from "@/stores/notifications";
 import { useGitStatus } from "@/hooks/useGitStatus";
 import { UsagePanel } from "@/components/shared/UsagePanel";
 import { BuddyWidget } from "@/components/shared/BuddyWidget";
 import { EffortLevelSelector } from "@/components/shared/EffortLevelSelector";
+import { useCommandPaletteStore } from "@/stores/commandPalette";
+import * as monaco from "monaco-editor";
 
 export function StatusBar() {
   const cursorPosition = useEditorStore(selectCursorPosition);
@@ -31,8 +35,11 @@ export function StatusBar() {
   const totalCost = useConversationStore((s) => s.totalCost);
 
   const projectRootPath = useLayoutStore((s) => s.projectRootPath);
+  const toggleSecondarySidebar = useLayoutStore((s) => s.toggleSecondarySidebar);
+  const setActiveActivityBarItem = useLayoutStore((s) => s.setActiveActivityBarItem);
   const vimMode = useSettingsStore((s) => s.vimMode);
   const showBuddy = useSettingsStore((s) => s.showBuddy);
+  const toggleBuddy = useSettingsStore((s) => s.toggleBuddy);
   const { branch, isGitRepo } = useGitStatus(projectRootPath);
 
   const sessionStartedAt = useUsageStore((s) => s.sessionStartedAt);
@@ -40,9 +47,17 @@ export function StatusBar() {
   const usageInputTokens = useUsageStore((s) => s.inputTokens);
   const usageOutputTokens = useUsageStore((s) => s.outputTokens);
 
+  const unreadCount = useNotificationStore((s) => s.unreadCount);
+
+  const openPalette = useCommandPaletteStore((s) => s.open);
+
   const [elapsed, setElapsed] = useState("");
   const [showUsage, setShowUsage] = useState(false);
   const [isIndexed, setIsIndexed] = useState(false);
+  const [showModelSelector, setShowModelSelector] = useState(false);
+  const [showLanguageSelector, setShowLanguageSelector] = useState(false);
+  const modelSelectorRef = useRef<HTMLDivElement>(null);
+  const languageSelectorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!sessionStartedAt) {
@@ -70,6 +85,29 @@ export function StatusBar() {
       .catch(() => setIsIndexed(false));
   }, [projectRootPath]);
 
+  // Close dropdowns on outside click
+  useEffect(() => {
+    if (!showModelSelector && !showLanguageSelector) return;
+    function handleClick(e: MouseEvent) {
+      if (
+        showModelSelector &&
+        modelSelectorRef.current &&
+        !modelSelectorRef.current.contains(e.target as Node)
+      ) {
+        setShowModelSelector(false);
+      }
+      if (
+        showLanguageSelector &&
+        languageSelectorRef.current &&
+        !languageSelectorRef.current.contains(e.target as Node)
+      ) {
+        setShowLanguageSelector(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [showModelSelector, showLanguageSelector]);
+
   // Map language IDs to display names
   const languageDisplayName = activeTab
     ? getLanguageDisplayName(activeTab.language)
@@ -81,6 +119,49 @@ export function StatusBar() {
     : session
       ? "var(--color-green)"
       : "var(--color-overlay-1)";
+
+  // Click handlers
+  const handleGitBranchClick = () => {
+    setActiveActivityBarItem("git");
+  };
+
+  const handleErrorsClick = () => {
+    setActiveActivityBarItem("search");
+  };
+
+  const handleLineColClick = () => {
+    openPalette("goto");
+  };
+
+  const handleLanguageClick = () => {
+    // Try to invoke Monaco's built-in change language mode action
+    const editors = monaco.editor.getEditors();
+    if (editors.length > 0) {
+      const action = editors[0].getAction("editor.action.changeLanguageMode");
+      if (action) {
+        action.run();
+        return;
+      }
+    }
+    // Fallback: toggle dropdown
+    setShowLanguageSelector((v) => !v);
+  };
+
+  const handleClaudeStatusClick = () => {
+    toggleSecondarySidebar();
+  };
+
+  const handleModelClick = () => {
+    setShowModelSelector((v) => !v);
+  };
+
+  const handleBuddyClick = () => {
+    toggleBuddy();
+  };
+
+  const handleNotificationBellClick = () => {
+    window.dispatchEvent(new CustomEvent("vantage:toggle-notification-center"));
+  };
 
   return (
     <div className="relative">
@@ -101,11 +182,13 @@ export function StatusBar() {
       >
         {/* Left side - workspace scoped */}
         <div className="flex items-center gap-3">
-          {/* Git branch */}
+          {/* Git branch -> click opens Source Control panel */}
           {isGitRepo && branch?.branch && (
             <button
               className="flex items-center gap-1 hover:text-[var(--color-text)] transition-colors"
-              aria-label={`Git branch: ${branch.branch}`}
+              aria-label={`Git branch: ${branch.branch}. Click to open Source Control.`}
+              onClick={handleGitBranchClick}
+              title="Open Source Control"
             >
               <GitBranch size={12} />
               <span>
@@ -114,26 +197,57 @@ export function StatusBar() {
             </button>
           )}
 
-          {/* Errors and warnings */}
+          {/* Errors and warnings -> click focuses search panel */}
           <div className="flex items-center gap-2">
             <button
               className="flex items-center gap-0.5 hover:text-[var(--color-text)] transition-colors"
-              aria-label="0 errors"
+              aria-label="0 errors. Click to open problems."
+              onClick={handleErrorsClick}
+              title="Open Problems"
             >
               <XCircle size={12} style={{ color: "var(--color-red)" }} />
               <span>0</span>
             </button>
             <button
               className="flex items-center gap-0.5 hover:text-[var(--color-text)] transition-colors"
-              aria-label="0 warnings"
+              aria-label="0 warnings. Click to open problems."
+              onClick={handleErrorsClick}
+              title="Open Problems"
             >
               <AlertTriangle size={12} style={{ color: "var(--color-yellow)" }} />
               <span>0</span>
             </button>
           </div>
 
-          {/* Coding buddy — Inkwell */}
-          <BuddyWidget visible={showBuddy} />
+          {/* Coding buddy — Inkwell -> click toggles visibility */}
+          <button
+            onClick={handleBuddyClick}
+            className="hover:opacity-80 transition-opacity"
+            title={showBuddy ? "Hide Inkwell" : "Show Inkwell"}
+          >
+            <BuddyWidget visible={showBuddy} />
+          </button>
+
+          {/* Notification bell */}
+          <button
+            className="flex items-center gap-0.5 hover:text-[var(--color-text)] transition-colors relative"
+            aria-label={`Notifications${unreadCount > 0 ? `: ${unreadCount} unread` : ""}`}
+            onClick={handleNotificationBellClick}
+            title="Notification Center"
+          >
+            <Bell size={12} />
+            {unreadCount > 0 && (
+              <span
+                className="absolute -top-1.5 -right-1.5 min-w-[14px] h-[14px] flex items-center justify-center rounded-full text-[9px] font-bold leading-none px-0.5"
+                style={{
+                  backgroundColor: "var(--color-blue)",
+                  color: "var(--color-base)",
+                }}
+              >
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </span>
+            )}
+          </button>
 
           {/* Index status */}
           <div
@@ -167,30 +281,51 @@ export function StatusBar() {
             </span>
           )}
 
-          {/* Line and column */}
-          <span>
+          {/* Line and column -> click opens go-to-line dialog */}
+          <button
+            className="hover:text-[var(--color-text)] transition-colors"
+            onClick={handleLineColClick}
+            title="Go to Line (Ctrl+G)"
+          >
             Ln {cursorPosition.line}, Col {cursorPosition.column}
-          </span>
-
-          {/* Language */}
-          <button className="hover:text-[var(--color-text)] transition-colors">
-            {languageDisplayName}
           </button>
 
-          {/* Claude session status */}
-          <div className="flex items-center gap-1">
+          {/* Language -> click opens language selector */}
+          <div ref={languageSelectorRef} className="relative">
+            <button
+              className="hover:text-[var(--color-text)] transition-colors"
+              onClick={handleLanguageClick}
+              title="Select Language Mode"
+            >
+              {languageDisplayName}
+            </button>
+            {showLanguageSelector && (
+              <LanguageSelectorDropdown
+                currentLanguage={activeTab?.language ?? "plaintext"}
+                onClose={() => setShowLanguageSelector(false)}
+              />
+            )}
+          </div>
+
+          {/* Claude session status -> click opens chat panel */}
+          <button
+            className="flex items-center gap-1 hover:text-[var(--color-text)] transition-colors"
+            onClick={handleClaudeStatusClick}
+            title="Toggle Chat Panel"
+          >
             {isStreaming ? (
               <Loader2 size={12} className="animate-spin" style={{ color: statusColor }} />
             ) : (
               <Zap size={12} style={{ color: statusColor }} />
             )}
             <span>{connectionStatus}</span>
-          </div>
+          </button>
 
-          {/* Usage: session timer, tokens, cost */}
+          {/* Usage: session timer, tokens, cost -> click opens usage panel */}
           <button
             className="flex items-center gap-3 hover:text-[var(--color-text)] transition-colors"
             onClick={() => setShowUsage((s) => !s)}
+            title="Toggle Usage Panel"
           >
             {/* Session timer */}
             {elapsed && (
@@ -223,15 +358,168 @@ export function StatusBar() {
           {/* Effort level */}
           <EffortLevelSelector />
 
-          {/* Model */}
-          <span style={{ color: "var(--color-overlay-1)" }}>
-            {session?.model ?? "claude-opus-4-6"}
-          </span>
+          {/* Model -> click opens model selector dropdown */}
+          <div ref={modelSelectorRef} className="relative">
+            <button
+              className="hover:text-[var(--color-text)] transition-colors"
+              style={{ color: "var(--color-overlay-1)" }}
+              onClick={handleModelClick}
+              title="Select Model"
+            >
+              {session?.model ?? "claude-opus-4-6"}
+            </button>
+            {showModelSelector && (
+              <ModelSelectorDropdown
+                currentModel={session?.model ?? "claude-opus-4-6"}
+                onClose={() => setShowModelSelector(false)}
+              />
+            )}
+          </div>
         </div>
       </div>
     </div>
   );
 }
+
+// ── Model Selector Dropdown ──────────────────────────────────────────────
+
+const AVAILABLE_MODELS = [
+  { id: "claude-opus-4-6", label: "Claude Opus 4.6", description: "Most capable" },
+  { id: "claude-sonnet-4-6", label: "Claude Sonnet 4.6", description: "Fast & smart" },
+  { id: "claude-haiku-3-5", label: "Claude Haiku 3.5", description: "Fastest" },
+];
+
+function ModelSelectorDropdown({
+  currentModel,
+  onClose,
+}: {
+  currentModel: string;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      className="absolute bottom-7 right-0 z-50 rounded shadow-lg py-1 min-w-[180px]"
+      style={{
+        backgroundColor: "var(--color-surface-0)",
+        border: "1px solid var(--color-surface-1)",
+      }}
+      role="listbox"
+      aria-label="Model selector"
+    >
+      {AVAILABLE_MODELS.map((model) => (
+        <button
+          key={model.id}
+          type="button"
+          role="option"
+          aria-selected={currentModel === model.id}
+          className="flex flex-col w-full px-3 py-1.5 text-left text-xs hover:bg-[var(--color-surface-1)] transition-colors"
+          onClick={() => {
+            // Model selection is informational — the actual model is set by the CLI session
+            onClose();
+          }}
+        >
+          <div className="flex items-center gap-2">
+            <span
+              style={{
+                color:
+                  currentModel === model.id
+                    ? "var(--color-blue)"
+                    : "var(--color-text)",
+              }}
+              className="font-medium"
+            >
+              {model.label}
+            </span>
+            {currentModel === model.id && (
+              <span
+                className="ml-auto text-[10px]"
+                style={{ color: "var(--color-blue)" }}
+              >
+                Active
+              </span>
+            )}
+          </div>
+          <span
+            className="text-[10px] mt-0.5"
+            style={{ color: "var(--color-overlay-1)" }}
+          >
+            {model.description}
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ── Language Selector Dropdown ────────────────────────────────────────────
+
+const COMMON_LANGUAGES = [
+  "typescript", "javascript", "rust", "python", "json", "toml", "yaml",
+  "markdown", "html", "css", "shell", "go", "java", "c", "cpp",
+  "sql", "graphql", "plaintext",
+];
+
+function LanguageSelectorDropdown({
+  currentLanguage,
+  onClose,
+}: {
+  currentLanguage: string;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      className="absolute bottom-7 right-0 z-50 rounded shadow-lg py-1 min-w-[160px] max-h-[240px] overflow-auto"
+      style={{
+        backgroundColor: "var(--color-surface-0)",
+        border: "1px solid var(--color-surface-1)",
+      }}
+      role="listbox"
+      aria-label="Language selector"
+    >
+      {COMMON_LANGUAGES.map((lang) => (
+        <button
+          key={lang}
+          type="button"
+          role="option"
+          aria-selected={currentLanguage === lang}
+          className="flex items-center w-full px-3 py-1 text-left text-xs hover:bg-[var(--color-surface-1)] transition-colors"
+          onClick={() => {
+            // Set the language on the active Monaco editor model
+            const editors = monaco.editor.getEditors();
+            if (editors.length > 0) {
+              const model = editors[0].getModel();
+              if (model) {
+                monaco.editor.setModelLanguage(model, lang);
+              }
+            }
+            onClose();
+          }}
+        >
+          <span
+            style={{
+              color:
+                currentLanguage === lang
+                  ? "var(--color-blue)"
+                  : "var(--color-text)",
+            }}
+          >
+            {getLanguageDisplayName(lang)}
+          </span>
+          {currentLanguage === lang && (
+            <span
+              className="ml-auto text-[10px]"
+              style={{ color: "var(--color-blue)" }}
+            >
+              Active
+            </span>
+          )}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────
 
 function vimModeLabelColor(label: string): string {
   switch (label) {
