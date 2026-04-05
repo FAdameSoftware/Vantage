@@ -9,6 +9,7 @@ import {
   FileText,
 } from "lucide-react";
 import type { Agent, AgentRole, AgentStatus } from "@/stores/agents";
+import { useLayoutStore } from "@/stores/layout";
 
 // ── Status icon ──────────────────────────────────────────────────────
 
@@ -96,17 +97,27 @@ export function AgentCard({ agent }: AgentCardProps) {
     transition,
     isDragging,
   } = useSortable({ id: agent.id });
+  const setSelectedAgentId = useLayoutStore((s) => s.setSelectedAgentId);
 
   const truncatedTask =
     agent.taskDescription.length > 80
       ? agent.taskDescription.slice(0, 80) + "…"
       : agent.taskDescription;
 
+  const handleClick = (e: React.MouseEvent) => {
+    // Only open detail panel on a plain click — not at the end of a drag
+    if (!isDragging) {
+      e.stopPropagation();
+      setSelectedAgentId(agent.id);
+    }
+  };
+
   return (
     <div
       ref={setNodeRef}
       {...attributes}
       {...listeners}
+      onClick={handleClick}
       className="rounded-md px-2.5 py-2 cursor-grab active:cursor-grabbing select-none"
       style={{
         transform: CSS.Transform.toString(transform),

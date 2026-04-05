@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 import type {
   ContentBlock,
   ContentBlockStartBlock,
@@ -9,6 +10,9 @@ import type {
   PermissionRequestPayload,
 } from "@/lib/protocol";
 import { useUsageStore } from "./usage";
+
+/** Maximum number of messages to persist to localStorage */
+const MAX_PERSISTED_MESSAGES = 100;
 
 // ─── Internal streaming accumulator ─────────────────────────────────────────
 
@@ -294,7 +298,9 @@ const DEFAULT_STATE: Omit<
   sessionAllowedTools: new Set(),
 };
 
-export const useConversationStore = create<ConversationState>()((set, get) => ({
+export const useConversationStore = create<ConversationState>()(
+  persist(
+  (set, get) => ({
   ...DEFAULT_STATE,
 
   addUserMessage(text: string) {
@@ -572,7 +578,17 @@ export const useConversationStore = create<ConversationState>()((set, get) => ({
   isToolAllowedForSession(toolName: string) {
     return get().sessionAllowedTools.has(toolName);
   },
-}));
+}),
+  {
+    name: "vantage-conversation",
+    partialize: (state) => ({
+      messages: state.messages.slice(-MAX_PERSISTED_MESSAGES),
+      session: state.session,
+      totalCost: state.totalCost,
+      totalTokens: state.totalTokens,
+    }),
+  },
+));
 
 // Re-export types that downstream modules will need
 export type { ContentBlock };

@@ -22,6 +22,8 @@ export interface LayoutState {
   activePanelTab: "terminal" | "browser" | "verification";
   /** View mode for the agents panel: kanban board or tree hierarchy */
   agentsViewMode: "kanban" | "tree";
+  /** Currently selected agent ID for the detail panel (null = no agent selected) */
+  selectedAgentId: string | null;
   togglePrimarySidebar: () => void;
   toggleSecondarySidebar: () => void;
   togglePanel: () => void;
@@ -34,6 +36,7 @@ export interface LayoutState {
   setPreviewActive: (active: boolean) => void;
   setActivePanelTab: (tab: "terminal" | "browser" | "verification") => void;
   setAgentsViewMode: (mode: "kanban" | "tree") => void;
+  setSelectedAgentId: (id: string | null) => void;
 }
 
 export const useLayoutStore = create<LayoutState>()(
@@ -51,6 +54,7 @@ export const useLayoutStore = create<LayoutState>()(
       previewActive: false,
       activePanelTab: "terminal",
       agentsViewMode: "kanban",
+      selectedAgentId: null,
       togglePrimarySidebar: () => set({ primarySidebarVisible: !get().primarySidebarVisible }),
       toggleSecondarySidebar: () => set({ secondarySidebarVisible: !get().secondarySidebarVisible }),
       togglePanel: () => set({ panelVisible: !get().panelVisible }),
@@ -79,6 +83,7 @@ export const useLayoutStore = create<LayoutState>()(
       setPreviewActive: (active) => set({ previewActive: active }),
       setActivePanelTab: (tab) => set({ activePanelTab: tab }),
       setAgentsViewMode: (mode) => set({ agentsViewMode: mode }),
+      setSelectedAgentId: (id) => set({ selectedAgentId: id }),
     }),
     {
       name: "vantage-layout",
@@ -95,6 +100,7 @@ export const useLayoutStore = create<LayoutState>()(
         previewActive: state.previewActive,
         activePanelTab: state.activePanelTab,
         agentsViewMode: state.agentsViewMode,
+        selectedAgentId: state.selectedAgentId,
       }),
     }
   )

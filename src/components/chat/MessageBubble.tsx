@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { User, Brain } from "lucide-react";
+import { User, Brain, Copy, Check } from "lucide-react";
 import type { ConversationMessage } from "@/stores/conversation";
 import { CodeBlock } from "./CodeBlock";
 import { ToolCallCard } from "./ToolCallCard";
@@ -69,14 +69,40 @@ function UserBubble({ message }: { message: ConversationMessage }) {
 
 function AssistantBubble({ message }: { message: ConversationMessage }) {
   const [thinkingExpanded, setThinkingExpanded] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const totalTokens = message.usage
     ? message.usage.input_tokens + message.usage.output_tokens
     : null;
 
+  const handleCopy = useCallback(() => {
+    const textToCopy = message.text || message.thinking || "";
+    navigator.clipboard.writeText(textToCopy).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }).catch((err) => {
+      console.error("Failed to copy message:", err);
+    });
+  }, [message.text, message.thinking]);
+
   return (
-    <div className="flex justify-start mb-3">
-      <div className="max-w-[95%] w-full">
+    <div className="flex justify-start mb-3 group/msg">
+      <div className="max-w-[95%] w-full relative">
+        {/* Copy button — appears on hover */}
+        <button
+          type="button"
+          onClick={handleCopy}
+          className="absolute top-0 right-0 p-1 rounded opacity-0 group-hover/msg:opacity-100 transition-opacity z-10"
+          style={{
+            backgroundColor: "var(--color-surface-0)",
+            color: copied ? "var(--color-green)" : "var(--color-overlay-1)",
+          }}
+          aria-label="Copy message"
+          title="Copy message text"
+        >
+          {copied ? <Check size={12} /> : <Copy size={12} />}
+        </button>
+
         {/* Thinking section (collapsible) */}
         {message.thinking && (
           <div className="mb-2">

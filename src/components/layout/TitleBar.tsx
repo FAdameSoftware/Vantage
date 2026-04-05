@@ -1,9 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Minus, Square, X, Copy } from "lucide-react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { invoke } from "@tauri-apps/api/core";
+import { useEditorStore, selectDirtyTabIds } from "@/stores/editor";
 
 function WindowControls() {
   const [isMaximized, setIsMaximized] = useState(false);
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const dirtyTabIds = useEditorStore(selectDirtyTabIds);
 
   useEffect(() => {
     const appWindow = getCurrentWindow();
@@ -38,42 +42,135 @@ function WindowControls() {
     getCurrentWindow().toggleMaximize();
   };
 
-  const handleClose = () => {
+  const saveAllAndClose = useCallback(async () => {
+    const { tabs, markSaved } = useEditorStore.getState();
+    const dirty = tabs.filter((t) => t.isDirty);
+    for (const tab of dirty) {
+      try {
+        await invoke("write_file", { path: tab.path, content: tab.content });
+        markSaved(tab.id, tab.content);
+      } catch (err) {
+        console.error(`Failed to save ${tab.path}:`, err);
+      }
+    }
     getCurrentWindow().close();
+  }, []);
+
+  const discardAndClose = useCallback(() => {
+    getCurrentWindow().close();
+  }, []);
+
+  const handleClose = () => {
+    if (dirtyTabIds.length > 0) {
+      setShowSaveDialog(true);
+    } else {
+      getCurrentWindow().close();
+    }
   };
 
   const buttonBase =
     "flex items-center justify-center w-12 h-full transition-colors";
 
+  const dirtyTabs = useEditorStore((s) => s.tabs.filter((t) => t.isDirty));
+
   return (
-    <div className="flex items-center h-full ml-auto">
-      <button
-        className={`${buttonBase} hover:bg-[var(--color-surface-1)]`}
-        onClick={handleMinimize}
-        aria-label="Minimize"
-        style={{ color: "var(--color-subtext-0)" }}
-      >
-        <Minus size={14} />
-      </button>
+    <>
+      <div className="flex items-center h-full ml-auto">
+        <button
+          className={`${buttonBase} hover:bg-[var(--color-surface-1)]`}
+          onClick={handleMinimize}
+          aria-label="Minimize"
+          style={{ color: "var(--color-subtext-0)" }}
+        >
+          <Minus size={14} />
+        </button>
 
-      <button
-        className={`${buttonBase} hover:bg-[var(--color-surface-1)]`}
-        onClick={handleMaximize}
-        aria-label={isMaximized ? "Restore" : "Maximize"}
-        style={{ color: "var(--color-subtext-0)" }}
-      >
-        {isMaximized ? <Copy size={12} /> : <Square size={12} />}
-      </button>
+        <button
+          className={`${buttonBase} hover:bg-[var(--color-surface-1)]`}
+          onClick={handleMaximize}
+          aria-label={isMaximized ? "Restore" : "Maximize"}
+          style={{ color: "var(--color-subtext-0)" }}
+        >
+          {isMaximized ? <Copy size={12} /> : <Square size={12} />}
+        </button>
 
-      <button
-        className={`${buttonBase} hover:bg-[var(--color-red)] hover:text-white`}
-        onClick={handleClose}
-        aria-label="Close"
-        style={{ color: "var(--color-subtext-0)" }}
-      >
-        <X size={14} />
-      </button>
-    </div>
+        <button
+          className={`${buttonBase} hover:bg-[var(--color-red)] hover:text-white`}
+          onClick={handleClose}
+          aria-label="Close"
+          style={{ color: "var(--color-subtext-0)" }}
+        >
+          <X size={14} />
+        </button>
+      </div>
+
+      {/* Save-on-close confirmation dialog */}
+      {showSaveDialog && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
+          <div
+            className="rounded-lg shadow-xl p-5 max-w-sm w-full mx-4"
+            style={{
+              backgroundColor: "var(--color-surface-0)",
+              border: "1px solid var(--color-surface-1)",
+            }}
+          >
+            <h3
+              className="text-sm font-semibold mb-3"
+              style={{ color: "var(--color-text)" }}
+            >
+              Unsaved Changes
+            </h3>
+            <p
+              className="text-xs mb-3"
+              style={{ color: "var(--color-subtext-0)" }}
+            >
+              The following files have unsaved changes:
+            </p>
+            <ul
+              className="text-xs mb-4 list-disc pl-4 max-h-32 overflow-y-auto"
+              style={{ color: "var(--color-text)" }}
+            >
+              {dirtyTabs.map((t) => (
+                <li key={t.id} className="truncate">{t.name}</li>
+              ))}
+            </ul>
+            <div className="flex items-center justify-end gap-2">
+              <button
+                className="px-3 py-1.5 text-xs rounded transition-colors"
+                style={{
+                  backgroundColor: "transparent",
+                  color: "var(--color-subtext-0)",
+                  border: "1px solid var(--color-surface-1)",
+                }}
+                onClick={() => setShowSaveDialog(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-3 py-1.5 text-xs rounded transition-colors"
+                style={{
+                  backgroundColor: "var(--color-red)",
+                  color: "var(--color-base)",
+                }}
+                onClick={discardAndClose}
+              >
+                Discard & Close
+              </button>
+              <button
+                className="px-3 py-1.5 text-xs rounded transition-colors"
+                style={{
+                  backgroundColor: "var(--color-blue)",
+                  color: "var(--color-base)",
+                }}
+                onClick={saveAllAndClose}
+              >
+                Save All & Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 

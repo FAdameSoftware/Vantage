@@ -178,6 +178,7 @@ export interface AgentsState {
     model?: string;
     role?: AgentRole;
     parentId?: string | null;
+    pipeline?: PipelineConfig | null;
   }) => string; // returns agent ID
 
   /** Create a child agent under a coordinator */
@@ -285,7 +286,7 @@ export const useAgentsStore = create<AgentsState>()((set, get) => ({
   },
   maxConcurrentAgents: 3,
 
-  createAgent({ name, taskDescription, model, role = "builder", parentId = null }) {
+  createAgent({ name, taskDescription, model, role = "builder", parentId = null, pipeline = null }) {
     const id = crypto.randomUUID();
     const { agents } = get();
     const color = pickLeastUsedColor(agents);
@@ -310,7 +311,7 @@ export const useAgentsStore = create<AgentsState>()((set, get) => ({
       role,
       parentId,
       childIds: [],
-      pipeline: null,
+      pipeline: role === "coordinator" ? pipeline : null,
       timeline: [],
     };
 
@@ -337,6 +338,29 @@ export const useAgentsStore = create<AgentsState>()((set, get) => ({
         },
       };
     });
+
+    // Auto-spawn specialist agents when a coordinator is created with a pipeline config
+    if (role === "coordinator" && pipeline) {
+      for (const specialistTask of pipeline.specialists) {
+        get().createAgent({
+          name: `Specialist: ${specialistTask.slice(0, 40)}`,
+          taskDescription: specialistTask,
+          model,
+          role: "specialist",
+          parentId: id,
+        });
+      }
+      // If a verifier model is specified, create a verifier agent
+      if (pipeline.verifierModel) {
+        get().createAgent({
+          name: `Verifier (${name})`,
+          taskDescription: `Verify the work of specialists under coordinator "${name}"`,
+          model: pipeline.verifierModel,
+          role: "verifier",
+          parentId: id,
+        });
+      }
+    }
 
     return id;
   },
