@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import {
   Files,
   Search,
@@ -13,6 +14,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useLayoutStore, type ActivityBarItem } from "@/stores/layout";
+import { useGitStatus } from "@/hooks/useGitStatus";
+import { useAgentsStore } from "@/stores/agents";
 
 interface ActivityBarEntry {
   id: ActivityBarItem;
@@ -32,7 +35,31 @@ const bottomItems: ActivityBarEntry[] = [
   { id: "settings", icon: Settings, label: "Settings", shortcut: "Ctrl+," },
 ];
 
-function ActivityBarButton({ entry }: { entry: ActivityBarEntry }) {
+/** Small numeric badge displayed at top-right of an activity bar icon. */
+function Badge({ count }: { count: number }) {
+  if (count <= 0) return null;
+  return (
+    <span
+      className="absolute -top-0.5 -right-1 flex items-center justify-center text-[9px] font-bold leading-none text-white rounded-full"
+      style={{
+        backgroundColor: "var(--color-blue)",
+        minWidth: 16,
+        height: 16,
+        padding: "0 4px",
+      }}
+    >
+      {count > 99 ? "99+" : count}
+    </span>
+  );
+}
+
+function ActivityBarButton({
+  entry,
+  badge,
+}: {
+  entry: ActivityBarEntry;
+  badge?: number;
+}) {
   const activeItem = useLayoutStore((s) => s.activeActivityBarItem);
   const primarySidebarVisible = useLayoutStore((s) => s.primarySidebarVisible);
   const setActiveItem = useLayoutStore((s) => s.setActiveActivityBarItem);
@@ -63,7 +90,10 @@ function ActivityBarButton({ entry }: { entry: ActivityBarEntry }) {
                 style={{ backgroundColor: "var(--color-blue)" }}
               />
             )}
-            <entry.icon size={22} strokeWidth={1.5} />
+            <span className="relative inline-flex">
+              <entry.icon size={22} strokeWidth={1.5} />
+              <Badge count={badge ?? 0} />
+            </span>
           </button>
         }
       />
@@ -78,6 +108,25 @@ function ActivityBarButton({ entry }: { entry: ActivityBarEntry }) {
 }
 
 export function ActivityBar() {
+  const projectRootPath = useLayoutStore((s) => s.projectRootPath);
+  const { allStatuses } = useGitStatus(projectRootPath);
+  const agentsMap = useAgentsStore((s) => s.agents);
+
+  const gitDirtyCount = allStatuses.length;
+  const activeAgentCount = useMemo(
+    () =>
+      [...agentsMap.values()].filter(
+        (a) => a.status === "working" || a.status === "waiting_permission",
+      ).length,
+    [agentsMap],
+  );
+
+  /** Map activity bar item IDs to badge counts */
+  const badges: Partial<Record<ActivityBarItem, number>> = {
+    git: gitDirtyCount,
+    agents: activeAgentCount,
+  };
+
   return (
     <TooltipProvider>
       <div
@@ -88,12 +137,20 @@ export function ActivityBar() {
       >
         <div className="flex flex-col">
           {topItems.map((entry) => (
-            <ActivityBarButton key={entry.id} entry={entry} />
+            <ActivityBarButton
+              key={entry.id}
+              entry={entry}
+              badge={badges[entry.id]}
+            />
           ))}
         </div>
         <div className="flex flex-col">
           {bottomItems.map((entry) => (
-            <ActivityBarButton key={entry.id} entry={entry} />
+            <ActivityBarButton
+              key={entry.id}
+              entry={entry}
+              badge={badges[entry.id]}
+            />
           ))}
         </div>
       </div>
