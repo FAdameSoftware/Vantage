@@ -3,8 +3,10 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
-use tauri::AppHandle;
+use tauri::{AppHandle, Emitter};
 use tokio::sync::Mutex;
+
+use super::protocol::ClaudeStatusPayload;
 
 use super::process::{ClaudeProcess, SpawnOptions};
 
@@ -63,7 +65,9 @@ impl SessionManager {
     }
 
     /// Send a user message to an active session.
+    /// Returns an error if the session has crashed or is not found.
     pub async fn send_message(&self, session_id: &str, content: &str) -> Result<(), String> {
+        self.check_session_health(session_id).await?;
         let procs = self.processes.lock().await;
         let process = procs
             .get(session_id)
@@ -72,6 +76,7 @@ impl SessionManager {
     }
 
     /// Send a permission response to an active session.
+    /// Returns an error if the session has crashed or is not found.
     pub async fn send_permission_response(
         &self,
         session_id: &str,
@@ -79,6 +84,7 @@ impl SessionManager {
         updated_input: Option<serde_json::Value>,
         deny_reason: Option<String>,
     ) -> Result<(), String> {
+        self.check_session_health(session_id).await?;
         let procs = self.processes.lock().await;
         let process = procs
             .get(session_id)
@@ -89,7 +95,9 @@ impl SessionManager {
     }
 
     /// Interrupt generation in a session.
+    /// Returns an error if the session has crashed or is not found.
     pub async fn interrupt_session(&self, session_id: &str) -> Result<(), String> {
+        self.check_session_health(session_id).await?;
         let procs = self.processes.lock().await;
         let process = procs
             .get(session_id)
@@ -132,6 +140,43 @@ impl SessionManager {
         } else {
             false
         }
+    }
+
+    /// Check if a session's underlying process is still alive.
+    /// If the process has crashed (is_alive returns false but session is still tracked),
+    /// emit a "crashed" status event and remove the dead session.
+    async fn check_session_health(&self, session_id: &str) -> Result<(), String> {
+        let is_dead = {
+            let procs = self.processes.lock().await;
+            if let Some(process) = procs.get(session_id) {
+                !process.is_alive().await
+            } else {
+                // Session not found -- let the caller handle it
+                return Ok(());
+            }
+        };
+
+        if is_dead {
+            // Remove the dead session
+            let mut procs = self.processes.lock().await;
+            procs.remove(session_id);
+
+            // Emit crashed status so the frontend knows
+            let _ = self.app_handle.emit(
+                "claude_status",
+                ClaudeStatusPayload {
+                    session_id: session_id.to_string(),
+                    status: "crashed".to_string(),
+                    error: Some("Claude CLI process exited unexpectedly".to_string()),
+                },
+            );
+
+            return Err(format!(
+                "Session {session_id} has crashed (process exited unexpectedly)"
+            ));
+        }
+
+        Ok(())
     }
 
     /// Get the CLI-assigned session ID for a session.

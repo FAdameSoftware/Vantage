@@ -1,3 +1,4 @@
+use std::collections::VecDeque;
 use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{Child, ChildStdin, Command};
@@ -234,17 +235,25 @@ impl ClaudeProcess {
             });
         }
 
-        // Spawn stderr reader task
+        // Spawn stderr reader task (bounded: keeps only last MAX_STDERR_LINES)
         {
             let app = app_handle.clone();
             let sid = session_id.to_string();
 
             tokio::spawn(async move {
+                const MAX_STDERR_LINES: usize = 100;
                 let reader = BufReader::new(child_stderr);
                 let mut lines = reader.lines();
+                let mut _buffer: VecDeque<String> = VecDeque::with_capacity(MAX_STDERR_LINES);
 
                 while let Ok(Some(line)) = lines.next_line().await {
                     eprintln!("[claude stderr] {line}");
+
+                    // Keep only the last MAX_STDERR_LINES in memory
+                    if _buffer.len() >= MAX_STDERR_LINES {
+                        _buffer.pop_front();
+                    }
+                    _buffer.push_back(line.clone());
 
                     // Emit error status for lines that look like errors
                     let lower = line.to_lowercase();

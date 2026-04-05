@@ -303,3 +303,143 @@ pub fn rebase_branch(worktree_path: &str, onto_branch: &str) -> Result<bool, Str
         Err(format!("Rebase failed (aborted): {}", stderr.trim()))
     }
 }
+
+// ── Tests ─────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ── validate_quality_gate_command tests ────────────────────────
+
+    #[test]
+    fn quality_gate_accepts_npm_test() {
+        assert!(validate_quality_gate_command("npm test").is_ok());
+    }
+
+    #[test]
+    fn quality_gate_accepts_cargo_test() {
+        assert!(validate_quality_gate_command("cargo test").is_ok());
+    }
+
+    #[test]
+    fn quality_gate_accepts_npx_vitest() {
+        assert!(validate_quality_gate_command("npx vitest run").is_ok());
+    }
+
+    #[test]
+    fn quality_gate_accepts_npm_run_lint() {
+        assert!(validate_quality_gate_command("npm run lint").is_ok());
+    }
+
+    #[test]
+    fn quality_gate_accepts_yarn() {
+        assert!(validate_quality_gate_command("yarn test").is_ok());
+    }
+
+    #[test]
+    fn quality_gate_accepts_pnpm() {
+        assert!(validate_quality_gate_command("pnpm run build").is_ok());
+    }
+
+    #[test]
+    fn quality_gate_accepts_eslint() {
+        assert!(validate_quality_gate_command("eslint src/").is_ok());
+    }
+
+    #[test]
+    fn quality_gate_accepts_playwright() {
+        assert!(validate_quality_gate_command("playwright test").is_ok());
+    }
+
+    #[test]
+    fn quality_gate_rejects_semicolon_injection() {
+        let result = validate_quality_gate_command("npm test; rm -rf /");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("forbidden character"));
+    }
+
+    #[test]
+    fn quality_gate_rejects_pipe_injection() {
+        let result = validate_quality_gate_command("npm test | cat /etc/passwd");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("forbidden character"));
+    }
+
+    #[test]
+    fn quality_gate_rejects_dollar_injection() {
+        let result = validate_quality_gate_command("$(whoami)");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("forbidden character"));
+    }
+
+    #[test]
+    fn quality_gate_rejects_backtick_injection() {
+        let result = validate_quality_gate_command("`whoami`");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("forbidden character"));
+    }
+
+    #[test]
+    fn quality_gate_rejects_ampersand_injection() {
+        let result = validate_quality_gate_command("npm test && rm -rf /");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("forbidden character"));
+    }
+
+    #[test]
+    fn quality_gate_rejects_unknown_command() {
+        let result = validate_quality_gate_command("rm -rf /");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("does not match any allowed prefix"));
+    }
+
+    #[test]
+    fn quality_gate_rejects_empty() {
+        let result = validate_quality_gate_command("");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("must not be empty"));
+    }
+
+    #[test]
+    fn quality_gate_rejects_whitespace_only() {
+        let result = validate_quality_gate_command("   ");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("must not be empty"));
+    }
+
+    // ── validate_branch_name tests (merge_queue copy) ─────────────
+
+    #[test]
+    fn merge_branch_name_accepts_valid() {
+        assert!(validate_branch_name("main").is_ok());
+        assert!(validate_branch_name("feature/new-feature").is_ok());
+        assert!(validate_branch_name("release-1.0").is_ok());
+    }
+
+    #[test]
+    fn merge_branch_name_rejects_dotdot() {
+        let result = validate_branch_name("feature/../main");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("'..' is not allowed"));
+    }
+
+    #[test]
+    fn merge_branch_name_rejects_injection() {
+        let result = validate_branch_name("; rm -rf /");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn merge_branch_name_rejects_spaces() {
+        let result = validate_branch_name("my branch");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn merge_branch_name_rejects_empty() {
+        let result = validate_branch_name("");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("must not be empty"));
+    }
+}

@@ -267,3 +267,213 @@ pub fn delete_dir(path: &str) -> Result<(), String> {
 
     fs::remove_dir_all(dir_path).map_err(|e| format!("Failed to delete directory: {}", e))
 }
+
+// ── Tests ─────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+
+    // ── Path validation tests ─────────────────────────────────────
+
+    #[test]
+    fn validate_path_rejects_traversal_unix_style() {
+        let result = validate_path("/home/user/project/../../../etc/passwd");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("directory traversal"));
+    }
+
+    #[test]
+    fn validate_path_rejects_traversal_windows_style() {
+        let result = validate_path("C:\\Users\\user\\project\\..\\..\\..\\Windows\\System32");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("directory traversal"));
+    }
+
+    #[test]
+    fn validate_path_rejects_empty() {
+        let result = validate_path("");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("must not be empty"));
+    }
+
+    #[test]
+    fn validate_path_rejects_sensitive_ssh() {
+        let result = validate_path("/home/user/.ssh/id_rsa");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("sensitive"));
+    }
+
+    #[test]
+    fn validate_path_rejects_sensitive_aws() {
+        let result = validate_path("/home/user/.aws/credentials");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("sensitive"));
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn validate_path_rejects_windows_system() {
+        let result = validate_path("C:\\Windows\\System32\\cmd.exe");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("system path"));
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    #[test]
+    fn validate_path_rejects_etc_passwd() {
+        let result = validate_path("/etc/passwd");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("system path"));
+    }
+
+    #[test]
+    fn validate_path_accepts_normal_project_path() {
+        // Use a plausible absolute path for the current platform
+        let path = if cfg!(windows) {
+            "C:\\Users\\dev\\project\\src\\main.rs"
+        } else {
+            "/home/dev/project/src/main.rs"
+        };
+        let result = validate_path(path);
+        assert!(result.is_ok());
+    }
+
+    // ── read_file tests ───────────────────────────────────────────
+
+    #[test]
+    fn read_file_with_valid_path() {
+        // Create a temp file, read it back
+        let dir = std::env::temp_dir().join("vantage_test_read");
+        let _ = fs::create_dir_all(&dir);
+        let file_path = dir.join("hello.txt");
+        fs::write(&file_path, "hello world").unwrap();
+
+        let result = read_file(file_path.to_str().unwrap());
+        assert!(result.is_ok());
+        let fc = result.unwrap();
+        assert_eq!(fc.content, "hello world");
+        assert_eq!(fc.language, "plaintext");
+
+        // Cleanup
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn read_file_nonexistent_returns_error() {
+        let path = if cfg!(windows) {
+            "C:\\vantage_nonexistent_abc123\\file.txt"
+        } else {
+            "/tmp/vantage_nonexistent_abc123/file.txt"
+        };
+        let result = read_file(path);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("does not exist"));
+    }
+
+    // ── write_file tests ──────────────────────────────────────────
+
+    #[test]
+    fn write_file_creates_parent_directories() {
+        let dir = std::env::temp_dir().join("vantage_test_write_parents");
+        let file_path = dir.join("sub").join("deep").join("file.txt");
+        // Ensure clean state
+        let _ = fs::remove_dir_all(&dir);
+
+        let result = write_file(file_path.to_str().unwrap(), "nested content");
+        assert!(result.is_ok());
+        assert!(file_path.exists());
+        assert_eq!(fs::read_to_string(&file_path).unwrap(), "nested content");
+
+        // Cleanup
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ── delete_file tests ─────────────────────────────────────────
+
+    #[test]
+    fn delete_file_rejects_nonexistent() {
+        let path = if cfg!(windows) {
+            "C:\\vantage_nonexistent_del\\file.txt"
+        } else {
+            "/tmp/vantage_nonexistent_del/file.txt"
+        };
+        let result = delete_file(path);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("does not exist"));
+    }
+
+    // ── Language detection tests ──────────────────────────────────
+
+    #[test]
+    fn detect_language_typescript() {
+        assert_eq!(detect_language("app.ts"), "typescript");
+        assert_eq!(detect_language("component.tsx"), "typescript");
+    }
+
+    #[test]
+    fn detect_language_javascript() {
+        assert_eq!(detect_language("index.js"), "javascript");
+        assert_eq!(detect_language("module.mjs"), "javascript");
+        assert_eq!(detect_language("config.cjs"), "javascript");
+        assert_eq!(detect_language("app.jsx"), "javascript");
+    }
+
+    #[test]
+    fn detect_language_rust() {
+        assert_eq!(detect_language("main.rs"), "rust");
+    }
+
+    #[test]
+    fn detect_language_python() {
+        assert_eq!(detect_language("script.py"), "python");
+    }
+
+    #[test]
+    fn detect_language_json() {
+        assert_eq!(detect_language("package.json"), "json");
+    }
+
+    #[test]
+    fn detect_language_yaml() {
+        assert_eq!(detect_language("config.yaml"), "yaml");
+        assert_eq!(detect_language("ci.yml"), "yaml");
+    }
+
+    #[test]
+    fn detect_language_markdown() {
+        assert_eq!(detect_language("README.md"), "markdown");
+        assert_eq!(detect_language("page.mdx"), "markdown");
+    }
+
+    #[test]
+    fn detect_language_html_css() {
+        assert_eq!(detect_language("index.html"), "html");
+        assert_eq!(detect_language("style.css"), "css");
+        assert_eq!(detect_language("style.scss"), "scss");
+    }
+
+    #[test]
+    fn detect_language_shell() {
+        assert_eq!(detect_language("run.sh"), "shell");
+        assert_eq!(detect_language("init.bash"), "shell");
+    }
+
+    #[test]
+    fn detect_language_go() {
+        assert_eq!(detect_language("main.go"), "go");
+    }
+
+    #[test]
+    fn detect_language_cpp() {
+        assert_eq!(detect_language("main.cpp"), "cpp");
+        assert_eq!(detect_language("header.hpp"), "cpp");
+    }
+
+    #[test]
+    fn detect_language_unknown_returns_plaintext() {
+        assert_eq!(detect_language("file.xyz"), "plaintext");
+        assert_eq!(detect_language("noextension"), "plaintext");
+    }
+}

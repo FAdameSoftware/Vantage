@@ -623,6 +623,17 @@ pub fn run() {
 
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("error while running Vantage");
+        .build(tauri::generate_context!())
+        .expect("error while building Vantage")
+        .run(|app_handle, event| {
+            // 4B: Kill all managed Claude CLI processes on app exit
+            if let tauri::RunEvent::ExitRequested { .. } = &event {
+                let handle = app_handle.clone();
+                tauri::async_runtime::block_on(async {
+                    let state = handle.state::<TokioMutex<SessionManager>>();
+                    let manager = state.lock().await;
+                    manager.stop_all().await;
+                });
+            }
+        });
 }

@@ -492,6 +492,215 @@ fn is_leap_year(year: i64) -> bool {
     (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)
 }
 
+// ── Tests ─────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ── validate_git_ref tests ────────────────────────────────────
+
+    #[test]
+    fn git_ref_accepts_main() {
+        assert!(validate_git_ref("main").is_ok());
+    }
+
+    #[test]
+    fn git_ref_accepts_feature_branch() {
+        assert!(validate_git_ref("feature/my-branch").is_ok());
+    }
+
+    #[test]
+    fn git_ref_accepts_version_tag() {
+        assert!(validate_git_ref("v1.0.0").is_ok());
+    }
+
+    #[test]
+    fn git_ref_accepts_head() {
+        assert!(validate_git_ref("HEAD").is_ok());
+    }
+
+    #[test]
+    fn git_ref_accepts_head_tilde() {
+        assert!(validate_git_ref("HEAD~1").is_ok());
+    }
+
+    #[test]
+    fn git_ref_accepts_head_caret() {
+        assert!(validate_git_ref("HEAD^2").is_ok());
+    }
+
+    #[test]
+    fn git_ref_rejects_semicolon_injection() {
+        let result = validate_git_ref("; rm -rf /");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Invalid git ref"));
+    }
+
+    #[test]
+    fn git_ref_rejects_dollar_injection() {
+        let result = validate_git_ref("$(whoami)");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Invalid git ref"));
+    }
+
+    #[test]
+    fn git_ref_rejects_backtick_injection() {
+        let result = validate_git_ref("`whoami`");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Invalid git ref"));
+    }
+
+    #[test]
+    fn git_ref_rejects_pipe_injection() {
+        let result = validate_git_ref("main | cat /etc/passwd");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn git_ref_rejects_empty() {
+        let result = validate_git_ref("");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("must not be empty"));
+    }
+
+    #[test]
+    fn git_ref_rejects_too_long() {
+        let long_ref = "a".repeat(257);
+        let result = validate_git_ref(&long_ref);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("too long"));
+    }
+
+    // ── validate_commit_hash tests ────────────────────────────────
+
+    #[test]
+    fn commit_hash_accepts_full_sha() {
+        assert!(validate_commit_hash("a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2").is_ok());
+    }
+
+    #[test]
+    fn commit_hash_accepts_short_sha() {
+        assert!(validate_commit_hash("a1b2c3d").is_ok());
+    }
+
+    #[test]
+    fn commit_hash_accepts_minimum_length() {
+        assert!(validate_commit_hash("abcd").is_ok());
+    }
+
+    #[test]
+    fn commit_hash_rejects_non_hex() {
+        let result = validate_commit_hash("zzzzzzzz");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("hex characters"));
+    }
+
+    #[test]
+    fn commit_hash_rejects_too_short() {
+        let result = validate_commit_hash("abc");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("4-40"));
+    }
+
+    #[test]
+    fn commit_hash_rejects_too_long() {
+        let long_hash = "a".repeat(41);
+        let result = validate_commit_hash(&long_hash);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("4-40"));
+    }
+
+    #[test]
+    fn commit_hash_rejects_empty() {
+        let result = validate_commit_hash("");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("must not be empty"));
+    }
+
+    #[test]
+    fn commit_hash_rejects_injection() {
+        let result = validate_commit_hash("; rm -rf /");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn commit_hash_rejects_shell_expansion() {
+        let result = validate_commit_hash("$(whoami)");
+        assert!(result.is_err());
+    }
+
+    // ── validate_git_file_path tests ──────────────────────────────
+
+    #[test]
+    fn git_file_path_rejects_semicolon() {
+        let result = validate_git_file_path("file.txt; rm -rf /");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("forbidden character"));
+    }
+
+    #[test]
+    fn git_file_path_rejects_pipe() {
+        let result = validate_git_file_path("file.txt | cat");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn git_file_path_rejects_dollar() {
+        let result = validate_git_file_path("$(whoami).txt");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn git_file_path_accepts_normal_path() {
+        assert!(validate_git_file_path("src/main.rs").is_ok());
+    }
+
+    #[test]
+    fn git_file_path_accepts_dotfile() {
+        assert!(validate_git_file_path(".gitignore").is_ok());
+    }
+
+    // ── validate_branch_name tests ────────────────────────────────
+
+    #[test]
+    fn branch_name_accepts_simple() {
+        assert!(validate_branch_name("main").is_ok());
+        assert!(validate_branch_name("develop").is_ok());
+    }
+
+    #[test]
+    fn branch_name_accepts_slashes() {
+        assert!(validate_branch_name("feature/new-thing").is_ok());
+    }
+
+    #[test]
+    fn branch_name_rejects_dotdot() {
+        let result = validate_branch_name("feature/..exploit");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("'..' is not allowed"));
+    }
+
+    #[test]
+    fn branch_name_rejects_spaces() {
+        let result = validate_branch_name("my branch");
+        assert!(result.is_err());
+    }
+
+    // ── unix_to_iso8601 tests ─────────────────────────────────────
+
+    #[test]
+    fn unix_to_iso8601_epoch() {
+        assert_eq!(unix_to_iso8601(0), "1970-01-01T00:00:00Z");
+    }
+
+    #[test]
+    fn unix_to_iso8601_known_date() {
+        // 2024-01-01T00:00:00Z = 1704067200
+        assert_eq!(unix_to_iso8601(1704067200), "2024-01-01T00:00:00Z");
+    }
+}
+
 /// A GitHub pull request summary from `gh pr list`.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct PrInfo {
