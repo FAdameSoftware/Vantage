@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
   GitBranch,
   AlertTriangle,
@@ -42,6 +42,10 @@ export function StatusBar() {
   const setWordWrap = useSettingsStore((s) => s.setWordWrap);
   const showBuddy = useSettingsStore((s) => s.showBuddy);
   const toggleBuddy = useSettingsStore((s) => s.toggleBuddy);
+  const tabSize = useSettingsStore((s) => s.tabSize);
+  const insertSpaces = useSettingsStore((s) => s.insertSpaces);
+  const setTabSize = useSettingsStore((s) => s.setTabSize);
+  const setInsertSpaces = useSettingsStore((s) => s.setInsertSpaces);
   const { branch, isGitRepo } = useGitStatus(projectRootPath);
 
   const sessionStartedAt = useUsageStore((s) => s.sessionStartedAt);
@@ -59,9 +63,13 @@ export function StatusBar() {
   const [showModelSelector, setShowModelSelector] = useState(false);
   const [showLanguageSelector, setShowLanguageSelector] = useState(false);
   const [showBranchPicker, setShowBranchPicker] = useState(false);
+  const [showTabSizeSelector, setShowTabSizeSelector] = useState(false);
+  // EOL: "LF" | "CRLF" — read from active Monaco model, default LF
+  const [eol, setEol] = useState<"LF" | "CRLF">("LF");
   const modelSelectorRef = useRef<HTMLDivElement>(null);
   const languageSelectorRef = useRef<HTMLDivElement>(null);
   const branchPickerRef = useRef<HTMLDivElement>(null);
+  const tabSizeSelectorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!sessionStartedAt) {
@@ -91,7 +99,7 @@ export function StatusBar() {
 
   // Close dropdowns on outside click
   useEffect(() => {
-    if (!showModelSelector && !showLanguageSelector && !showBranchPicker) return;
+    if (!showModelSelector && !showLanguageSelector && !showBranchPicker && !showTabSizeSelector) return;
     function handleClick(e: MouseEvent) {
       if (
         showModelSelector &&
@@ -114,10 +122,28 @@ export function StatusBar() {
       ) {
         setShowBranchPicker(false);
       }
+      if (
+        showTabSizeSelector &&
+        tabSizeSelectorRef.current &&
+        !tabSizeSelectorRef.current.contains(e.target as Node)
+      ) {
+        setShowTabSizeSelector(false);
+      }
     }
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
-  }, [showModelSelector, showLanguageSelector, showBranchPicker]);
+  }, [showModelSelector, showLanguageSelector, showBranchPicker, showTabSizeSelector]);
+
+  // Read EOL from the active Monaco editor model whenever the active tab changes
+  useEffect(() => {
+    const editors = monaco.editor.getEditors();
+    if (editors.length === 0) return;
+    const model = editors[0].getModel();
+    if (!model) return;
+    // Monaco EndOfLineSequence: 0 = LF, 1 = CRLF
+    const eolSeq = model.getEndOfLineSequence();
+    setEol(eolSeq === 1 ? "CRLF" : "LF");
+  }, [activeTab]);
 
   // Map language IDs to display names
   const languageDisplayName = activeTab
@@ -173,6 +199,22 @@ export function StatusBar() {
   const handleNotificationBellClick = () => {
     window.dispatchEvent(new CustomEvent("vantage:toggle-notification-center"));
   };
+
+  const handleTabSizeClick = () => {
+    setShowTabSizeSelector((v) => !v);
+  };
+
+  const handleEolClick = useCallback(() => {
+    // Toggle between LF and CRLF in the active Monaco editor model
+    const editors = monaco.editor.getEditors();
+    if (editors.length === 0) return;
+    const model = editors[0].getModel();
+    if (!model) return;
+    const newEol = eol === "LF" ? "CRLF" : "LF";
+    // Monaco EndOfLineSequence: 0 = LF, 1 = CRLF
+    model.setEOL(newEol === "CRLF" ? 1 : 0);
+    setEol(newEol);
+  }, [eol]);
 
   return (
     <div className="relative">
@@ -309,6 +351,52 @@ export function StatusBar() {
           >
             Ln {cursorPosition.line}, Col {cursorPosition.column}
           </button>
+
+          {/* EOL (line ending) -> click toggles LF / CRLF */}
+          {activeTab && (
+            <button
+              className="hover:text-[var(--color-text)] transition-colors"
+              onClick={handleEolClick}
+              title={`Line Ending: ${eol}. Click to toggle.`}
+              aria-label={`Line ending: ${eol}. Click to toggle between LF and CRLF.`}
+            >
+              {eol}
+            </button>
+          )}
+
+          {/* Encoding — always UTF-8 */}
+          {activeTab && (
+            <span
+              className="cursor-default"
+              title="File encoding: UTF-8"
+              aria-label="Encoding: UTF-8"
+            >
+              UTF-8
+            </span>
+          )}
+
+          {/* Tab size -> click opens selector dropdown */}
+          {activeTab && (
+            <div ref={tabSizeSelectorRef} className="relative">
+              <button
+                className="hover:text-[var(--color-text)] transition-colors"
+                onClick={handleTabSizeClick}
+                title="Indentation settings. Click to change."
+                aria-label={`Indentation: ${insertSpaces ? "Spaces" : "Tab"}: ${tabSize}. Click to change.`}
+              >
+                {insertSpaces ? "Spaces" : "Tab"}: {tabSize}
+              </button>
+              {showTabSizeSelector && (
+                <TabSizeSelectorDropdown
+                  tabSize={tabSize}
+                  insertSpaces={insertSpaces}
+                  onTabSizeChange={(size) => { setTabSize(size); setShowTabSizeSelector(false); }}
+                  onInsertSpacesChange={(v) => { setInsertSpaces(v); setShowTabSizeSelector(false); }}
+                  onClose={() => setShowTabSizeSelector(false)}
+                />
+              )}
+            </div>
+          )}
 
           {/* Word Wrap toggle */}
           <button
@@ -738,6 +826,105 @@ function LanguageSelectorDropdown({
           )}
         </button>
       ))}
+    </div>
+  );
+}
+
+// ── Tab Size Selector Dropdown ────────────────────────────────────────────
+
+function TabSizeSelectorDropdown({
+  tabSize,
+  insertSpaces,
+  onTabSizeChange,
+  onInsertSpacesChange,
+  onClose,
+}: {
+  tabSize: number;
+  insertSpaces: boolean;
+  onTabSizeChange: (size: number) => void;
+  onInsertSpacesChange: (v: boolean) => void;
+  onClose: () => void;
+}) {
+  const TAB_SIZES = [1, 2, 3, 4, 6, 8];
+
+  return (
+    <div
+      className="absolute bottom-7 right-0 z-50 rounded shadow-lg py-1 min-w-[180px]"
+      style={{
+        backgroundColor: "var(--color-surface-0)",
+        border: "1px solid var(--color-surface-1)",
+      }}
+      role="listbox"
+      aria-label="Indentation settings"
+    >
+      {/* Indent using spaces vs tabs */}
+      <button
+        type="button"
+        className="flex items-center w-full px-3 py-1.5 text-left text-xs hover:bg-[var(--color-surface-1)] transition-colors"
+        onClick={() => onInsertSpacesChange(true)}
+      >
+        <span style={{ color: insertSpaces ? "var(--color-blue)" : "var(--color-text)" }}>
+          Indent Using Spaces
+        </span>
+        {insertSpaces && (
+          <span className="ml-auto text-[10px]" style={{ color: "var(--color-blue)" }}>
+            active
+          </span>
+        )}
+      </button>
+      <button
+        type="button"
+        className="flex items-center w-full px-3 py-1.5 text-left text-xs hover:bg-[var(--color-surface-1)] transition-colors"
+        onClick={() => onInsertSpacesChange(false)}
+      >
+        <span style={{ color: !insertSpaces ? "var(--color-blue)" : "var(--color-text)" }}>
+          Indent Using Tabs
+        </span>
+        {!insertSpaces && (
+          <span className="ml-auto text-[10px]" style={{ color: "var(--color-blue)" }}>
+            active
+          </span>
+        )}
+      </button>
+
+      <div className="my-0.5" style={{ borderTop: "1px solid var(--color-surface-1)" }} />
+
+      {/* Tab size options */}
+      <div
+        className="px-3 py-1 text-[10px] font-medium uppercase tracking-wide"
+        style={{ color: "var(--color-overlay-1)" }}
+      >
+        {insertSpaces ? "Spaces per Tab" : "Tab Size"}
+      </div>
+      {TAB_SIZES.map((size) => (
+        <button
+          key={size}
+          type="button"
+          role="option"
+          aria-selected={tabSize === size}
+          className="flex items-center w-full px-3 py-1 text-left text-xs hover:bg-[var(--color-surface-1)] transition-colors"
+          onClick={() => onTabSizeChange(size)}
+        >
+          <span style={{ color: tabSize === size ? "var(--color-blue)" : "var(--color-text)" }}>
+            {size}
+          </span>
+          {tabSize === size && (
+            <span className="ml-auto text-[10px]" style={{ color: "var(--color-blue)" }}>
+              current
+            </span>
+          )}
+        </button>
+      ))}
+
+      <div className="my-0.5" style={{ borderTop: "1px solid var(--color-surface-1)" }} />
+      <button
+        type="button"
+        className="flex items-center w-full px-3 py-1.5 text-left text-xs hover:bg-[var(--color-surface-1)] transition-colors"
+        style={{ color: "var(--color-overlay-1)" }}
+        onClick={onClose}
+      >
+        Cancel
+      </button>
     </div>
   );
 }

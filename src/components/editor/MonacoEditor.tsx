@@ -42,6 +42,7 @@ tsApi.typescriptDefaults.setCompilerOptions({
   strict: true,
   allowJs: true,
   esModuleInterop: true,
+  allowSyntheticDefaultImports: true,
 });
 // Apply the same settings for JavaScript files
 tsApi.javascriptDefaults.setDiagnosticsOptions({
@@ -196,6 +197,20 @@ export function MonacoEditor({
         ],
         run: () => {
           inlineEdit.open();
+        },
+      });
+
+      // Register Ctrl+Shift+O for Go to Symbol (document outline)
+      editor.addAction({
+        id: "vantage.goToSymbol",
+        label: "Go to Symbol in Editor",
+        keybindings: [
+          monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyO,
+        ],
+        run: (ed) => {
+          // Trigger Monaco's built-in "Go to Symbol" action
+          const action = ed.getAction("editor.action.gotoSymbol");
+          if (action) action.run();
         },
       });
 

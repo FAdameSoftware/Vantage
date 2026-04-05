@@ -482,6 +482,110 @@ export function CommandPalette() {
         }
       },
     },
+    {
+      id: "go-to-symbol",
+      label: "Go to Symbol in Editor",
+      shortcut: "Ctrl+Shift+O",
+      icon: <Hash className="size-4 shrink-0 text-muted-foreground" />,
+      category: "Editor",
+      action: () => {
+        const editors = monaco.editor.getEditors();
+        if (editors.length > 0) {
+          const action = editors[0].getAction("editor.action.gotoSymbol");
+          if (action) action.run();
+        }
+      },
+    },
+    {
+      id: "toggle-minimap",
+      label: `Minimap: ${useSettingsStore.getState().minimap ? "Hide" : "Show"}`,
+      icon: <FileCode className="size-4 shrink-0 text-muted-foreground" />,
+      category: "Editor",
+      action: () => {
+        const settings = useSettingsStore.getState();
+        settings.setMinimap(!settings.minimap);
+      },
+    },
+    {
+      id: "toggle-line-numbers",
+      label: `Line Numbers: ${useSettingsStore.getState().lineNumbers ? "Hide" : "Show"}`,
+      icon: <Hash className="size-4 shrink-0 text-muted-foreground" />,
+      category: "Editor",
+      action: () => {
+        const settings = useSettingsStore.getState();
+        settings.setLineNumbers(!settings.lineNumbers);
+      },
+    },
+    {
+      id: "find-in-file",
+      label: "Find in File",
+      shortcut: "Ctrl+F",
+      icon: <Search className="size-4 shrink-0 text-muted-foreground" />,
+      category: "Editor",
+      action: () => {
+        const editors = monaco.editor.getEditors();
+        if (editors.length > 0) {
+          const action = editors[0].getAction("actions.find");
+          if (action) action.run();
+        }
+      },
+    },
+    {
+      id: "find-and-replace",
+      label: "Find and Replace in File",
+      shortcut: "Ctrl+H",
+      icon: <Search className="size-4 shrink-0 text-muted-foreground" />,
+      category: "Editor",
+      action: () => {
+        const editors = monaco.editor.getEditors();
+        if (editors.length > 0) {
+          const action = editors[0].getAction("editor.action.startFindReplaceAction");
+          if (action) action.run();
+        }
+      },
+    },
+    {
+      id: "add-cursor-below",
+      label: "Add Cursor Below (Multi-Cursor)",
+      shortcut: "Ctrl+Alt+Down",
+      icon: <FileCode className="size-4 shrink-0 text-muted-foreground" />,
+      category: "Editor",
+      action: () => {
+        const editors = monaco.editor.getEditors();
+        if (editors.length > 0) {
+          const action = editors[0].getAction("editor.action.insertCursorBelow");
+          if (action) action.run();
+        }
+      },
+    },
+    {
+      id: "select-all-occurrences",
+      label: "Select All Occurrences of Current Word",
+      shortcut: "Ctrl+Shift+L",
+      icon: <FileCode className="size-4 shrink-0 text-muted-foreground" />,
+      category: "Editor",
+      action: () => {
+        const editors = monaco.editor.getEditors();
+        if (editors.length > 0) {
+          const action = editors[0].getAction("editor.action.selectHighlights");
+          if (action) action.run();
+        }
+      },
+    },
+    {
+      id: "next-occurrence",
+      label: "Add Selection to Next Find Match (Ctrl+D)",
+      shortcut: "Ctrl+D",
+      icon: <FileCode className="size-4 shrink-0 text-muted-foreground" />,
+      category: "Editor",
+      action: () => {
+        const editors = monaco.editor.getEditors();
+        if (editors.length > 0) {
+          const action = editors[0].getAction("editor.action.addSelectionToNextFindMatch");
+          if (action) action.run();
+        }
+      },
+    },
   ];
 
   // Fetch files when mode switches to "files" and palette opens
