@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   GitBranch,
   AlertTriangle,
@@ -11,6 +12,13 @@ import {
   Loader2,
   Bell,
 } from "lucide-react";
+
+const popupMotion = {
+  initial: { opacity: 0, y: 4, scale: 0.98 },
+  animate: { opacity: 1, y: 0, scale: 1 },
+  exit: { opacity: 0, y: 4, scale: 0.98 },
+  transition: { duration: 0.12, ease: [0.4, 0, 0.2, 1] as [number, number, number, number] },
+};
 import { invoke } from "@tauri-apps/api/core";
 import { useEditorStore, selectActiveTab, selectCursorPosition, selectSelectionLineCount } from "@/stores/editor";
 import { useConversationStore } from "@/stores/conversation";
@@ -311,13 +319,15 @@ export function StatusBar() {
                   {branch.is_detached ? `(${branch.branch})` : branch.branch}
                 </span>
               </button>
-              {showBranchPicker && projectRootPath && (
-                <BranchPickerDropdown
-                  cwd={projectRootPath}
-                  currentBranch={branch.branch}
-                  onClose={() => setShowBranchPicker(false)}
-                />
-              )}
+              <AnimatePresence>
+                {showBranchPicker && projectRootPath && (
+                  <BranchPickerDropdown
+                    cwd={projectRootPath}
+                    currentBranch={branch.branch}
+                    onClose={() => setShowBranchPicker(false)}
+                  />
+                )}
+              </AnimatePresence>
             </div>
           )}
 
@@ -479,15 +489,17 @@ export function StatusBar() {
               >
                 {insertSpaces ? "Spaces" : "Tab"}: {tabSize}
               </button>
-              {showTabSizeSelector && (
-                <TabSizeSelectorDropdown
-                  tabSize={tabSize}
-                  insertSpaces={insertSpaces}
-                  onTabSizeChange={(size) => { setTabSize(size); setShowTabSizeSelector(false); }}
-                  onInsertSpacesChange={(v) => { setInsertSpaces(v); setShowTabSizeSelector(false); }}
-                  onClose={() => setShowTabSizeSelector(false)}
-                />
-              )}
+              <AnimatePresence>
+                {showTabSizeSelector && (
+                  <TabSizeSelectorDropdown
+                    tabSize={tabSize}
+                    insertSpaces={insertSpaces}
+                    onTabSizeChange={(size) => { setTabSize(size); setShowTabSizeSelector(false); }}
+                    onInsertSpacesChange={(v) => { setInsertSpaces(v); setShowTabSizeSelector(false); }}
+                    onClose={() => setShowTabSizeSelector(false)}
+                  />
+                )}
+              </AnimatePresence>
             </div>
           )}
 
@@ -536,12 +548,14 @@ export function StatusBar() {
             >
               {languageDisplayName}
             </button>
-            {showLanguageSelector && (
-              <LanguageSelectorDropdown
-                currentLanguage={activeTab?.language ?? "plaintext"}
-                onClose={() => setShowLanguageSelector(false)}
-              />
-            )}
+            <AnimatePresence>
+              {showLanguageSelector && (
+                <LanguageSelectorDropdown
+                  currentLanguage={activeTab?.language ?? "plaintext"}
+                  onClose={() => setShowLanguageSelector(false)}
+                />
+              )}
+            </AnimatePresence>
           </div>
 
           {/* Divider */}
@@ -615,12 +629,14 @@ export function StatusBar() {
             >
               {(session?.model ?? lastSessionModel ?? "claude-opus-4-6").replace(/-\d{8}$/, "").replace("claude-", "")}
             </button>
-            {showModelSelector && (
-              <ModelSelectorDropdown
-                currentModel={session?.model ?? lastSessionModel ?? "claude-opus-4-6"}
-                onClose={() => setShowModelSelector(false)}
-              />
-            )}
+            <AnimatePresence>
+              {showModelSelector && (
+                <ModelSelectorDropdown
+                  currentModel={session?.model ?? lastSessionModel ?? "claude-opus-4-6"}
+                  onClose={() => setShowModelSelector(false)}
+                />
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </div>
@@ -705,12 +721,13 @@ function BranchPickerDropdown({
   };
 
   return (
-    <div
+    <motion.div
       className="absolute bottom-7 left-0 z-50 rounded shadow-lg py-1 min-w-[200px] max-w-[280px]"
       style={{
         backgroundColor: "var(--color-surface-0)",
         border: "1px solid var(--color-surface-1)",
       }}
+      {...popupMotion}
     >
       {/* Create new branch */}
       {creating ? (
@@ -813,7 +830,7 @@ function BranchPickerDropdown({
           ))
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -833,7 +850,7 @@ function ModelSelectorDropdown({
   onClose: () => void;
 }) {
   return (
-    <div
+    <motion.div
       className="absolute bottom-7 right-0 z-50 rounded shadow-lg py-1 min-w-[180px]"
       style={{
         backgroundColor: "var(--color-surface-0)",
@@ -841,6 +858,7 @@ function ModelSelectorDropdown({
       }}
       role="listbox"
       aria-label="Model selector"
+      {...popupMotion}
     >
       {AVAILABLE_MODELS.map((model) => (
         <button
@@ -883,7 +901,7 @@ function ModelSelectorDropdown({
           </span>
         </button>
       ))}
-    </div>
+    </motion.div>
   );
 }
 
@@ -903,14 +921,15 @@ function LanguageSelectorDropdown({
   onClose: () => void;
 }) {
   return (
-    <div
-      className="absolute bottom-7 right-0 z-50 rounded shadow-lg py-1 min-w-[160px] max-h-[240px] overflow-auto"
+    <motion.div
+      className="absolute bottom-7 right-0 z-50 rounded shadow-lg py-1 min-w-[160px] max-h-[240px] overflow-auto scrollbar-thin"
       style={{
         backgroundColor: "var(--color-surface-0)",
         border: "1px solid var(--color-surface-1)",
       }}
       role="listbox"
       aria-label="Language selector"
+      {...popupMotion}
     >
       {COMMON_LANGUAGES.map((lang) => (
         <button
@@ -951,7 +970,7 @@ function LanguageSelectorDropdown({
           )}
         </button>
       ))}
-    </div>
+    </motion.div>
   );
 }
 
@@ -973,7 +992,7 @@ function TabSizeSelectorDropdown({
   const TAB_SIZES = [1, 2, 3, 4, 6, 8];
 
   return (
-    <div
+    <motion.div
       className="absolute bottom-7 right-0 z-50 rounded shadow-lg py-1 min-w-[180px]"
       style={{
         backgroundColor: "var(--color-surface-0)",
@@ -981,6 +1000,7 @@ function TabSizeSelectorDropdown({
       }}
       role="listbox"
       aria-label="Indentation settings"
+      {...popupMotion}
     >
       {/* Indent using spaces vs tabs */}
       <button
@@ -1050,7 +1070,7 @@ function TabSizeSelectorDropdown({
       >
         Cancel
       </button>
-    </div>
+    </motion.div>
   );
 }
 
