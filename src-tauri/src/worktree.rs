@@ -54,8 +54,8 @@ fn validate_same_volume(path_a: &str, path_b: &str) -> Result<(), String> {
         if has_drive_a && has_drive_b && drive_a != drive_b {
             return Err(format!(
                 "Worktree must be on the same drive as the repository. Repo is on {}:, target is on {}:",
-                drive_a.unwrap(),
-                drive_b.unwrap()
+                drive_a.expect("has_drive_a guard ensures drive_a is Some"),
+                drive_b.expect("has_drive_b guard ensures drive_b is Some")
             ));
         }
     }
@@ -339,7 +339,13 @@ pub fn get_worktree_changes(worktree_path: &str) -> Result<Vec<String>, String> 
 /// Places worktrees in a `.vantage-worktrees/` directory adjacent to the repo.
 ///
 /// Example: repo at C:/Projects/myapp -> C:/Projects/.vantage-worktrees/agent-backend-1234
-pub fn agent_worktree_path(repo_path: &str, agent_name: &str, agent_id: &str) -> String {
+pub fn agent_worktree_path(repo_path: &str, agent_name: &str, agent_id: &str) -> Result<String, String> {
+    if repo_path.is_empty() {
+        return Err("repo_path must not be empty".to_string());
+    }
+    if repo_path.contains("..") {
+        return Err("repo_path must not contain '..' traversal".to_string());
+    }
     let repo = Path::new(repo_path);
     let parent = repo.parent().unwrap_or(repo);
     let sanitized_name = agent_name
@@ -351,7 +357,7 @@ pub fn agent_worktree_path(repo_path: &str, agent_name: &str, agent_id: &str) ->
     let worktree_dir = parent
         .join(".vantage-worktrees")
         .join(format!("{}-{}", sanitized_name, short_id));
-    worktree_dir.to_string_lossy().to_string()
+    Ok(worktree_dir.to_string_lossy().to_string())
 }
 
 /// Validate a path from `.worktreeinclude`.

@@ -258,6 +258,17 @@ function extractFromAssistantMsg(msg: AssistantMessage) {
 
 // ─── Helper: capture pending diffs for Edit/Write tool calls ───────────────
 
+// Track active diff capture timeouts so they can be cancelled on cleanup
+// or when a new capture supersedes an old one for the same file.
+const pendingDiffTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
+
+function cancelAllDiffTimeouts() {
+  for (const timer of pendingDiffTimeouts.values()) {
+    clearTimeout(timer);
+  }
+  pendingDiffTimeouts.clear();
+}
+
 function capturePendingDiffs(assistantMsg: AssistantMessage) {
   const editorStore = useEditorStore.getState();
   for (const block of assistantMsg.message.content) {
@@ -279,9 +290,17 @@ function capturePendingDiffs(assistantMsg: AssistantMessage) {
     const tab = editorStore.tabs.find((t) => t.id === normalizedPath);
     const beforeContent = tab?.content ?? tab?.savedContent ?? "";
 
+    // Cancel any previous pending capture for the same file (debounce per-file)
+    const existing = pendingDiffTimeouts.get(normalizedPath);
+    if (existing) {
+      clearTimeout(existing);
+    }
+
     // Read the file after the tool has executed to get "after" content.
     // We use invoke("read_file") with a small delay to let the write complete.
-    setTimeout(async () => {
+    const capturedPath = normalizedPath;
+    const timer = setTimeout(async () => {
+      pendingDiffTimeouts.delete(capturedPath);
       try {
         const result = await invoke<{ content: string }>("read_file", {
           path: filePath,
@@ -289,7 +308,7 @@ function capturePendingDiffs(assistantMsg: AssistantMessage) {
         const afterContent = result.content;
         if (afterContent !== beforeContent) {
           useEditorStore.getState().setPendingDiff(
-            normalizedPath,
+            capturedPath,
             beforeContent,
             afterContent,
             `Claude ${toolName}: ${filePath.split("/").pop() ?? filePath}`,
@@ -299,6 +318,7 @@ function capturePendingDiffs(assistantMsg: AssistantMessage) {
         // File read failed — skip diff capture
       }
     }, 500);
+    pendingDiffTimeouts.set(normalizedPath, timer);
   }
 }
 
@@ -568,6 +588,8 @@ export function useClaude() {
       for (const unlisten of unlisteners) {
         unlisten();
       }
+      // Cancel any pending diff capture timeouts when listeners are torn down
+      cancelAllDiffTimeouts();
     };
   }, [
     handleSystemInit,
@@ -848,6 +870,7 @@ export function useClaude() {
   // ── Listen for "Investigate with Claude" events from file explorer ──
 
   useEffect(() => {
+    let pendingTimer: ReturnType<typeof setTimeout> | null = null;
     const handler = async (e: Event) => {
       const detail = (e as CustomEvent).detail as {
         agentId: string;
@@ -856,17 +879,22 @@ export function useClaude() {
       };
       await startAgentSession(detail.agentId, detail.cwd);
       // Small delay to let session initialize before sending the prompt
-      setTimeout(() => {
+      pendingTimer = setTimeout(() => {
+        pendingTimer = null;
         void sendAgentMessage(detail.agentId, detail.taskDescription);
       }, 1000);
     };
     window.addEventListener("vantage:investigate", handler);
-    return () => window.removeEventListener("vantage:investigate", handler);
+    return () => {
+      window.removeEventListener("vantage:investigate", handler);
+      if (pendingTimer) clearTimeout(pendingTimer);
+    };
   }, [startAgentSession, sendAgentMessage]);
 
   // ── Listen for agent auto-start events from CreateAgentDialog ──
 
   useEffect(() => {
+    let pendingTimer: ReturnType<typeof setTimeout> | null = null;
     const handler = async (e: Event) => {
       const detail = (e as CustomEvent).detail as {
         agentId: string;
@@ -879,12 +907,16 @@ export function useClaude() {
         ".";
       await startAgentSession(detail.agentId, cwd);
       // Small delay to let session initialize before sending the prompt
-      setTimeout(() => {
+      pendingTimer = setTimeout(() => {
+        pendingTimer = null;
         void sendAgentMessage(detail.agentId, detail.taskDescription);
       }, 1000);
     };
     window.addEventListener("vantage:agent-auto-start", handler);
-    return () => window.removeEventListener("vantage:agent-auto-start", handler);
+    return () => {
+      window.removeEventListener("vantage:agent-auto-start", handler);
+      if (pendingTimer) clearTimeout(pendingTimer);
+    };
   }, [startAgentSession, sendAgentMessage]);
 
   return {

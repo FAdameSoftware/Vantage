@@ -155,6 +155,46 @@ function getStoreByRid(rid: number): Map<string, unknown> | null {
   return inMemoryStores.get(path) ?? null;
 }
 
+// ── Error simulation mode ────────────────────────────────────────────────────
+
+/**
+ * When enabled, specified commands will reject with simulated errors.
+ * Useful for testing error boundaries, retry logic, and error UI states.
+ *
+ * Usage from tests or browser console:
+ *   import { mockErrors } from "@/lib/tauriMock";
+ *   mockErrors.enable("read_file");              // default error message
+ *   mockErrors.enable("write_file", "Disk full");// custom message
+ *   mockErrors.disable("read_file");
+ *   mockErrors.disableAll();
+ *   mockErrors.isEnabled("read_file");           // boolean check
+ */
+class MockErrorSimulator {
+  private errors = new Map<string, string>();
+
+  enable(command: string, message?: string): void {
+    this.errors.set(command, message ?? `[MockError] Simulated failure for "${command}"`);
+  }
+
+  disable(command: string): void {
+    this.errors.delete(command);
+  }
+
+  disableAll(): void {
+    this.errors.clear();
+  }
+
+  isEnabled(command: string): boolean {
+    return this.errors.has(command);
+  }
+
+  getMessage(command: string): string | undefined {
+    return this.errors.get(command);
+  }
+}
+
+export const mockErrors = new MockErrorSimulator();
+
 // ── Mock invoke handler ──────────────────────────────────────────────────────
 
 type MockArgs = Record<string, unknown> | undefined;
@@ -547,6 +587,11 @@ function mockInvoke<T>(
   cmd: string,
   args?: Record<string, unknown>,
 ): Promise<T> {
+  // Error simulation: if the command is marked for failure, reject immediately
+  if (mockErrors.isEnabled(cmd)) {
+    return Promise.reject(new Error(mockErrors.getMessage(cmd)));
+  }
+
   const handler = mockInvokeHandlers[cmd];
   if (handler) {
     const result = handler(args);
@@ -622,5 +667,10 @@ export function setupMocks(): void {
     },
   };
 
+  // Expose error simulator on window for test/console access
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (window as any).__TAURI_MOCK_ERRORS__ = mockErrors;
+
   console.log("[TauriMock] Mocks installed — running in browser mode");
+  console.log("[TauriMock] Error simulation available via window.__TAURI_MOCK_ERRORS__ or import { mockErrors }");
 }

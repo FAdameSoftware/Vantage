@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, memo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { User, Brain, Copy, Check } from "lucide-react";
@@ -271,7 +271,7 @@ interface MessageBubbleProps {
   message: ConversationMessage;
 }
 
-export function MessageBubble({ message }: MessageBubbleProps) {
+export const MessageBubble = memo(function MessageBubble({ message }: MessageBubbleProps) {
   if (message.role === "user") {
     return <UserBubble message={message} />;
   }
@@ -298,4 +298,4 @@ export function MessageBubble({ message }: MessageBubbleProps) {
   }
 
   return null;
-}
+});

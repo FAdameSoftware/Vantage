@@ -285,11 +285,13 @@ export function EditorArea() {
         ) : activeDiff ? (
           /* Diff viewer — replaces the normal editor when a pending diff exists */
           <div className="flex-1 overflow-hidden">
-            <DiffViewer
-              key={activeTab.id}
-              diff={activeDiff}
-              language={activeTab.language}
-            />
+            <ErrorBoundary>
+              <DiffViewer
+                key={activeTab.id}
+                diff={activeDiff}
+                language={activeTab.language}
+              />
+            </ErrorBoundary>
           </div>
         ) : (
           <div className="flex-1 overflow-hidden flex">

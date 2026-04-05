@@ -303,7 +303,7 @@ fn get_worktree_changes(worktree_path: String) -> Result<Vec<String>, String> {
 
 #[tauri::command]
 #[specta::specta]
-fn get_agent_worktree_path(repo_path: String, agent_name: String, agent_id: String) -> String {
+fn get_agent_worktree_path(repo_path: String, agent_name: String, agent_id: String) -> Result<String, String> {
     worktree::agent_worktree_path(&repo_path, &agent_name, &agent_id)
 }
 

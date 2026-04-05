@@ -49,6 +49,9 @@ interface NpmDownloadsResult {
  * @param query  Optional search text appended to the keyword filter
  * @param offset Pagination offset (multiples of 20)
  */
+/** Default timeout for npm registry requests (10 seconds). */
+const REGISTRY_TIMEOUT_MS = 10_000;
+
 export async function searchPluginRegistry(
   query: string = "",
   offset: number = 0,
@@ -58,7 +61,19 @@ export async function searchPluginRegistry(
     (query ? "+" + encodeURIComponent(query) : "");
   const url = `https://registry.npmjs.org/-/v1/search?text=${text}&size=20&from=${offset}`;
 
-  const res = await fetch(url);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REGISTRY_TIMEOUT_MS);
+  let res: Response;
+  try {
+    res = await fetch(url, { signal: controller.signal });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      throw new Error(`npm registry request timed out after ${REGISTRY_TIMEOUT_MS}ms`);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
   if (!res.ok) {
     throw new Error(`npm registry returned ${res.status}`);
   }
@@ -97,12 +112,21 @@ async function fetchDownloadCounts(
     const batch = names.slice(i, i + CONCURRENCY);
     const settled = await Promise.allSettled(
       batch.map(async (name) => {
-        const res = await fetch(
-          `https://api.npmjs.org/downloads/point/last-week/${name}`,
-        );
-        if (!res.ok) return { name, downloads: 0 };
-        const data = (await res.json()) as NpmDownloadsResult;
-        return { name, downloads: data.downloads ?? 0 };
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), REGISTRY_TIMEOUT_MS);
+        try {
+          const res = await fetch(
+            `https://api.npmjs.org/downloads/point/last-week/${name}`,
+            { signal: controller.signal },
+          );
+          if (!res.ok) return { name, downloads: 0 };
+          const data = (await res.json()) as NpmDownloadsResult;
+          return { name, downloads: data.downloads ?? 0 };
+        } catch {
+          return { name, downloads: 0 };
+        } finally {
+          clearTimeout(timeoutId);
+        }
       }),
     );
     for (const outcome of settled) {

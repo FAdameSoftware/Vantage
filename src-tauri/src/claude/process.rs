@@ -298,18 +298,16 @@ impl ClaudeProcess {
 
     /// Interrupt the current generation.
     /// On Windows we drop stdin to signal EOF (no SIGINT available without a console).
-    /// On Unix we send SIGINT.
+    /// On Unix we kill the child process (safe alternative to libc::kill).
     pub async fn interrupt(&self) -> Result<(), String> {
         #[cfg(unix)]
         {
-            let lock = self.child.lock().await;
-            if let Some(ref child) = *lock {
-                if let Some(id) = child.id() {
-                    unsafe {
-                        libc::kill(id as i32, libc::SIGINT);
-                    }
-                    return Ok(());
-                }
+            let mut lock = self.child.lock().await;
+            if let Some(ref mut child) = *lock {
+                // Use the safe tokio Child::start_kill() instead of unsafe libc::kill().
+                // This avoids PID reuse vulnerabilities and doesn't require the libc crate.
+                let _ = child.start_kill();
+                return Ok(());
             }
         }
 

@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
@@ -88,7 +89,7 @@ interface AgentCardProps {
   agent: Agent;
 }
 
-export function AgentCard({ agent }: AgentCardProps) {
+export const AgentCard = memo(function AgentCard({ agent }: AgentCardProps) {
   const {
     attributes,
     listeners,
@@ -181,4 +182,4 @@ export function AgentCard({ agent }: AgentCardProps) {
       </div>
     </div>
   );
-}
+});
