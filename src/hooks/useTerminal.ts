@@ -25,10 +25,14 @@ interface UseTerminalReturn {
   terminalRef: React.RefObject<Terminal | null>;
   /** Fit the terminal to its container */
   fit: () => void;
-  /** Search within the terminal */
+  /** Search forward within the terminal */
   search: (query: string) => void;
+  /** Search backward within the terminal */
+  searchPrevious: (query: string) => void;
   /** Clear search highlights */
   clearSearch: () => void;
+  /** Focus the terminal */
+  focus: () => void;
 }
 
 export function useTerminal(options: UseTerminalOptions): UseTerminalReturn {
@@ -197,8 +201,16 @@ export function useTerminal(options: UseTerminalOptions): UseTerminalReturn {
     searchAddonRef.current?.findNext(query);
   }, []);
 
+  const searchPrevious = useCallback((query: string) => {
+    searchAddonRef.current?.findPrevious(query);
+  }, []);
+
   const clearSearch = useCallback(() => {
     searchAddonRef.current?.clearDecorations();
+  }, []);
+
+  const focus = useCallback(() => {
+    terminalRef.current?.focus();
   }, []);
 
   return {
@@ -206,6 +218,8 @@ export function useTerminal(options: UseTerminalOptions): UseTerminalReturn {
     terminalRef,
     fit,
     search,
+    searchPrevious,
     clearSearch,
+    focus,
   };
 }

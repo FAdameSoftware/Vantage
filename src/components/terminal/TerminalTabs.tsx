@@ -5,6 +5,7 @@ import {
   Plus,
   X,
   Maximize2,
+  Columns2,
 } from "lucide-react";
 import { useLayoutStore } from "@/stores/layout";
 import { TerminalInstance } from "./TerminalInstance";
@@ -33,6 +34,8 @@ export function TerminalPanel() {
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
   const [shells, setShells] = useState<ShellInfo[]>([]);
   const [showShellPicker, setShowShellPicker] = useState(false);
+  /** ID of the terminal shown in the right split pane (null = no split) */
+  const [splitTabId, setSplitTabId] = useState<string | null>(null);
 
   const createTerminal = useCallback(
     (shell: ShellInfo, cwd?: string) => {
@@ -78,17 +81,22 @@ export function TerminalPanel() {
 
   const closeTerminal = useCallback(
     (id: string) => {
+      // If closing the split terminal, just unsplit
+      if (splitTabId === id) {
+        setSplitTabId(null);
+      }
       setTabs((prev) => {
         const newTabs = prev.filter((t) => t.id !== id);
         if (activeTabId === id && newTabs.length > 0) {
           setActiveTabId(newTabs[newTabs.length - 1].id);
         } else if (newTabs.length === 0) {
           setActiveTabId(null);
+          setSplitTabId(null);
         }
         return newTabs;
       });
     },
-    [activeTabId]
+    [activeTabId, splitTabId]
   );
 
   const handleNewTerminal = useCallback(() => {
@@ -98,6 +106,23 @@ export function TerminalPanel() {
       createTerminal(shells[0]);
     }
   }, [shells, createTerminal]);
+
+  /** Split: create a new terminal and show it side-by-side with the active one */
+  const handleSplitTerminal = useCallback(() => {
+    if (!activeTabId) return;
+    const defaultShell = shells.find((s) => s.is_default) ?? shells[0];
+    if (!defaultShell) return;
+    const id = `term-${nextTerminalId++}`;
+    const newTab: TerminalTab = {
+      id,
+      label: `Terminal ${nextTerminalId - 1}`,
+      shellName: defaultShell.name,
+      shellPath: defaultShell.path,
+      shellArgs: defaultShell.args,
+    };
+    setTabs((prev) => [...prev, newTab]);
+    setSplitTabId(id);
+  }, [activeTabId, shells]);
 
   return (
     <div
@@ -207,6 +232,17 @@ export function TerminalPanel() {
         <div className="flex items-center gap-0.5">
           <button
             className="flex items-center justify-center w-6 h-6 rounded hover:bg-[var(--color-surface-1)] transition-colors"
+            style={{
+              color: splitTabId ? "var(--color-blue)" : "var(--color-overlay-1)",
+            }}
+            onClick={handleSplitTerminal}
+            aria-label="Split Terminal"
+            title="Split Terminal"
+          >
+            <Columns2 size={12} />
+          </button>
+          <button
+            className="flex items-center justify-center w-6 h-6 rounded hover:bg-[var(--color-surface-1)] transition-colors"
             style={{ color: "var(--color-overlay-1)" }}
             aria-label="Maximize Panel"
           >
@@ -233,15 +269,46 @@ export function TerminalPanel() {
       )}
 
       {/* Terminal instances */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden flex">
         {tabs.length === 0 ? (
           <div
-            className="flex items-center justify-center h-full text-xs"
+            className="flex items-center justify-center h-full w-full text-xs"
             style={{ color: "var(--color-overlay-1)" }}
           >
             No terminals open. Click + to create one.
           </div>
+        ) : splitTabId ? (
+          /* Split view: two terminals side by side */
+          <>
+            <div className="flex-1 overflow-hidden" style={{ minWidth: 0 }}>
+              {tabs.map((tab) => (
+                <TerminalInstance
+                  key={tab.id}
+                  shellPath={tab.shellPath}
+                  shellArgs={tab.shellArgs}
+                  cwd={tab.cwd}
+                  isVisible={tab.id === activeTabId}
+                />
+              ))}
+            </div>
+            <div
+              className="w-px shrink-0"
+              style={{ backgroundColor: "var(--color-surface-1)" }}
+            />
+            <div className="flex-1 overflow-hidden" style={{ minWidth: 0 }}>
+              {tabs.map((tab) => (
+                <TerminalInstance
+                  key={`split-${tab.id}`}
+                  shellPath={tab.shellPath}
+                  shellArgs={tab.shellArgs}
+                  cwd={tab.cwd}
+                  isVisible={tab.id === splitTabId}
+                />
+              ))}
+            </div>
+          </>
         ) : (
+          /* Single view */
           tabs.map((tab) => (
             <TerminalInstance
               key={tab.id}
