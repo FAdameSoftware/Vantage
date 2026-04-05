@@ -3,6 +3,7 @@ import { Search, X, ChevronUp, ChevronDown, Layers } from "lucide-react";
 import { useTerminal } from "@/hooks/useTerminal";
 import { useCommandBlocks } from "@/hooks/useCommandBlocks";
 import { CommandBlockList } from "./CommandBlock";
+import { CommandSuggestion } from "./CommandSuggestion";
 
 interface TerminalInstanceProps {
   /** Shell executable path */
@@ -133,6 +134,53 @@ export function TerminalInstance({
     enabled: true,
   });
 
+  // Command suggestion state: track the last failed command
+  const [failedCommandInfo, setFailedCommandInfo] = useState<{
+    command: string;
+    exitCode: number;
+    output: string;
+  } | null>(null);
+
+  // Watch for newly completed blocks with non-zero exit codes
+  const lastBlockCountRef = useRef(0);
+  useEffect(() => {
+    if (blocks.length <= lastBlockCountRef.current) {
+      lastBlockCountRef.current = blocks.length;
+      return;
+    }
+    lastBlockCountRef.current = blocks.length;
+
+    const lastBlock = blocks[blocks.length - 1];
+    if (!lastBlock || lastBlock.exitCode === null || lastBlock.exitCode === 0) {
+      // Command succeeded or still running -- clear any previous suggestion
+      setFailedCommandInfo(null);
+      return;
+    }
+
+    // Extract recent terminal output for pattern matching
+    const terminal = terminalRef.current;
+    let recentOutput = "";
+    if (terminal && lastBlock.startLine != null) {
+      const buffer = terminal.buffer.active;
+      const endLine = lastBlock.endLine ?? (buffer.baseY + buffer.cursorY);
+      const startLine = Math.max(lastBlock.startLine, endLine - 30);
+      const lines: string[] = [];
+      for (let row = startLine; row <= endLine; row++) {
+        const line = buffer.getLine(row);
+        if (line) {
+          lines.push(line.translateToString(true));
+        }
+      }
+      recentOutput = lines.join("\n");
+    }
+
+    setFailedCommandInfo({
+      command: lastBlock.command,
+      exitCode: lastBlock.exitCode,
+      output: recentOutput,
+    });
+  }, [blocks, terminalRef]);
+
   // Re-run a command by writing it to the terminal
   const handleRerun = useCallback(
     (command: string) => {
@@ -154,6 +202,22 @@ export function TerminalInstance({
     },
     [terminalRef],
   );
+
+  // Accept a command suggestion: write it to the terminal
+  const handleAcceptSuggestion = useCallback(
+    (command: string) => {
+      const terminal = terminalRef.current;
+      if (!terminal) return;
+      terminal.input(command + "\r");
+      setFailedCommandInfo(null);
+    },
+    [terminalRef],
+  );
+
+  // Dismiss the command suggestion
+  const handleDismissSuggestion = useCallback(() => {
+    setFailedCommandInfo(null);
+  }, []);
 
   // Debounced fit to avoid calling fitAddon.fit() on every frame during a drag resize
   const debouncedFit = () => {
@@ -267,6 +331,16 @@ export function TerminalInstance({
         className="flex-1 min-h-0"
         data-allow-select="true"
       />
+      {/* AI command suggestion (appears after failed commands) */}
+      {failedCommandInfo && (
+        <CommandSuggestion
+          failedCommand={failedCommandInfo.command}
+          exitCode={failedCommandInfo.exitCode}
+          recentOutput={failedCommandInfo.output}
+          onAccept={handleAcceptSuggestion}
+          onDismiss={handleDismissSuggestion}
+        />
+      )}
       {/* Command blocks panel (collapsible, below terminal) */}
       {blocksVisible && (
         <CommandBlockList
