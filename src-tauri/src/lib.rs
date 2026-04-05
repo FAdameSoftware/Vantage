@@ -722,13 +722,23 @@ pub fn run() {
         )
         .expect("Failed to export TypeScript bindings");
 
-    tauri::Builder::default()
+    let mut app_builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_pty::init())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_notification::init());
         // .plugin(tauri_plugin_updater::Builder::new().build()) // TODO: enable when updater endpoint is configured
+
+    // MCP Bridge: enables AI assistants (Claude Code, Cursor, etc.) to
+    // take screenshots, click elements, read DOM, inspect IPC, and execute
+    // JS in the running app.  Only active in debug builds.
+    #[cfg(debug_assertions)]
+    {
+        app_builder = app_builder.plugin(tauri_plugin_mcp_bridge::init());
+    }
+
+    app_builder
         .manage(Mutex::new(FileWatcherState::new()))
         .invoke_handler(builder.invoke_handler())
         .setup(move |app| {

@@ -20,6 +20,7 @@
     "store:default",
     "pty:default",
     "dialog:default",
-    "notification:default"
+    "notification:default",
+    "mcp-bridge:default"
   ]
 }

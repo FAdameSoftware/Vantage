@@ -14,6 +14,11 @@
       "command": "cmd",
       "args": ["/c", "npx", "-y", "@modelcontextprotocol/server-memory"],
       "env": {}
+    },
+    "tauri-mcp": {
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "@hypothesi/tauri-mcp-server@latest"],
+      "env": {}
     }
   }
 }
