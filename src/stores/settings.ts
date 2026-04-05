@@ -24,6 +24,8 @@ export interface SettingsState {
   planMode: boolean;
   /** Whether to auto-format files on save (via Prettier) */
   formatOnSave: boolean;
+  /** Editor cursor style */
+  cursorStyle: "line" | "block" | "underline";
   /** Custom keybinding overrides: keybinding ID -> shortcut string (e.g., "Ctrl+Shift+B") */
   keybindingOverrides: Record<string, { key: string; ctrl?: boolean; shift?: boolean; alt?: boolean }>;
   setTheme: (theme: ThemeName) => void;
@@ -42,6 +44,7 @@ export interface SettingsState {
   setEffortLevel: (level: "low" | "medium" | "high") => void;
   setPlanMode: (value: boolean) => void;
   setFormatOnSave: (value: boolean) => void;
+  setCursorStyle: (style: "line" | "block" | "underline") => void;
   setKeybindingOverride: (id: string, binding: { key: string; ctrl?: boolean; shift?: boolean; alt?: boolean }) => void;
   removeKeybindingOverride: (id: string) => void;
   resetAllKeybindings: () => void;
@@ -66,6 +69,7 @@ export const useSettingsStore = create<SettingsState>()(
       effortLevel: "high",
       planMode: false,
       formatOnSave: false,
+      cursorStyle: "line",
       keybindingOverrides: {},
       setTheme: (theme) => set({ theme }),
       setFontSizeEditor: (size) => set({ fontSizeEditor: Math.max(8, Math.min(32, size)) }),
@@ -83,6 +87,7 @@ export const useSettingsStore = create<SettingsState>()(
       setEffortLevel: (level) => set({ effortLevel: level }),
       setPlanMode: (value) => set({ planMode: value }),
       setFormatOnSave: (value) => set({ formatOnSave: value }),
+      setCursorStyle: (style) => set({ cursorStyle: style }),
       setKeybindingOverride: (id, binding) =>
         set((state) => ({
           keybindingOverrides: { ...state.keybindingOverrides, [id]: binding },
@@ -114,6 +119,7 @@ export const useSettingsStore = create<SettingsState>()(
         effortLevel: state.effortLevel,
         planMode: state.planMode,
         formatOnSave: state.formatOnSave,
+        cursorStyle: state.cursorStyle,
         keybindingOverrides: state.keybindingOverrides,
       }),
     }

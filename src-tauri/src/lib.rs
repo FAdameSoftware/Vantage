@@ -226,6 +226,14 @@ async fn claude_is_session_alive(app_handle: tauri::AppHandle, session_id: Strin
     manager.is_session_alive(&session_id).await
 }
 
+// ── Single-Shot Claude Command ──────────────────────────────────────
+
+#[tauri::command]
+#[specta::specta]
+async fn claude_single_shot(prompt: String, cwd: Option<String>) -> Result<String, String> {
+    claude::process::claude_single_shot(prompt, cwd).await
+}
+
 // ── Prerequisite Commands ───────────────────────────────────────────
 
 #[tauri::command]
@@ -658,6 +666,7 @@ pub fn run() {
             claude_list_active_sessions,
             claude_list_sessions,
             claude_is_session_alive,
+            claude_single_shot,
             check_prerequisites,
             get_git_branch,
             get_git_status,

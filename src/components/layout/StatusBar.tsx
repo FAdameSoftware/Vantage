@@ -38,6 +38,8 @@ export function StatusBar() {
   const toggleSecondarySidebar = useLayoutStore((s) => s.toggleSecondarySidebar);
   const setActiveActivityBarItem = useLayoutStore((s) => s.setActiveActivityBarItem);
   const vimMode = useSettingsStore((s) => s.vimMode);
+  const wordWrap = useSettingsStore((s) => s.wordWrap);
+  const setWordWrap = useSettingsStore((s) => s.setWordWrap);
   const showBuddy = useSettingsStore((s) => s.showBuddy);
   const toggleBuddy = useSettingsStore((s) => s.toggleBuddy);
   const { branch, isGitRepo } = useGitStatus(projectRootPath);
@@ -288,6 +290,20 @@ export function StatusBar() {
             title="Go to Line (Ctrl+G)"
           >
             Ln {cursorPosition.line}, Col {cursorPosition.column}
+          </button>
+
+          {/* Word Wrap toggle */}
+          <button
+            className="hover:text-[var(--color-text)] transition-colors"
+            style={{
+              color: wordWrap ? "var(--color-blue)" : undefined,
+            }}
+            onClick={() => setWordWrap(!wordWrap)}
+            title={wordWrap ? "Disable Word Wrap" : "Enable Word Wrap"}
+            aria-label={wordWrap ? "Word wrap on. Click to disable." : "Word wrap off. Click to enable."}
+            aria-pressed={wordWrap}
+          >
+            {wordWrap ? "Wrap: On" : "Wrap: Off"}
           </button>
 
           {/* Language -> click opens language selector */}

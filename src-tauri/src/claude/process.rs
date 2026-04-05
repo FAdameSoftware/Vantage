@@ -373,6 +373,98 @@ impl ClaudeProcess {
     }
 }
 
+/// Run a single-shot `claude -p "<prompt>"` query and return the text response.
+///
+/// This is used by the Ctrl+K inline AI edit feature.  Unlike a full session it:
+/// - does not stream events,
+/// - does not manage session state,
+/// - collects all stdout and returns the first `result` message's text content.
+pub async fn claude_single_shot(prompt: String, cwd: Option<String>) -> Result<String, String> {
+    use tokio::io::AsyncReadExt;
+
+    // Validate prompt length to prevent runaway input
+    if prompt.len() > 64_000 {
+        return Err("Prompt too long (max 64 000 chars)".to_string());
+    }
+
+    let binary = if cfg!(windows) { "claude.exe" } else { "claude" };
+
+    let mut cmd = tokio::process::Command::new(binary);
+    cmd.arg("-p").arg(&prompt).arg("--output-format").arg("json");
+
+    if let Some(dir) = &cwd {
+        cmd.current_dir(dir);
+    }
+
+    cmd.stdin(std::process::Stdio::null());
+    cmd.stdout(std::process::Stdio::piped());
+    cmd.stderr(std::process::Stdio::piped());
+
+    #[cfg(windows)]
+    {
+        #[allow(unused_imports)]
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+
+    let mut child = cmd.spawn().map_err(|e| {
+        if e.kind() == std::io::ErrorKind::NotFound {
+            "Claude Code CLI not found. Install with: npm install -g @anthropic-ai/claude-code"
+                .to_string()
+        } else {
+            format!("Failed to spawn Claude CLI: {e}")
+        }
+    })?;
+
+    // Collect stdout (max 1 MB to prevent OOM)
+    let mut stdout_text = String::new();
+    if let Some(mut stdout) = child.stdout.take() {
+        let mut buf = Vec::new();
+        stdout.read_to_end(&mut buf).await.ok();
+        stdout_text = String::from_utf8_lossy(&buf).into_owned();
+    }
+
+    // Wait for the process to exit
+    child.wait().await.ok();
+
+    // With --output-format json the output is a single JSON object.
+    // Extract the text from `result` field, falling back to the raw output.
+    if let Ok(val) = serde_json::from_str::<serde_json::Value>(&stdout_text) {
+        if let Some(text) = val
+            .get("result")
+            .and_then(|r| r.as_str())
+        {
+            return Ok(text.to_string());
+        }
+        // Some versions wrap in a `content` array
+        if let Some(content) = val.get("content").and_then(|c| c.as_array()) {
+            let combined: String = content
+                .iter()
+                .filter_map(|item| {
+                    if item.get("type")?.as_str()? == "text" {
+                        item.get("text")?.as_str().map(|s| s.to_string())
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join("");
+            if !combined.is_empty() {
+                return Ok(combined);
+            }
+        }
+    }
+
+    // Fall back to raw stdout if JSON parsing fails
+    let trimmed = stdout_text.trim().to_string();
+    if trimmed.is_empty() {
+        Err("Claude returned an empty response".to_string())
+    } else {
+        Ok(trimmed)
+    }
+}
+
 impl Drop for ClaudeProcess {
     fn drop(&mut self) {
         // Best-effort cleanup: try to kill the child if it still exists.

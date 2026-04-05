@@ -265,6 +265,11 @@ const mockInvokeHandlers: Record<string, MockInvokeHandler> = {
   get_theme_file_path: () => "~/.vantage/theme.json",
 
   // ── Claude session management ──
+  claude_single_shot: (args) => {
+    const prompt = (args?.prompt as string) ?? "";
+    // Return a plausible mock edit so the inline-edit diff preview works in browser mode
+    return `// AI edit applied\n${prompt.slice(0, 120)}`;
+  },
   claude_start_session: () => "mock-session-" + Date.now(),
   claude_send_message: () => null,
   claude_respond_permission: () => null,

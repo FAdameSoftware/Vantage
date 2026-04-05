@@ -120,6 +120,7 @@ export function MonacoEditor({
   const lineNumbers = useSettingsStore((s) => s.lineNumbers);
   const themeName = useSettingsStore((s) => s.theme);
   const vimMode = useSettingsStore((s) => s.vimMode);
+  const cursorStyle = useSettingsStore((s) => s.cursorStyle);
   const monacoTheme = getMonacoTheme(themeName);
 
   const setCursorPosition = useEditorStore((s) => s.setCursorPosition);
@@ -243,6 +244,7 @@ export function MonacoEditor({
           options={{
             fontFamily,
             fontSize: fontSizeEditor,
+            fontLigatures: true,
             tabSize,
             insertSpaces,
             wordWrap: wordWrap ? "on" : "off",
@@ -259,6 +261,7 @@ export function MonacoEditor({
             smoothScrolling: true,
             cursorBlinking: "smooth",
             cursorSmoothCaretAnimation: "on",
+            cursorStyle,
             renderLineHighlight: "line",
             renderWhitespace: "selection",
             bracketPairColorization: { enabled: true },
@@ -266,6 +269,10 @@ export function MonacoEditor({
               bracketPairs: true,
               indentation: true,
             },
+            autoClosingBrackets: "always",
+            autoClosingQuotes: "always",
+            autoSurround: "languageDefined",
+            stickyScroll: { enabled: true, maxLineCount: 5 },
             padding: { top: 8 },
             overviewRulerLanes: 0,
             fixedOverflowWidgets: true,
