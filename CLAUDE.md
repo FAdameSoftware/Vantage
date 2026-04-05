@@ -53,8 +53,9 @@ src-tauri/              # Rust backend
 npm run dev           # Vite dev server only (no Tauri)
 npm run tauri dev     # Full Tauri dev mode (needs cargo on PATH)
 npm run build         # Vite production build
-npx vitest run        # Run unit tests (111 tests)
+npx vitest run        # Run unit tests (337 tests)
 npx playwright test   # Run E2E tests (needs Vite server running)
+npm run lint:security # Semgrep security scan (TypeScript + React rules)
 ```
 
 ## Key Patterns
@@ -71,6 +72,25 @@ npx playwright test   # Run E2E tests (needs Vite server running)
 - E2E tests: `e2e/vantage.spec.ts` — Playwright against browser mock
 - Visual testing: Chrome DevTools MCP tools for screenshots and interaction
 - The Tauri mock layer ensures the full UI renders in a browser without Tauri
+
+## Critical Gotchas
+
+- **NEVER test only against mocks** — the Tauri mock layer hides IPC mismatches. Always verify with `npm run tauri dev`.
+- **Tauri IPC names** — Rust fn `claude_start_session` is invoked as `invoke("claude_start_session")`. The name matches the Rust function exactly.
+- **specta RC** — pinned to `=2.0.0-rc.24`. Don't use `skip_serializing_if` on specta::Type structs.
+- **Cargo on Windows** — use `/c/Users/ferpu/.cargo/bin/cargo` in bash, or `$env:PATH += ";$env:USERPROFILE\.cargo\bin"` in PowerShell.
+- **MCP servers on Windows** — `.mcp.json` must use `"command": "cmd", "args": ["/c", "npx", ...]` wrapper.
+- **react-resizable-panels v4.9** — API uses `Group`/`Separator`, not `PanelGroup`/`PanelResizeHandle`. Don't use `useDefaultLayout` — it corrupts stored sizes.
+- **Security** — validate ALL inputs at Rust boundary. Never pass user strings to `Command::new()` shell. Use arg tokenization.
+- **Hardening** — do a security + integration pass every 2-3 feature phases. Don't build 9 phases without stopping.
+
+## Workspace Model
+
+- State persists per-project at `~/.vantage/workspaces/<base64url-encoded-path>.json`
+- 8 stores are workspace-scoped (editor, conversation, agents, layout, mergeQueue, verification, usage, agentConversations)
+- 1 store is global (settings — theme, font, vim mode)
+- Auto-saves with 2-second debounce on store changes
+- `resetToDefaults()` on all workspace stores when switching projects
 
 ## Windows Notes
 
