@@ -314,8 +314,12 @@ export function SpecViewer() {
       checkedIds.has(s.id)
     );
     const combined = selectedSections.map((s) => s.content).join("\n\n---\n\n");
-    await navigator.clipboard.writeText(combined);
-    toast.success(`Copied ${selectedSections.length} section(s) to clipboard`);
+    try {
+      await navigator.clipboard.writeText(combined);
+      toast.success(`Copied ${selectedSections.length} section(s) to clipboard`);
+    } catch {
+      toast.error("Failed to copy to clipboard");
+    }
   }, [document, checkedIds]);
 
   const checkedTokens = document

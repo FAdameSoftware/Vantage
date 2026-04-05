@@ -130,7 +130,7 @@ function ErrorOutput({ check }: { check: VerificationCheck }) {
           <button
             className="absolute top-1 right-1 p-1 rounded hover:bg-[var(--color-surface-1)] transition-colors"
             style={{ color: "var(--color-overlay-1)" }}
-            onClick={() => navigator.clipboard.writeText(output)}
+            onClick={() => navigator.clipboard.writeText(output).catch(() => {})}
             title="Copy output"
           >
             <Copy size={10} />

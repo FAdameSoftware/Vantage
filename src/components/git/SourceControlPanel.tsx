@@ -125,6 +125,8 @@ export function SourceControlPanel() {
   const [error, setError] = useState<string | null>(null);
   const [stagedOpen, setStagedOpen] = useState(true);
   const [changesOpen, setChangesOpen] = useState(true);
+  const [showBranchInput, setShowBranchInput] = useState(false);
+  const [newBranchName, setNewBranchName] = useState("");
 
   // ── Actions ────────────────────────────────────────────────────
 
@@ -219,13 +221,13 @@ export function SourceControlPanel() {
     }
   }, [cwd, refresh]);
 
-  const createBranch = useCallback(async () => {
-    if (!cwd) return;
-    const name = window.prompt("New branch name:");
-    if (!name?.trim()) return;
+  const createBranch = useCallback(async (name: string) => {
+    if (!cwd || !name.trim()) return;
     setError(null);
     try {
       await invoke("git_create_branch", { cwd, name: name.trim() });
+      setShowBranchInput(false);
+      setNewBranchName("");
       refresh();
     } catch (err) {
       setError(String(err));
@@ -315,7 +317,7 @@ export function SourceControlPanel() {
 
         <button
           type="button"
-          onClick={createBranch}
+          onClick={() => setShowBranchInput((v) => !v)}
           className="p-1 rounded transition-colors"
           style={{ color: "var(--color-overlay-1)" }}
           onMouseEnter={(e) => {
@@ -355,6 +357,45 @@ export function SourceControlPanel() {
         className="px-3 py-2 shrink-0"
         style={{ borderBottom: "1px solid var(--color-surface-0)" }}
       >
+        {/* ── New branch input ────────────────────────────── */}
+        {showBranchInput && (
+          <div
+            className="mb-2 flex items-center gap-1.5"
+          >
+            <input
+              type="text"
+              value={newBranchName}
+              onChange={(e) => setNewBranchName(e.target.value)}
+              placeholder="New branch name..."
+              autoFocus
+              className="flex-1 text-xs px-2 py-1 rounded outline-none"
+              style={{
+                backgroundColor: "var(--color-surface-0)",
+                color: "var(--color-text)",
+                border: "1px solid var(--color-surface-1)",
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  createBranch(newBranchName);
+                } else if (e.key === "Escape") {
+                  setShowBranchInput(false);
+                  setNewBranchName("");
+                }
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => createBranch(newBranchName)}
+              disabled={!newBranchName.trim()}
+              className="p-1 rounded text-xs disabled:opacity-40"
+              style={{ color: "var(--color-green)" }}
+              title="Create branch"
+            >
+              <Check size={13} />
+            </button>
+          </div>
+        )}
         <textarea
           value={commitMessage}
           onChange={(e) => setCommitMessage(e.target.value)}

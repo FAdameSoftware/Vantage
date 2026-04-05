@@ -287,6 +287,9 @@ const mockInvokeHandlers: Record<string, MockInvokeHandler> = {
   claude_respond_permission: () => null,
   claude_interrupt_session: () => null,
   claude_stop_session: () => null,
+  claude_stop_all_sessions: () => null,
+  claude_list_active_sessions: () => [],
+  claude_is_session_alive: () => false,
   claude_list_sessions: () => [],
   search_sessions: () => [],
 

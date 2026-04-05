@@ -592,13 +592,11 @@ export function EditorTabs() {
     async (tabId: string) => {
       const tab = tabs.find((t) => t.id === tabId);
       if (!tab) return;
-      const segments = tab.path.split("/");
-      const dir = segments.slice(0, -1).join("/");
       try {
-        const { invoke } = await import("@tauri-apps/api/core");
-        await invoke("open_in_file_manager", { path: dir });
+        const { revealItemInDir } = await import("@tauri-apps/plugin-opener");
+        await revealItemInDir(tab.path);
       } catch {
-        // Tauri command may not exist in mock — ignore
+        // Plugin may not be available in mock/browser mode — ignore
       }
     },
     [tabs],

@@ -407,7 +407,7 @@ export function FileExplorer() {
 
   const handleCopyPath = useCallback(() => {
     if (!contextNode) return;
-    navigator.clipboard.writeText(contextNode.path);
+    navigator.clipboard.writeText(contextNode.path).catch(() => {});
   }, [contextNode]);
 
   const handleInvestigate = useCallback(() => {
