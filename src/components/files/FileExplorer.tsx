@@ -16,6 +16,72 @@ import {
 } from "@/components/ui/context-menu";
 import type { FileNode } from "@/hooks/useFileTree";
 
+// ── Inline name input (VS Code-style) ────────────────────────────────
+
+interface InlineNameInputProps {
+  /** Indentation depth so it visually lines up with the tree level */
+  depth: number;
+  onSubmit: (name: string) => void;
+  onCancel: () => void;
+}
+
+function InlineNameInput({ depth, onSubmit, onCancel }: InlineNameInputProps) {
+  const [value, setValue] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+  const paddingLeft = 8 + depth * 16 + 20; // match FileTreeNode indent + icon width
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const trimmed = value.trim();
+      if (trimmed) onSubmit(trimmed);
+      else onCancel();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      onCancel();
+    }
+  };
+
+  return (
+    <div
+      className="flex items-center h-[22px]"
+      style={{ paddingLeft: `${paddingLeft}px`, paddingRight: "8px" }}
+    >
+      <input
+        ref={inputRef}
+        type="text"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={handleKeyDown}
+        onBlur={onCancel}
+        className="w-full rounded px-1 py-0 text-xs outline-none"
+        style={{
+          backgroundColor: "var(--color-surface-1)",
+          color: "var(--color-text)",
+          border: "1px solid var(--color-blue)",
+          height: "18px",
+        }}
+        spellCheck={false}
+        autoComplete="off"
+      />
+    </div>
+  );
+}
+
+/** State for the inline creation input */
+interface InlineCreationState {
+  /** Parent directory path where the new item will be created */
+  parentPath: string;
+  /** Visual depth for indentation */
+  depth: number;
+  /** Whether we're creating a file or folder */
+  kind: "file" | "folder";
+}
+
 // ── Inline dialog types ──────────────────────────────────────────────
 
 type InlineDialogMode =
@@ -143,6 +209,7 @@ export function FileExplorer() {
 
   const [contextNode, setContextNode] = useState<FileNode | null>(null);
   const [inlineDialog, setInlineDialog] = useState<InlineDialogMode>(null);
+  const [inlineCreation, setInlineCreation] = useState<InlineCreationState | null>(null);
 
   const handleFileClick = useCallback(
     async (node: FileNode) => {
@@ -196,45 +263,67 @@ export function FileExplorer() {
     []
   );
 
+  /**
+   * Compute the depth of a path relative to the root.
+   * e.g. rootPath="/a/b", nodePath="/a/b/c/d" → depth=2
+   */
+  const getNodeDepth = useCallback(
+    (nodePath: string): number => {
+      if (!rootPath) return 0;
+      const rel = nodePath
+        .replace(/\\/g, "/")
+        .slice(rootPath.replace(/\\/g, "/").length)
+        .replace(/^\//, "");
+      if (!rel) return 0;
+      return rel.split("/").length;
+    },
+    [rootPath],
+  );
+
   const handleNewFile = useCallback(() => {
     if (!contextNode) return;
     const parentPath = contextNode.is_dir
       ? contextNode.path
       : contextNode.path.replace(/\/[^/]+$/, "");
-    setInlineDialog({
-      type: "prompt",
-      title: "Enter file name",
-      defaultValue: "",
-      onSubmit: async (name: string) => {
-        try {
-          await invoke("create_file", { path: `${parentPath}/${name}` });
-          refresh();
-        } catch (e) {
-          console.error("Failed to create file:", e);
-        }
-      },
-    });
-  }, [contextNode, refresh]);
+    const depth = contextNode.is_dir
+      ? getNodeDepth(contextNode.path) + 1
+      : getNodeDepth(contextNode.path);
+    setInlineCreation({ parentPath, depth, kind: "file" });
+  }, [contextNode, getNodeDepth]);
 
   const handleNewFolder = useCallback(() => {
     if (!contextNode) return;
     const parentPath = contextNode.is_dir
       ? contextNode.path
       : contextNode.path.replace(/\/[^/]+$/, "");
-    setInlineDialog({
-      type: "prompt",
-      title: "Enter folder name",
-      defaultValue: "",
-      onSubmit: async (name: string) => {
-        try {
+    const depth = contextNode.is_dir
+      ? getNodeDepth(contextNode.path) + 1
+      : getNodeDepth(contextNode.path);
+    setInlineCreation({ parentPath, depth, kind: "folder" });
+  }, [contextNode, getNodeDepth]);
+
+  const handleInlineCreationSubmit = useCallback(
+    async (name: string) => {
+      if (!inlineCreation) return;
+      const { parentPath, kind } = inlineCreation;
+      setInlineCreation(null);
+      try {
+        if (kind === "file") {
+          await invoke("create_file", { path: `${parentPath}/${name}` });
+        } else {
           await invoke("create_dir", { path: `${parentPath}/${name}` });
-          refresh();
-        } catch (e) {
-          console.error("Failed to create folder:", e);
         }
-      },
-    });
-  }, [contextNode, refresh]);
+        refresh();
+      } catch (e) {
+        console.error(`Failed to create ${kind}:`, e);
+      }
+    },
+    [inlineCreation, refresh],
+  );
+
+  const handleInlineCreationCancel = useCallback(() => {
+    setInlineCreation(null);
+  }, []);
 
   const handleRename = useCallback(() => {
     if (!contextNode) return;
@@ -422,6 +511,15 @@ export function FileExplorer() {
                 gitStatuses={fileStatuses}
               />
             ))}
+
+            {/* Inline name input for New File / New Folder */}
+            {inlineCreation && (
+              <InlineNameInput
+                depth={inlineCreation.depth}
+                onSubmit={handleInlineCreationSubmit}
+                onCancel={handleInlineCreationCancel}
+              />
+            )}
           </div>
         </ContextMenuTrigger>
         <ContextMenuContent
