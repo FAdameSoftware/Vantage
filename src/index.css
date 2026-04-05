@@ -136,37 +136,37 @@
 }
 
 :root {
-  /* ===== Catppuccin Mocha Surface Layering ===== */
-  --color-base: #1e1e2e;
-  --color-mantle: #181825;
-  --color-crust: #11111b;
-  --color-surface-0: #313244;
-  --color-surface-1: #45475a;
-  --color-surface-2: #585b70;
-  --color-overlay-0: #6c7086;
-  --color-overlay-1: #7f849c;
-  --color-overlay-2: #9399b2;
+  /* ===== Catppuccin Mocha Surface Layering (OKLCH) ===== */
+  --color-base: oklch(0.24 0.022 280);
+  --color-mantle: oklch(0.21 0.022 280);
+  --color-crust: oklch(0.17 0.022 280);
+  --color-surface-0: oklch(0.31 0.018 280);
+  --color-surface-1: oklch(0.38 0.016 280);
+  --color-surface-2: oklch(0.44 0.014 280);
+  --color-overlay-0: oklch(0.52 0.012 280);
+  --color-overlay-1: oklch(0.58 0.012 280);
+  --color-overlay-2: oklch(0.65 0.012 280);
 
-  /* ===== Text Hierarchy ===== */
-  --color-text: #cdd6f4;
-  --color-subtext-1: #bac2de;
-  --color-subtext-0: #a6adc8;
+  /* ===== Text Hierarchy (OKLCH) ===== */
+  --color-text: oklch(0.89 0.02 280);
+  --color-subtext-1: oklch(0.82 0.02 280);
+  --color-subtext-0: oklch(0.75 0.02 280);
 
-  /* ===== Accent Colors ===== */
-  --color-rosewater: #f5e0dc;
-  --color-flamingo: #f2cdcd;
-  --color-pink: #f5c2e7;
-  --color-mauve: #cba6f7;
-  --color-red: #f38ba8;
-  --color-maroon: #eba0ac;
-  --color-peach: #fab387;
-  --color-yellow: #f9e2af;
-  --color-green: #a6e3a1;
-  --color-teal: #94e2d5;
-  --color-sky: #89dceb;
-  --color-sapphire: #74c7ec;
-  --color-blue: #89b4fa;
-  --color-lavender: #b4befe;
+  /* ===== Accent Colors (OKLCH) ===== */
+  --color-rosewater: oklch(0.91 0.05 20);
+  --color-flamingo: oklch(0.87 0.06 15);
+  --color-pink: oklch(0.85 0.10 340);
+  --color-mauve: oklch(0.77 0.14 300);
+  --color-red: oklch(0.72 0.16 10);
+  --color-maroon: oklch(0.76 0.12 15);
+  --color-peach: oklch(0.80 0.13 55);
+  --color-yellow: oklch(0.90 0.10 85);
+  --color-green: oklch(0.83 0.14 145);
+  --color-teal: oklch(0.84 0.10 175);
+  --color-sky: oklch(0.84 0.10 210);
+  --color-sapphire: oklch(0.79 0.10 230);
+  --color-blue: oklch(0.77 0.12 260);
+  --color-lavender: oklch(0.80 0.10 285);
 
   /* ===== Semantic Aliases ===== */
   --color-primary: var(--color-blue);
@@ -186,6 +186,22 @@
   --font-size-ui: 13px;
   --font-size-small: 12px;
   --line-height-editor: 1.5;
+
+  /* ===== Typography Scale ===== */
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.875rem;
+  --text-lg: 1rem;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.625;
+  --tracking-tight: -0.01em;
+
+  /* ===== Transitions ===== */
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
 
   /* ===== Syntax Highlighting Token Colors ===== */
   --syntax-keyword: var(--color-mauve);
@@ -390,6 +406,27 @@
   --syntax-invalid: var(--color-red);
 }
 
+/* ===== Transparent Window + Rounded Corners ===== */
+html, body {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  border-radius: 10px;
+  overflow: hidden;
+  clip-path: inset(0 round 10px);
+}
+
+#root {
+  height: 100%;
+  width: 100%;
+  border-radius: inherit;
+  overflow: hidden;
+}
+
 /* ===== Global Styles ===== */
 body {
   margin: 0;
@@ -400,6 +437,7 @@ body {
   font-size: var(--font-size-ui);
   line-height: 1.5;
   overflow: hidden;
+  border-radius: 10px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   user-select: none;
@@ -411,10 +449,10 @@ body {
   user-select: text;
 }
 
-/* Scrollbar styling */
+/* ===== Scrollbar Styling ===== */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 4px;
+  height: 4px;
 }
 
 ::-webkit-scrollbar-track {
@@ -423,7 +461,8 @@ body {
 
 ::-webkit-scrollbar-thumb {
   background: var(--color-surface-1);
-  border-radius: 4px;
+  border-radius: 2px;
+  transition: background-color 0.2s var(--ease-smooth);
 }
 
 ::-webkit-scrollbar-thumb:hover {
@@ -432,6 +471,48 @@ body {
 
 ::-webkit-scrollbar-corner {
   background: transparent;
+}
+
+/* Firefox thin scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-surface-1) transparent;
+}
+
+/* ===== Scrollbar Utilities ===== */
+.scrollbar-hide {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-surface-1) transparent;
+}
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: var(--color-surface-1);
+  border-radius: 2px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-surface-2);
+}
+
+/* ===== Smooth Transitions on Interactive Elements ===== */
+button, a, [role="button"], [role="menuitem"], [role="tab"] {
+  transition: background-color 150ms var(--ease-smooth),
+              color 150ms var(--ease-smooth),
+              opacity 150ms var(--ease-smooth),
+              transform 150ms var(--ease-smooth);
 }
 
 /* Focus ring */
