@@ -146,7 +146,13 @@ function SessionInfoBadge() {
 
 function TypingDots() {
   return (
-    <div className="flex items-center gap-1.5 mb-3 pl-1">
+    <div
+      className="flex items-center gap-2 mb-3 px-3 py-2 rounded-md"
+      style={{
+        backgroundColor: "var(--color-surface-0)",
+        border: "1px solid var(--color-surface-1)",
+      }}
+    >
       <div className="flex items-center gap-1">
         <span
           className="w-1.5 h-1.5 rounded-full animate-bounce"
@@ -161,8 +167,8 @@ function TypingDots() {
           style={{ backgroundColor: "var(--color-blue)", animationDelay: "300ms", animationDuration: "1s" }}
         />
       </div>
-      <span className="text-[10px]" style={{ color: "var(--color-overlay-1)" }}>
-        Claude is thinking...
+      <span className="text-xs font-medium" style={{ color: "var(--color-blue)" }}>
+        Claude is working...
       </span>
     </div>
   );
@@ -606,11 +612,12 @@ export function ChatPanel({ mode = "sidebar" }: ChatPanelProps) {
       className="flex flex-col h-full overflow-hidden"
       style={{ backgroundColor: "var(--color-mantle)" }}
     >
-      {/* Header — clean single row */}
+      {/* Header — clean single row with backdrop blur */}
       <div
-        className={`flex items-center shrink-0 min-w-0 gap-2 ${mode === "full" ? "px-5 h-10" : "px-3 h-9"}`}
+        className={`flex items-center shrink-0 min-w-0 gap-2 backdrop-blur-sm z-10 ${mode === "full" ? "px-5 h-10" : "px-3 h-9"}`}
         style={{
           borderBottom: "1px solid var(--color-surface-0)",
+          backgroundColor: "color-mix(in srgb, var(--color-mantle) 95%, transparent)",
         }}
       >
         {/* Left: title + model badge */}

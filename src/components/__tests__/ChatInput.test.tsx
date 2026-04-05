@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ChatInput } from "../chat/ChatInput";
+import { useSettingsStore } from "@/stores/settings";
 
 // Mock the quickQuestion store
 vi.mock("@/stores/quickQuestion", () => ({
@@ -113,17 +114,15 @@ describe("ChatInput", () => {
     expect(screen.getByLabelText("Send message")).toBeDisabled();
   });
 
-  it("toggles ultrathink mode and prepends 'ultrathink' to message", async () => {
+  it("prepends thinking phrase when thinking mode is set via store", async () => {
+    // Set thinking mode to ultrathink in the store
+    act(() => {
+      useSettingsStore.getState().setThinkingMode("ultrathink");
+    });
+
     const user = userEvent.setup();
     const onSend = vi.fn();
     render(<ChatInput {...defaultProps({ onSend })} />);
-
-    // Enable Deep Think
-    const deepThinkBtn = screen.getByLabelText("Enable Deep Think");
-    await user.click(deepThinkBtn);
-
-    // Verify toggle label changed
-    expect(screen.getByLabelText("Disable Deep Think")).toBeInTheDocument();
 
     // Type and send
     const textarea = screen.getByPlaceholderText("Ask Claude anything...");
@@ -131,15 +130,30 @@ describe("ChatInput", () => {
     await user.keyboard("{Enter}");
 
     expect(onSend).toHaveBeenCalledWith("ultrathink test message");
+
+    // Reset store
+    act(() => {
+      useSettingsStore.getState().setThinkingMode("auto");
+    });
   });
 
-  it("shows Deep Think status text when ultrathink enabled", async () => {
-    const user = userEvent.setup();
+  it("shows thinking mode label when a non-auto mode is selected", () => {
+    act(() => {
+      useSettingsStore.getState().setThinkingMode("think_hard");
+    });
     render(<ChatInput {...defaultProps()} />);
 
-    await user.click(screen.getByLabelText("Enable Deep Think"));
+    expect(screen.getByText(/Think Hard mode enabled/)).toBeInTheDocument();
 
-    expect(screen.getByText(/Deep Think enabled/)).toBeInTheDocument();
+    // Reset store
+    act(() => {
+      useSettingsStore.getState().setThinkingMode("auto");
+    });
+  });
+
+  it("renders thinking mode selector button", () => {
+    render(<ChatInput {...defaultProps()} />);
+    expect(screen.getByLabelText(/Thinking mode/)).toBeInTheDocument();
   });
 
   it("shows slash autocomplete when / is typed", async () => {

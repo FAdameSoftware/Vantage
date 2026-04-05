@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect, useCallback, useImperativeHandle, forwardRef } from "react";
-import { Send, Square, Brain } from "lucide-react";
+import { Send, Square } from "lucide-react";
 import { SlashAutocomplete } from "./SlashAutocomplete";
 import { MentionAutocomplete } from "./MentionAutocomplete";
 import { MentionChip } from "./MentionChip";
 import { ImagePreview } from "./ImagePreview";
+import { ThinkingModeSelector, getThinkingPhrase, getThinkingModeLabel } from "./ThinkingModeSelector";
 import {
   buildCommandList,
   filterCommands,
@@ -11,6 +12,7 @@ import {
 } from "@/lib/slashCommands";
 import { handleSlashCommand } from "@/lib/slashHandlers";
 import { useQuickQuestionStore } from "@/stores/quickQuestion";
+import { useSettingsStore } from "@/stores/settings";
 import {
   filterMentionSources,
   resolveMention,
@@ -42,7 +44,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   installedSkills,
 }, ref) {
   const [text, setText] = useState("");
-  const [ultrathink, setUltrathink] = useState(false);
+  const thinkingMode = useSettingsStore((s) => s.thinkingMode);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Chat input history (Feature 4: arrow up/down to cycle previous messages)
@@ -150,8 +152,9 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
       ? `${withContext}\n\n${imageContext}`
       : withContext;
 
-    // Prepend ultrathink keyword when Deep Think is enabled
-    const message = ultrathink ? `ultrathink ${withImages}` : withImages;
+    // Prepend thinking phrase when mode is not "auto"
+    const thinkingPhrase = getThinkingPhrase(thinkingMode);
+    const message = thinkingPhrase ? `${thinkingPhrase} ${withImages}` : withImages;
     onSend(message);
     setText("");
     setResolvedMentions([]);
@@ -164,7 +167,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
     }
-  }, [text, isStreaming, disabled, onSend, ultrathink, resolvedMentions, imagePaste]);
+  }, [text, isStreaming, disabled, onSend, thinkingMode, resolvedMentions, imagePaste]);
 
   const handleSlashSelect = useCallback((cmd: SlashCommand) => {
     if (cmd.name === "interview") {
@@ -387,6 +390,9 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
         ? "Claude is responding..."
         : "Ask Claude anything...";
 
+  const thinkingLabel = getThinkingModeLabel(thinkingMode);
+  const isThinkingActive = thinkingMode !== "auto";
+
   const hintText = isStreaming
     ? "Ctrl+C to stop"
     : isResolvingMention
@@ -453,6 +459,10 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
             border: "1px solid var(--color-surface-1)",
           }}
         >
+          {/* Left: thinking mode selector */}
+          <ThinkingModeSelector />
+
+          {/* Center: textarea */}
           <textarea
             ref={textareaRef}
             className="flex-1 bg-transparent text-xs resize-none outline-none placeholder:text-[var(--color-overlay-0)]"
@@ -471,21 +481,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
             maxLength={100000}
           />
 
-          {/* Deep Think toggle — always visible */}
-          <button
-            type="button"
-            className="p-1 rounded transition-colors hover:bg-[var(--color-surface-1)]"
-            style={{
-              color: ultrathink ? "var(--color-mauve)" : "var(--color-overlay-0)",
-              boxShadow: ultrathink ? "0 0 0 1px var(--color-mauve)" : undefined,
-            }}
-            onClick={() => setUltrathink((u) => !u)}
-            aria-label={ultrathink ? "Disable Deep Think" : "Enable Deep Think"}
-            title={ultrathink ? "Deep Think ON — max reasoning" : "Deep Think OFF"}
-          >
-            <Brain size={14} />
-          </button>
-
+          {/* Right: send / stop */}
           {isStreaming ? (
             <button
               type="button"
@@ -514,9 +510,9 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
       </div>
       <p
         className="text-center mt-1 text-[10px]"
-        style={{ color: ultrathink ? "var(--color-mauve)" : "var(--color-overlay-0)" }}
+        style={{ color: isThinkingActive ? "var(--color-mauve)" : "var(--color-overlay-0)" }}
       >
-        {ultrathink ? "Deep Think enabled — maximum reasoning budget" : hintText}
+        {isThinkingActive ? `${thinkingLabel} mode enabled` : hintText}
       </p>
     </div>
   );
