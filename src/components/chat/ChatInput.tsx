@@ -62,7 +62,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
           el.selectionStart = editText.length;
           el.selectionEnd = editText.length;
           el.style.height = "auto";
-          el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
+          el.style.height = `${Math.min(el.scrollHeight, 240)}px`;
         }
       }, 0);
     },
@@ -96,12 +96,12 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   const filteredSlash = showSlash ? filterCommands(allCommands, slashQuery) : [];
   const filteredMentions = showMention ? filterMentionSources(mentionQuery) : [];
 
-  // Auto-resize textarea to fit content, max 200px
+  // Auto-resize textarea to fit content, max 240px (~10 lines)
   useEffect(() => {
     const el = textareaRef.current;
     if (!el) return;
     el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
+    el.style.height = `${Math.min(el.scrollHeight, 240)}px`;
   }, [text]);
 
   // Focus on mount
@@ -459,7 +459,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
             style={{
               color: "var(--color-text)",
               fontFamily: "var(--font-sans)",
-              maxHeight: "150px",
+              maxHeight: "240px",
             }}
             placeholder={placeholder}
             rows={1}

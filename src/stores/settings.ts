@@ -32,6 +32,8 @@ export interface SettingsState {
   cursorBlinking: "blink" | "smooth" | "expand" | "solid" | "phase";
   /** Whether sticky scroll is enabled in the editor */
   stickyScroll: boolean;
+  /** Whether font ligatures are enabled in the editor */
+  fontLigatures: boolean;
   /** Model to use for new Claude sessions */
   selectedModel: string;
   /** Custom keybinding overrides: keybinding ID -> shortcut string (e.g., "Ctrl+Shift+B") */
@@ -56,6 +58,7 @@ export interface SettingsState {
   setCursorStyle: (style: "line" | "block" | "underline") => void;
   setCursorBlinking: (style: "blink" | "smooth" | "expand" | "solid" | "phase") => void;
   setStickyScroll: (value: boolean) => void;
+  setFontLigatures: (value: boolean) => void;
   setSelectedModel: (model: string) => void;
   setKeybindingOverride: (id: string, binding: { key: string; ctrl?: boolean; shift?: boolean; alt?: boolean }) => void;
   removeKeybindingOverride: (id: string) => void;
@@ -85,6 +88,7 @@ export const useSettingsStore = create<SettingsState>()(
       cursorStyle: "line",
       cursorBlinking: "blink",
       stickyScroll: true,
+      fontLigatures: true,
       selectedModel: "claude-sonnet-4-6",
       keybindingOverrides: {},
       setTheme: (theme) => set({ theme }),
@@ -107,6 +111,7 @@ export const useSettingsStore = create<SettingsState>()(
       setCursorStyle: (style) => set({ cursorStyle: style }),
       setCursorBlinking: (style) => set({ cursorBlinking: style }),
       setStickyScroll: (value) => set({ stickyScroll: value }),
+      setFontLigatures: (value) => set({ fontLigatures: value }),
       setSelectedModel: (model) => set({ selectedModel: model }),
       setKeybindingOverride: (id, binding) =>
         set((state) => ({
@@ -143,6 +148,7 @@ export const useSettingsStore = create<SettingsState>()(
         cursorStyle: state.cursorStyle,
         cursorBlinking: state.cursorBlinking,
         stickyScroll: state.stickyScroll,
+        fontLigatures: state.fontLigatures,
         selectedModel: state.selectedModel,
         keybindingOverrides: state.keybindingOverrides,
       }),

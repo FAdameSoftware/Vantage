@@ -125,6 +125,7 @@ export function MonacoEditor({
   const cursorStyle = useSettingsStore((s) => s.cursorStyle);
   const cursorBlinking = useSettingsStore((s) => s.cursorBlinking);
   const stickyScroll = useSettingsStore((s) => s.stickyScroll);
+  const fontLigatures = useSettingsStore((s) => s.fontLigatures);
   const monacoTheme = getMonacoTheme(themeName);
 
   const setCursorPosition = useEditorStore((s) => s.setCursorPosition);
@@ -262,7 +263,7 @@ export function MonacoEditor({
           options={{
             fontFamily,
             fontSize: fontSizeEditor,
-            fontLigatures: true,
+            fontLigatures,
             tabSize,
             insertSpaces,
             wordWrap: wordWrap ? "on" : "off",

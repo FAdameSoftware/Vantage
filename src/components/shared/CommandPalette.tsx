@@ -207,6 +207,11 @@ export function CommandPalette() {
 
   const currentTheme = useSettingsStore((s) => s.theme);
   const setTheme = useSettingsStore((s) => s.setTheme);
+  const stickyScroll = useSettingsStore((s) => s.stickyScroll);
+  const setStickyScroll = useSettingsStore((s) => s.setStickyScroll);
+  const fontLigatures = useSettingsStore((s) => s.fontLigatures);
+  const setFontLigatures = useSettingsStore((s) => s.setFontLigatures);
+  const setCursorStyle = useSettingsStore((s) => s.setCursorStyle);
 
   const cycleTheme = useCallback(() => {
     const currentIndex = THEME_CYCLE.indexOf(currentTheme);
@@ -582,6 +587,80 @@ export function CommandPalette() {
         const editors = monaco.editor.getEditors();
         if (editors.length > 0) {
           const action = editors[0].getAction("editor.action.addSelectionToNextFindMatch");
+          if (action) action.run();
+        }
+      },
+    },
+    {
+      id: "toggle-sticky-scroll",
+      label: `Sticky Scroll: ${stickyScroll ? "Disable" : "Enable"}`,
+      icon: <FileCode className="size-4 shrink-0 text-muted-foreground" />,
+      category: "Editor",
+      action: () => setStickyScroll(!stickyScroll),
+    },
+    {
+      id: "toggle-font-ligatures",
+      label: `Font Ligatures: ${fontLigatures ? "Disable" : "Enable"}`,
+      icon: <FileCode className="size-4 shrink-0 text-muted-foreground" />,
+      category: "Editor",
+      action: () => setFontLigatures(!fontLigatures),
+    },
+    {
+      id: "toggle-word-wrap",
+      label: `Word Wrap: ${useSettingsStore.getState().wordWrap ? "Disable" : "Enable"}`,
+      shortcut: "Alt+Z",
+      icon: <FileCode className="size-4 shrink-0 text-muted-foreground" />,
+      category: "Editor",
+      action: () => {
+        const settings = useSettingsStore.getState();
+        settings.setWordWrap(!settings.wordWrap);
+      },
+    },
+    {
+      id: "cursor-style-line",
+      label: "Cursor Style: Line",
+      icon: <FileCode className="size-4 shrink-0 text-muted-foreground" />,
+      category: "Editor",
+      action: () => setCursorStyle("line"),
+    },
+    {
+      id: "cursor-style-block",
+      label: "Cursor Style: Block",
+      icon: <FileCode className="size-4 shrink-0 text-muted-foreground" />,
+      category: "Editor",
+      action: () => setCursorStyle("block"),
+    },
+    {
+      id: "cursor-style-underline",
+      label: "Cursor Style: Underline",
+      icon: <FileCode className="size-4 shrink-0 text-muted-foreground" />,
+      category: "Editor",
+      action: () => setCursorStyle("underline"),
+    },
+    {
+      id: "toggle-line-comment",
+      label: "Toggle Line Comment",
+      shortcut: "Ctrl+/",
+      icon: <FileCode className="size-4 shrink-0 text-muted-foreground" />,
+      category: "Editor",
+      action: () => {
+        const editors = monaco.editor.getEditors();
+        if (editors.length > 0) {
+          const action = editors[0].getAction("editor.action.commentLine");
+          if (action) action.run();
+        }
+      },
+    },
+    {
+      id: "toggle-block-comment",
+      label: "Toggle Block Comment",
+      shortcut: "Shift+Alt+A",
+      icon: <FileCode className="size-4 shrink-0 text-muted-foreground" />,
+      category: "Editor",
+      action: () => {
+        const editors = monaco.editor.getEditors();
+        if (editors.length > 0) {
+          const action = editors[0].getAction("editor.action.blockComment");
           if (action) action.run();
         }
       },
