@@ -36,6 +36,6 @@ export default defineConfig({
     port: 1420,
     reuseExistingServer: !process.env.CI,
     timeout: 30_000,
-    cwd: "..",
+    cwd: "C:/CursorProjects/Vantage",
   },
 });
