@@ -26,6 +26,7 @@ const MOCK_FILE_TREE = [
     is_file: false,
     extension: null,
     is_symlink: false,
+    size: null,
     children: [
       {
         name: "main.tsx",
@@ -34,6 +35,7 @@ const MOCK_FILE_TREE = [
         is_file: true,
         extension: "tsx",
         is_symlink: false,
+        size: 1240,
         children: null,
       },
       {
@@ -43,6 +45,7 @@ const MOCK_FILE_TREE = [
         is_file: true,
         extension: "tsx",
         is_symlink: false,
+        size: 3456,
         children: null,
       },
       {
@@ -52,6 +55,7 @@ const MOCK_FILE_TREE = [
         is_file: true,
         extension: "css",
         is_symlink: false,
+        size: 892,
         children: null,
       },
       {
@@ -61,6 +65,7 @@ const MOCK_FILE_TREE = [
         is_file: false,
         extension: null,
         is_symlink: false,
+        size: null,
         children: null,
       },
       {
@@ -70,6 +75,7 @@ const MOCK_FILE_TREE = [
         is_file: false,
         extension: null,
         is_symlink: false,
+        size: null,
         children: null,
       },
     ],
@@ -81,6 +87,7 @@ const MOCK_FILE_TREE = [
     is_file: true,
     extension: "json",
     is_symlink: false,
+    size: 1567,
     children: null,
   },
   {
@@ -90,6 +97,7 @@ const MOCK_FILE_TREE = [
     is_file: true,
     extension: "json",
     is_symlink: false,
+    size: 423,
     children: null,
   },
   {
@@ -99,6 +107,7 @@ const MOCK_FILE_TREE = [
     is_file: true,
     extension: "md",
     is_symlink: false,
+    size: 2048,
     children: null,
   },
 ];
@@ -232,6 +241,7 @@ const mockInvokeHandlers: Record<string, MockInvokeHandler> = {
   git_diff_working: () =>
     "diff --git a/src/App.tsx b/src/App.tsx\nindex abc1234..def5678 100644\n--- a/src/App.tsx\n+++ b/src/App.tsx\n@@ -1,3 +1,4 @@\n import React from 'react';\n+import { NewFeature } from './NewFeature';\n \n function App() {\n",
   git_diff_staged: () => "",
+  git_diff_stat: () => ({ insertions: 12, deletions: 5, files_changed: 3 }),
   git_show_file: () => "",
   git_stage: () => "",
   git_unstage: () => "",

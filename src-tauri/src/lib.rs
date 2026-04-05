@@ -471,6 +471,12 @@ fn git_diff_staged(cwd: String) -> Result<String, String> {
     git::git_diff_staged(&cwd)
 }
 
+#[tauri::command]
+#[specta::specta]
+fn git_diff_stat(cwd: String) -> Result<git::GitDiffStat, String> {
+    git::git_diff_stat(&cwd)
+}
+
 // ── MCP Config Commands ───────────────────────────────────────────
 
 #[tauri::command]
@@ -701,6 +707,7 @@ pub fn run() {
             git_diff_commit,
             git_diff_working,
             git_diff_staged,
+            git_diff_stat,
             git_stage,
             git_unstage,
             git_commit,

@@ -41,6 +41,13 @@ function HighlightedName({ name, query }: { name: string; query: string }) {
   );
 }
 
+/** Format a file size in bytes to a human-readable string. */
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export function FileTreeNode({
   node,
   depth,
@@ -195,6 +202,26 @@ export function FileTreeNode({
         >
           <HighlightedName name={node.name} query={filterQuery ?? ""} />
         </span>
+
+        {/* File size (files only, not directories) */}
+        {node.is_file && node.size != null && !gitStatus && (
+          <span
+            className="ml-auto mr-2 text-[10px] shrink-0 tabular-nums"
+            style={{ color: "var(--color-overlay-0)" }}
+            title={`${node.size.toLocaleString()} bytes`}
+          >
+            {formatFileSize(node.size)}
+          </span>
+        )}
+        {node.is_file && node.size != null && gitStatus && (
+          <span
+            className="ml-1 text-[10px] shrink-0 tabular-nums"
+            style={{ color: "var(--color-overlay-0)" }}
+            title={`${node.size.toLocaleString()} bytes`}
+          >
+            {formatFileSize(node.size)}
+          </span>
+        )}
 
         {/* Agent ownership indicator */}
         {hasConflict ? (

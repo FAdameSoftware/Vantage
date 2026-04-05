@@ -571,6 +571,49 @@ export function EditorArea() {
   const secondaryActiveTabId = useEditorStore((s) => s.secondaryActiveTabId);
   const tabs = useEditorStore((s) => s.tabs);
 
+  // ── Markdown sync-scroll state ────────────────────────────────────
+  const [mdScrollFraction, setMdScrollFraction] = useState(0);
+  const editorPaneRef = useRef<HTMLDivElement>(null);
+  const isSyncingEditorRef = useRef(false);
+
+  // When the Monaco editor scrolls, compute scroll fraction and push to preview
+  useEffect(() => {
+    const pane = editorPaneRef.current;
+    if (!pane) return;
+    // Monaco renders a scrollable div with class "monaco-scrollable-element"
+    const scrollable = pane.querySelector(".monaco-scrollable-element .lines-content")
+      ?.parentElement as HTMLElement | null;
+    if (!scrollable) return;
+
+    const handleEditorScroll = () => {
+      if (isSyncingEditorRef.current) return;
+      const maxScroll = scrollable.scrollHeight - scrollable.clientHeight;
+      if (maxScroll <= 0) return;
+      setMdScrollFraction(scrollable.scrollTop / maxScroll);
+    };
+
+    scrollable.addEventListener("scroll", handleEditorScroll, { passive: true });
+    return () => scrollable.removeEventListener("scroll", handleEditorScroll);
+  }, [activeTab?.id]);
+
+  // When the preview scrolls, sync the editor
+  const handlePreviewScroll = useCallback((fraction: number) => {
+    const pane = editorPaneRef.current;
+    if (!pane) return;
+    const scrollable = pane.querySelector(".monaco-scrollable-element .lines-content")
+      ?.parentElement as HTMLElement | null;
+    if (!scrollable) return;
+
+    const maxScroll = scrollable.scrollHeight - scrollable.clientHeight;
+    if (maxScroll <= 0) return;
+
+    isSyncingEditorRef.current = true;
+    scrollable.scrollTop = fraction * maxScroll;
+    requestAnimationFrame(() => {
+      isSyncingEditorRef.current = false;
+    });
+  }, []);
+
   // Resolve the secondary tab for split view
   const secondaryTab = secondaryActiveTabId
     ? tabs.find((t) => t.id === secondaryActiveTabId) ?? null
@@ -684,6 +727,7 @@ export function EditorArea() {
           >
             {/* Primary Monaco editor pane */}
             <div
+              ref={isMarkdownPreview ? editorPaneRef : undefined}
               className={
                 isMarkdownPreview || isSplit ? "flex-1" : "w-full"
               }
@@ -742,7 +786,11 @@ export function EditorArea() {
                 className="flex-1 overflow-hidden"
                 style={{ borderLeft: "1px solid var(--color-surface-0)" }}
               >
-                <MarkdownPreview content={activeTab.content} />
+                <MarkdownPreview
+                  content={activeTab.content}
+                  scrollFraction={mdScrollFraction}
+                  onScroll={handlePreviewScroll}
+                />
               </div>
             )}
           </div>

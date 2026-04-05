@@ -48,6 +48,40 @@ export function StatusBar() {
   const setInsertSpaces = useSettingsStore((s) => s.setInsertSpaces);
   const { branch, isGitRepo } = useGitStatus(projectRootPath);
 
+  // Git diff stat: +insertions -deletions shown next to branch
+  const [diffStat, setDiffStat] = useState<{ insertions: number; deletions: number } | null>(null);
+  useEffect(() => {
+    if (!projectRootPath || !isGitRepo) {
+      setDiffStat(null);
+      return;
+    }
+    let cancelled = false;
+    const fetchDiffStat = () => {
+      invoke<{ insertions: number; deletions: number; files_changed: number }>(
+        "git_diff_stat",
+        { cwd: projectRootPath },
+      )
+        .then((stat) => {
+          if (!cancelled) {
+            if (stat.insertions > 0 || stat.deletions > 0) {
+              setDiffStat({ insertions: stat.insertions, deletions: stat.deletions });
+            } else {
+              setDiffStat(null);
+            }
+          }
+        })
+        .catch(() => {
+          if (!cancelled) setDiffStat(null);
+        });
+    };
+    fetchDiffStat();
+    const id = setInterval(fetchDiffStat, 5000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [projectRootPath, isGitRepo]);
+
   const sessionStartedAt = useUsageStore((s) => s.sessionStartedAt);
   const usageTotalCost = useUsageStore((s) => s.totalCostUsd);
   const usageInputTokens = useUsageStore((s) => s.inputTokens);
@@ -257,6 +291,17 @@ export function StatusBar() {
                 />
               )}
             </div>
+          )}
+
+          {/* Git diff stat: +insertions -deletions */}
+          {isGitRepo && diffStat && (
+            <span
+              className="flex items-center gap-1 text-[11px] font-mono"
+              title={`${diffStat.insertions} insertions, ${diffStat.deletions} deletions`}
+            >
+              <span style={{ color: "var(--color-green)" }}>+{diffStat.insertions}</span>
+              <span style={{ color: "var(--color-red)" }}>-{diffStat.deletions}</span>
+            </span>
           )}
 
           {/* Errors and warnings -> click focuses search panel */}

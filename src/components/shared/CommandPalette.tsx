@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import {
   CommandDialog,
@@ -87,12 +87,40 @@ function getFileIcon(_extension: string | null): React.ReactNode {
   return <FileCode className="size-4 shrink-0 text-muted-foreground" />;
 }
 
+// ── Recent Commands ──────────────────────────────────────────────────
+
+const RECENT_COMMANDS_KEY = "vantage-recent-commands";
+const MAX_RECENT_COMMANDS = 10;
+
+function getRecentCommandIds(): string[] {
+  try {
+    const raw = localStorage.getItem(RECENT_COMMANDS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((id): id is string => typeof id === "string");
+  } catch {
+    return [];
+  }
+}
+
+function addRecentCommandId(id: string): void {
+  const current = getRecentCommandIds().filter((c) => c !== id);
+  current.unshift(id);
+  if (current.length > MAX_RECENT_COMMANDS) current.length = MAX_RECENT_COMMANDS;
+  try {
+    localStorage.setItem(RECENT_COMMANDS_KEY, JSON.stringify(current));
+  } catch {
+    // localStorage full or blocked — ignore
+  }
+}
+
 // ── Sub-views ─────────────────────────────────────────────────────────
 
 interface CommandsViewProps {
   commands: CommandDef[];
   searchText: string;
-  onSelect: (action: () => void) => void;
+  onSelect: (action: () => void, commandId?: string) => void;
 }
 
 function CommandsView({ commands, searchText, onSelect }: CommandsViewProps) {
@@ -104,25 +132,55 @@ function CommandsView({ commands, searchText, onSelect }: CommandsViewProps) {
     ? commands.filter((c) => c.label.toLowerCase().includes(query))
     : commands;
 
+  // Resolve recent commands (only when there is no active search query)
+  const recentIds = useMemo(() => (query ? [] : getRecentCommandIds()), [query]);
+  const recentCommands = useMemo(() => {
+    if (recentIds.length === 0) return [];
+    const cmdMap = new Map(commands.map((c) => [c.id, c]));
+    return recentIds.map((id) => cmdMap.get(id)).filter((c): c is CommandDef => c !== undefined);
+  }, [recentIds, commands]);
+
+  // Exclude recent commands from the main list to avoid duplicates
+  const recentIdSet = useMemo(() => new Set(recentIds), [recentIds]);
+  const nonRecentFiltered = query ? filtered : filtered.filter((c) => !recentIdSet.has(c.id));
+
   // Group by category
-  const byCategory = filtered.reduce<Record<string, CommandDef[]>>((acc, cmd) => {
+  const byCategory = nonRecentFiltered.reduce<Record<string, CommandDef[]>>((acc, cmd) => {
     (acc[cmd.category] ??= []).push(cmd);
     return acc;
   }, {});
 
-  if (filtered.length === 0) {
+  if (filtered.length === 0 && recentCommands.length === 0) {
     return null;
   }
 
   return (
     <>
+      {/* Recent commands section — shown only when not searching */}
+      {recentCommands.length > 0 && (
+        <CommandGroup heading="Recent">
+          {recentCommands.map((cmd) => (
+            <CommandItem
+              key={`recent-${cmd.id}`}
+              value={`recent-${cmd.id}`}
+              onSelect={() => onSelect(cmd.action, cmd.id)}
+            >
+              {cmd.icon}
+              <span>{cmd.label}</span>
+              {cmd.shortcut && (
+                <CommandShortcut>{cmd.shortcut}</CommandShortcut>
+              )}
+            </CommandItem>
+          ))}
+        </CommandGroup>
+      )}
       {Object.entries(byCategory).map(([category, cmds]) => (
         <CommandGroup key={category} heading={category}>
           {cmds.map((cmd) => (
             <CommandItem
               key={cmd.id}
               value={cmd.id}
-              onSelect={() => onSelect(cmd.action)}
+              onSelect={() => onSelect(cmd.action, cmd.id)}
             >
               {cmd.icon}
               <span>{cmd.label}</span>
@@ -212,6 +270,8 @@ export function CommandPalette() {
   const fontLigatures = useSettingsStore((s) => s.fontLigatures);
   const setFontLigatures = useSettingsStore((s) => s.setFontLigatures);
   const setCursorStyle = useSettingsStore((s) => s.setCursorStyle);
+  const renderWhitespace = useSettingsStore((s) => s.renderWhitespace);
+  const setRenderWhitespace = useSettingsStore((s) => s.setRenderWhitespace);
 
   const cycleTheme = useCallback(() => {
     const currentIndex = THEME_CYCLE.indexOf(currentTheme);
@@ -606,6 +666,41 @@ export function CommandPalette() {
       action: () => setFontLigatures(!fontLigatures),
     },
     {
+      id: "whitespace-none",
+      label: `Render Whitespace: None${renderWhitespace === "none" ? " (active)" : ""}`,
+      icon: <FileCode className="size-4 shrink-0 text-muted-foreground" />,
+      category: "Editor",
+      action: () => setRenderWhitespace("none"),
+    },
+    {
+      id: "whitespace-boundary",
+      label: `Render Whitespace: Boundary${renderWhitespace === "boundary" ? " (active)" : ""}`,
+      icon: <FileCode className="size-4 shrink-0 text-muted-foreground" />,
+      category: "Editor",
+      action: () => setRenderWhitespace("boundary"),
+    },
+    {
+      id: "whitespace-selection",
+      label: `Render Whitespace: Selection${renderWhitespace === "selection" ? " (active)" : ""}`,
+      icon: <FileCode className="size-4 shrink-0 text-muted-foreground" />,
+      category: "Editor",
+      action: () => setRenderWhitespace("selection"),
+    },
+    {
+      id: "whitespace-trailing",
+      label: `Render Whitespace: Trailing${renderWhitespace === "trailing" ? " (active)" : ""}`,
+      icon: <FileCode className="size-4 shrink-0 text-muted-foreground" />,
+      category: "Editor",
+      action: () => setRenderWhitespace("trailing"),
+    },
+    {
+      id: "whitespace-all",
+      label: `Render Whitespace: All${renderWhitespace === "all" ? " (active)" : ""}`,
+      icon: <FileCode className="size-4 shrink-0 text-muted-foreground" />,
+      category: "Editor",
+      action: () => setRenderWhitespace("all"),
+    },
+    {
       id: "toggle-word-wrap",
       label: `Word Wrap: ${useSettingsStore.getState().wordWrap ? "Disable" : "Enable"}`,
       shortcut: "Alt+Z",
@@ -723,9 +818,14 @@ export function CommandPalette() {
     [close]
   );
 
-  // Handle command execution
+  // Handle command execution — records the command in recent history
   const handleCommandSelect = useCallback(
-    (action: () => void) => {
+    (action: () => void, commandId?: string) => {
+      if (commandId) {
+        // Strip "recent-" prefix if present (when selecting from the recent section)
+        const cleanId = commandId.startsWith("recent-") ? commandId.slice(7) : commandId;
+        addRecentCommandId(cleanId);
+      }
       close();
       // Small delay so the palette closes before executing the action
       setTimeout(action, 0);

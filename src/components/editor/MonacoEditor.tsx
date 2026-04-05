@@ -126,6 +126,7 @@ export function MonacoEditor({
   const cursorBlinking = useSettingsStore((s) => s.cursorBlinking);
   const stickyScroll = useSettingsStore((s) => s.stickyScroll);
   const fontLigatures = useSettingsStore((s) => s.fontLigatures);
+  const renderWhitespace = useSettingsStore((s) => s.renderWhitespace);
   const monacoTheme = getMonacoTheme(themeName);
 
   const setCursorPosition = useEditorStore((s) => s.setCursorPosition);
@@ -268,6 +269,7 @@ export function MonacoEditor({
             insertSpaces,
             wordWrap: wordWrap ? "on" : "off",
             wordWrapColumn,
+            wrappingStrategy: "advanced",
             minimap: {
               enabled: minimapEnabled,
               showSlider: "always",
@@ -283,7 +285,7 @@ export function MonacoEditor({
             cursorSmoothCaretAnimation: cursorBlinking === "smooth" ? "on" : "off",
             cursorStyle,
             renderLineHighlight: "line",
-            renderWhitespace: "selection",
+            renderWhitespace,
             bracketPairColorization: { enabled: true },
             guides: {
               bracketPairs: true,

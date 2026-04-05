@@ -34,6 +34,8 @@ export interface SettingsState {
   stickyScroll: boolean;
   /** Whether font ligatures are enabled in the editor */
   fontLigatures: boolean;
+  /** Controls how whitespace characters are rendered in the editor */
+  renderWhitespace: "none" | "boundary" | "selection" | "trailing" | "all";
   /** Model to use for new Claude sessions */
   selectedModel: string;
   /** Custom keybinding overrides: keybinding ID -> shortcut string (e.g., "Ctrl+Shift+B") */
@@ -59,6 +61,7 @@ export interface SettingsState {
   setCursorBlinking: (style: "blink" | "smooth" | "expand" | "solid" | "phase") => void;
   setStickyScroll: (value: boolean) => void;
   setFontLigatures: (value: boolean) => void;
+  setRenderWhitespace: (value: "none" | "boundary" | "selection" | "trailing" | "all") => void;
   setSelectedModel: (model: string) => void;
   setKeybindingOverride: (id: string, binding: { key: string; ctrl?: boolean; shift?: boolean; alt?: boolean }) => void;
   removeKeybindingOverride: (id: string) => void;
@@ -89,6 +92,7 @@ export const useSettingsStore = create<SettingsState>()(
       cursorBlinking: "blink",
       stickyScroll: true,
       fontLigatures: true,
+      renderWhitespace: "selection" as const,
       selectedModel: "claude-sonnet-4-6",
       keybindingOverrides: {},
       setTheme: (theme) => set({ theme }),
@@ -112,6 +116,7 @@ export const useSettingsStore = create<SettingsState>()(
       setCursorBlinking: (style) => set({ cursorBlinking: style }),
       setStickyScroll: (value) => set({ stickyScroll: value }),
       setFontLigatures: (value) => set({ fontLigatures: value }),
+      setRenderWhitespace: (value) => set({ renderWhitespace: value }),
       setSelectedModel: (model) => set({ selectedModel: model }),
       setKeybindingOverride: (id, binding) =>
         set((state) => ({
@@ -149,6 +154,7 @@ export const useSettingsStore = create<SettingsState>()(
         cursorBlinking: state.cursorBlinking,
         stickyScroll: state.stickyScroll,
         fontLigatures: state.fontLigatures,
+        renderWhitespace: state.renderWhitespace,
         selectedModel: state.selectedModel,
         keybindingOverrides: state.keybindingOverrides,
       }),

@@ -963,6 +963,73 @@ pub fn git_diff_staged(cwd: &str) -> Result<String, String> {
     }
 }
 
+/// Summary of changed lines from `git diff --stat`.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct GitDiffStat {
+    pub insertions: u32,
+    pub deletions: u32,
+    pub files_changed: u32,
+}
+
+/// Get the number of inserted and deleted lines in the working tree.
+/// Combines both staged and unstaged changes.
+pub fn git_diff_stat(cwd: &str) -> Result<GitDiffStat, String> {
+    // Get combined (staged + unstaged) diff stat
+    let output = run_git_with_timeout(
+        Command::new("git")
+            .args(["diff", "HEAD", "--shortstat"])
+            .current_dir(cwd),
+    )?;
+
+    if !output.status.success() {
+        // Not a git repo or no HEAD yet — return zeros
+        return Ok(GitDiffStat {
+            insertions: 0,
+            deletions: 0,
+            files_changed: 0,
+        });
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let line = stdout.trim();
+
+    if line.is_empty() {
+        return Ok(GitDiffStat {
+            insertions: 0,
+            deletions: 0,
+            files_changed: 0,
+        });
+    }
+
+    // Parse output like: " 3 files changed, 12 insertions(+), 5 deletions(-)"
+    let mut files_changed = 0u32;
+    let mut insertions = 0u32;
+    let mut deletions = 0u32;
+
+    for part in line.split(',') {
+        let part = part.trim();
+        if part.contains("file") {
+            if let Some(n) = part.split_whitespace().next().and_then(|s| s.parse::<u32>().ok()) {
+                files_changed = n;
+            }
+        } else if part.contains("insertion") {
+            if let Some(n) = part.split_whitespace().next().and_then(|s| s.parse::<u32>().ok()) {
+                insertions = n;
+            }
+        } else if part.contains("deletion") {
+            if let Some(n) = part.split_whitespace().next().and_then(|s| s.parse::<u32>().ok()) {
+                deletions = n;
+            }
+        }
+    }
+
+    Ok(GitDiffStat {
+        insertions,
+        deletions,
+        files_changed,
+    })
+}
+
 /// A GitHub pull request summary from `gh pr list`.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct PrInfo {

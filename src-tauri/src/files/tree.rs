@@ -13,6 +13,8 @@ pub struct FileNode {
     pub extension: Option<String>,
     pub children: Option<Vec<FileNode>>,
     pub is_symlink: bool,
+    /// File size in bytes (only set for files, None for directories).
+    pub size: Option<u64>,
 }
 
 /// Build a file tree from the given root path, respecting .gitignore.
@@ -52,7 +54,8 @@ pub fn build_file_tree(root: &str, depth: u32) -> Result<Vec<FileNode>, String> 
         .build();
 
     // Collect all entries into a flat list, excluding the root itself
-    let mut entries: Vec<(PathBuf, bool, bool, bool)> = Vec::new();
+    // Tuple: (path, is_dir, is_file, is_symlink, size_bytes_for_files)
+    let mut entries: Vec<(PathBuf, bool, bool, bool, Option<u64>)> = Vec::new();
 
     for entry in walker {
         let entry = entry.map_err(|e| format!("Walk error: {}", e))?;
@@ -67,11 +70,18 @@ pub fn build_file_tree(root: &str, depth: u32) -> Result<Vec<FileNode>, String> 
             .metadata()
             .map_err(|e| format!("Metadata error for {:?}: {}", entry_path, e))?;
 
+        let size = if metadata.is_file() {
+            Some(metadata.len())
+        } else {
+            None
+        };
+
         entries.push((
             entry_path,
             metadata.is_dir(),
             metadata.is_file(),
             metadata.is_symlink(),
+            size,
         ));
     }
 
@@ -81,10 +91,10 @@ pub fn build_file_tree(root: &str, depth: u32) -> Result<Vec<FileNode>, String> 
 
 fn build_tree_from_entries(
     root: &Path,
-    entries: &[(PathBuf, bool, bool, bool)],
+    entries: &[(PathBuf, bool, bool, bool, Option<u64>)],
 ) -> Result<Vec<FileNode>, String> {
     // Group entries by their immediate parent relative to root
-    let mut children_map: HashMap<PathBuf, Vec<&(PathBuf, bool, bool, bool)>> = HashMap::new();
+    let mut children_map: HashMap<PathBuf, Vec<&(PathBuf, bool, bool, bool, Option<u64>)>> = HashMap::new();
 
     for entry in entries {
         if let Some(parent) = entry.0.parent() {
@@ -97,14 +107,14 @@ fn build_tree_from_entries(
 
     fn build_children(
         dir_path: &Path,
-        children_map: &HashMap<PathBuf, Vec<&(PathBuf, bool, bool, bool)>>,
+        children_map: &HashMap<PathBuf, Vec<&(PathBuf, bool, bool, bool, Option<u64>)>>,
     ) -> Vec<FileNode> {
         let empty = Vec::new();
         let children = children_map.get(dir_path).unwrap_or(&empty);
 
         children
             .iter()
-            .map(|(path, is_dir, is_file, is_symlink)| {
+            .map(|(path, is_dir, is_file, is_symlink, size)| {
                 let name = path
                     .file_name()
                     .map(|n| n.to_string_lossy().to_string())
@@ -140,6 +150,7 @@ fn build_tree_from_entries(
                     extension,
                     children: node_children,
                     is_symlink: *is_symlink,
+                    size: *size,
                 }
             })
             .collect()

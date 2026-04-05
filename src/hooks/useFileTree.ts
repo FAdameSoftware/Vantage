@@ -11,6 +11,8 @@ export interface FileNode {
   extension: string | null;
   children: FileNode[] | null;
   is_symlink: boolean;
+  /** File size in bytes (only set for files, null for directories). */
+  size: number | null;
 }
 
 interface FileChangeEvent {
