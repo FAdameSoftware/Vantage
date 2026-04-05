@@ -116,11 +116,14 @@ export function MonacoEditor({
   const tabSize = useSettingsStore((s) => s.tabSize);
   const insertSpaces = useSettingsStore((s) => s.insertSpaces);
   const wordWrap = useSettingsStore((s) => s.wordWrap);
+  const wordWrapColumn = useSettingsStore((s) => s.wordWrapColumn);
   const minimapEnabled = useSettingsStore((s) => s.minimap);
   const lineNumbers = useSettingsStore((s) => s.lineNumbers);
   const themeName = useSettingsStore((s) => s.theme);
   const vimMode = useSettingsStore((s) => s.vimMode);
   const cursorStyle = useSettingsStore((s) => s.cursorStyle);
+  const cursorBlinking = useSettingsStore((s) => s.cursorBlinking);
+  const stickyScroll = useSettingsStore((s) => s.stickyScroll);
   const monacoTheme = getMonacoTheme(themeName);
 
   const setCursorPosition = useEditorStore((s) => s.setCursorPosition);
@@ -248,6 +251,7 @@ export function MonacoEditor({
             tabSize,
             insertSpaces,
             wordWrap: wordWrap ? "on" : "off",
+            wordWrapColumn,
             minimap: {
               enabled: minimapEnabled,
               showSlider: "always",
@@ -259,8 +263,8 @@ export function MonacoEditor({
             automaticLayout: true,
             scrollBeyondLastLine: false,
             smoothScrolling: true,
-            cursorBlinking: "smooth",
-            cursorSmoothCaretAnimation: "on",
+            cursorBlinking,
+            cursorSmoothCaretAnimation: cursorBlinking === "smooth" ? "on" : "off",
             cursorStyle,
             renderLineHighlight: "line",
             renderWhitespace: "selection",
@@ -272,7 +276,7 @@ export function MonacoEditor({
             autoClosingBrackets: "always",
             autoClosingQuotes: "always",
             autoSurround: "languageDefined",
-            stickyScroll: { enabled: true, maxLineCount: 5 },
+            stickyScroll: { enabled: stickyScroll, maxLineCount: 5 },
             padding: { top: 8 },
             overviewRulerLanes: 0,
             fixedOverflowWidgets: true,

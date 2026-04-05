@@ -11,6 +11,8 @@ export interface SettingsState {
   tabSize: number;
   insertSpaces: boolean;
   wordWrap: boolean;
+  /** Column at which lines are wrapped when word wrap is enabled */
+  wordWrapColumn: number;
   minimap: boolean;
   lineNumbers: boolean;
   terminalFontSize: number;
@@ -26,6 +28,12 @@ export interface SettingsState {
   formatOnSave: boolean;
   /** Editor cursor style */
   cursorStyle: "line" | "block" | "underline";
+  /** Editor cursor blink animation style */
+  cursorBlinking: "blink" | "smooth" | "expand" | "solid" | "phase";
+  /** Whether sticky scroll is enabled in the editor */
+  stickyScroll: boolean;
+  /** Model to use for new Claude sessions */
+  selectedModel: string;
   /** Custom keybinding overrides: keybinding ID -> shortcut string (e.g., "Ctrl+Shift+B") */
   keybindingOverrides: Record<string, { key: string; ctrl?: boolean; shift?: boolean; alt?: boolean }>;
   setTheme: (theme: ThemeName) => void;
@@ -35,6 +43,7 @@ export interface SettingsState {
   setTabSize: (size: number) => void;
   setInsertSpaces: (value: boolean) => void;
   setWordWrap: (value: boolean) => void;
+  setWordWrapColumn: (col: number) => void;
   setMinimap: (value: boolean) => void;
   setLineNumbers: (value: boolean) => void;
   setTerminalFontSize: (size: number) => void;
@@ -45,6 +54,9 @@ export interface SettingsState {
   setPlanMode: (value: boolean) => void;
   setFormatOnSave: (value: boolean) => void;
   setCursorStyle: (style: "line" | "block" | "underline") => void;
+  setCursorBlinking: (style: "blink" | "smooth" | "expand" | "solid" | "phase") => void;
+  setStickyScroll: (value: boolean) => void;
+  setSelectedModel: (model: string) => void;
   setKeybindingOverride: (id: string, binding: { key: string; ctrl?: boolean; shift?: boolean; alt?: boolean }) => void;
   removeKeybindingOverride: (id: string) => void;
   resetAllKeybindings: () => void;
@@ -60,6 +72,7 @@ export const useSettingsStore = create<SettingsState>()(
       tabSize: 2,
       insertSpaces: true,
       wordWrap: false,
+      wordWrapColumn: 80,
       minimap: true,
       lineNumbers: true,
       terminalFontSize: 14,
@@ -70,6 +83,9 @@ export const useSettingsStore = create<SettingsState>()(
       planMode: false,
       formatOnSave: false,
       cursorStyle: "line",
+      cursorBlinking: "blink",
+      stickyScroll: true,
+      selectedModel: "claude-sonnet-4-6",
       keybindingOverrides: {},
       setTheme: (theme) => set({ theme }),
       setFontSizeEditor: (size) => set({ fontSizeEditor: Math.max(8, Math.min(32, size)) }),
@@ -78,6 +94,7 @@ export const useSettingsStore = create<SettingsState>()(
       setTabSize: (size) => set({ tabSize: Math.max(1, Math.min(8, size)) }),
       setInsertSpaces: (value) => set({ insertSpaces: value }),
       setWordWrap: (value) => set({ wordWrap: value }),
+      setWordWrapColumn: (col) => set({ wordWrapColumn: Math.max(20, Math.min(500, col)) }),
       setMinimap: (value) => set({ minimap: value }),
       setLineNumbers: (value) => set({ lineNumbers: value }),
       setTerminalFontSize: (size) => set({ terminalFontSize: Math.max(8, Math.min(32, size)) }),
@@ -88,6 +105,9 @@ export const useSettingsStore = create<SettingsState>()(
       setPlanMode: (value) => set({ planMode: value }),
       setFormatOnSave: (value) => set({ formatOnSave: value }),
       setCursorStyle: (style) => set({ cursorStyle: style }),
+      setCursorBlinking: (style) => set({ cursorBlinking: style }),
+      setStickyScroll: (value) => set({ stickyScroll: value }),
+      setSelectedModel: (model) => set({ selectedModel: model }),
       setKeybindingOverride: (id, binding) =>
         set((state) => ({
           keybindingOverrides: { ...state.keybindingOverrides, [id]: binding },
@@ -110,6 +130,7 @@ export const useSettingsStore = create<SettingsState>()(
         tabSize: state.tabSize,
         insertSpaces: state.insertSpaces,
         wordWrap: state.wordWrap,
+        wordWrapColumn: state.wordWrapColumn,
         minimap: state.minimap,
         lineNumbers: state.lineNumbers,
         terminalFontSize: state.terminalFontSize,
@@ -120,6 +141,9 @@ export const useSettingsStore = create<SettingsState>()(
         planMode: state.planMode,
         formatOnSave: state.formatOnSave,
         cursorStyle: state.cursorStyle,
+        cursorBlinking: state.cursorBlinking,
+        stickyScroll: state.stickyScroll,
+        selectedModel: state.selectedModel,
         keybindingOverrides: state.keybindingOverrides,
       }),
     }

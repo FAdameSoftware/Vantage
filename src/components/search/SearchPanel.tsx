@@ -12,9 +12,43 @@ import {
   Replace,
   ReplaceAll,
   ArrowDownUp,
+  Clock,
+  X,
 } from "lucide-react";
 import { useLayoutStore } from "@/stores/layout";
 import { useEditorStore } from "@/stores/editor";
+
+// ── Recent search constants ────────────────────────────────────────
+
+const RECENT_SEARCHES_KEY = "vantage:recent-searches";
+const MAX_RECENT_SEARCHES = 10;
+
+function loadRecentSearches(): string[] {
+  try {
+    const stored = localStorage.getItem(RECENT_SEARCHES_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored) as unknown;
+      if (Array.isArray(parsed)) return parsed as string[];
+    }
+  } catch {
+    // ignore
+  }
+  return [];
+}
+
+function saveRecentSearches(searches: string[]): void {
+  try {
+    localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(searches));
+  } catch {
+    // ignore
+  }
+}
+
+function addRecentSearch(query: string, current: string[]): string[] {
+  if (!query.trim()) return current;
+  const without = current.filter((s) => s !== query);
+  return [query, ...without].slice(0, MAX_RECENT_SEARCHES);
+}
 
 // ── Types matching the Rust SearchResult struct ────────────────────
 
@@ -121,8 +155,11 @@ export function SearchPanel() {
   const [replacing, setReplacing] = useState(false);
   const [replaceConfirm, setReplaceConfirm] = useState(false);
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
+  const [recentSearches, setRecentSearches] = useState<string[]>(() => loadRecentSearches());
+  const [showRecent, setShowRecent] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const recentDropdownRef = useRef<HTMLDivElement>(null);
 
   const projectRootPath = useLayoutStore((s) => s.projectRootPath);
 
@@ -134,6 +171,13 @@ export function SearchPanel() {
       }
 
       setLoading(true);
+      // Save to recent searches when actually running a search
+      setRecentSearches((prev) => {
+        const next = addRecentSearch(searchQuery, prev);
+        saveRecentSearches(next);
+        return next;
+      });
+
       try {
         const result = await invoke<SearchResult>("search_project", {
           root: projectRootPath,
@@ -160,6 +204,38 @@ export function SearchPanel() {
     },
     [projectRootPath, isRegex, caseSensitive, globFilter]
   );
+
+  // Close recent dropdown when clicking outside
+  useEffect(() => {
+    if (!showRecent) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        recentDropdownRef.current &&
+        !recentDropdownRef.current.contains(e.target as Node) &&
+        inputRef.current &&
+        !inputRef.current.contains(e.target as Node)
+      ) {
+        setShowRecent(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showRecent]);
+
+  const handleSelectRecent = useCallback((recent: string) => {
+    setQuery(recent);
+    setShowRecent(false);
+    inputRef.current?.focus();
+  }, []);
+
+  const handleRemoveRecent = useCallback((recent: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setRecentSearches((prev) => {
+      const next = prev.filter((s) => s !== recent);
+      saveRecentSearches(next);
+      return next;
+    });
+  }, []);
 
   // Debounced search on query/options change
   useEffect(() => {
@@ -287,34 +363,101 @@ export function SearchPanel() {
             <ArrowDownUp size={14} />
           </ToggleButton>
 
-          <div
-            className="flex items-center flex-1 gap-1 px-2 h-7 rounded"
-            style={{
-              backgroundColor: "var(--color-base)",
-              border: "1px solid var(--color-surface-1)",
-            }}
-          >
-            <Search
-              size={13}
-              style={{ color: "var(--color-overlay-1)", flexShrink: 0 }}
-            />
-            <input
-              ref={inputRef}
-              data-search-input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search"
-              className="flex-1 bg-transparent text-xs outline-none"
-              style={{ color: "var(--color-text)" }}
-              spellCheck={false}
-            />
-            {loading && (
-              <Loader2
+          <div className="flex-1 relative">
+            <div
+              className="flex items-center gap-1 px-2 h-7 rounded"
+              style={{
+                backgroundColor: "var(--color-base)",
+                border: "1px solid var(--color-surface-1)",
+              }}
+            >
+              <Search
                 size={13}
-                className="animate-spin"
                 style={{ color: "var(--color-overlay-1)", flexShrink: 0 }}
               />
+              <input
+                ref={inputRef}
+                data-search-input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onFocus={() => {
+                  if (!query && recentSearches.length > 0) {
+                    setShowRecent(true);
+                  }
+                }}
+                placeholder="Search"
+                className="flex-1 bg-transparent text-xs outline-none"
+                style={{ color: "var(--color-text)" }}
+                spellCheck={false}
+              />
+              {loading && (
+                <Loader2
+                  size={13}
+                  className="animate-spin"
+                  style={{ color: "var(--color-overlay-1)", flexShrink: 0 }}
+                />
+              )}
+            </div>
+
+            {/* Recent searches dropdown */}
+            {showRecent && recentSearches.length > 0 && (
+              <div
+                ref={recentDropdownRef}
+                className="absolute left-0 right-0 top-full mt-0.5 rounded shadow-lg z-50 overflow-hidden"
+                style={{
+                  backgroundColor: "var(--color-surface-0)",
+                  border: "1px solid var(--color-surface-1)",
+                }}
+              >
+                <div
+                  className="flex items-center gap-1.5 px-2 py-1"
+                  style={{
+                    borderBottom: "1px solid var(--color-surface-1)",
+                    color: "var(--color-overlay-1)",
+                  }}
+                >
+                  <Clock size={10} />
+                  <span className="text-[10px] font-medium uppercase tracking-wider">
+                    Recent Searches
+                  </span>
+                </div>
+                {recentSearches.map((recent) => (
+                  <div
+                    key={recent}
+                    className="flex items-center gap-2 px-2 h-7 cursor-pointer hover:bg-[var(--color-surface-1)] transition-colors"
+                    onClick={() => handleSelectRecent(recent)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        handleSelectRecent(recent);
+                      }
+                    }}
+                  >
+                    <Search
+                      size={11}
+                      style={{ color: "var(--color-overlay-0)", flexShrink: 0 }}
+                    />
+                    <span
+                      className="flex-1 text-xs truncate"
+                      style={{ color: "var(--color-subtext-1)" }}
+                    >
+                      {recent}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => handleRemoveRecent(recent, e)}
+                      className="p-0.5 rounded hover:bg-[var(--color-surface-0)] transition-colors"
+                      style={{ color: "var(--color-overlay-0)" }}
+                      aria-label={`Remove "${recent}" from history`}
+                    >
+                      <X size={10} />
+                    </button>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
 

@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback, useState } from "react";
 import { MessageSquare, Plus, Search, X, ChevronUp, ChevronDown, GitBranch, ArrowDown } from "lucide-react";
 import { useConversationStore } from "@/stores/conversation";
 import { useLayoutStore } from "@/stores/layout";
+import { useSettingsStore } from "@/stores/settings";
 import { useClaude } from "@/hooks/useClaude";
 import { MessageBubble } from "./MessageBubble";
 import { ChatInput, type ChatInputHandle } from "./ChatInput";
@@ -179,6 +180,42 @@ function ChatSearchBar({ onClose }: ChatSearchBarProps) {
         <X size={12} />
       </button>
     </div>
+  );
+}
+
+// ─── Available Claude models ─────────────────────────────────────────────────
+
+const CLAUDE_MODELS = [
+  { value: "claude-opus-4-6", label: "Opus 4.6" },
+  { value: "claude-sonnet-4-6", label: "Sonnet 4.6" },
+  { value: "claude-haiku-4-5", label: "Haiku 4.5" },
+] as const;
+
+// ─── Model selector dropdown ─────────────────────────────────────────────────
+
+function ModelSelector() {
+  const selectedModel = useSettingsStore((s) => s.selectedModel);
+  const setSelectedModel = useSettingsStore((s) => s.setSelectedModel);
+
+  return (
+    <select
+      value={selectedModel}
+      onChange={(e) => setSelectedModel(e.target.value)}
+      className="text-[10px] px-1.5 py-0.5 rounded outline-none cursor-pointer"
+      style={{
+        backgroundColor: "var(--color-surface-0)",
+        color: "var(--color-overlay-1)",
+        border: "1px solid var(--color-surface-1)",
+      }}
+      aria-label="Select Claude model"
+      title="Select model for new sessions"
+    >
+      {CLAUDE_MODELS.map((m) => (
+        <option key={m.value} value={m.value}>
+          {m.label}
+        </option>
+      ))}
+    </select>
   );
 }
 
@@ -401,13 +438,15 @@ export function ChatPanel() {
             onNewSession={handleNewSession}
             onResumeSession={handleResumeSession}
           />
+          <ModelSelector />
           {modelDisplay && (
             <span
-              className="text-xs px-1.5 py-0.5 rounded"
+              className="text-[10px] px-1.5 py-0.5 rounded"
               style={{
                 backgroundColor: "var(--color-surface-0)",
-                color: "var(--color-overlay-1)",
+                color: "var(--color-subtext-0)",
               }}
+              title="Active session model"
             >
               {modelDisplay}
             </span>
