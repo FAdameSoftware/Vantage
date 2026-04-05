@@ -577,7 +577,7 @@ export function SearchPanel() {
       </div>
 
       {/* Results area */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto scrollbar-thin">
         {/* Summary line */}
         {results !== null && query.length >= 2 && (
           <div

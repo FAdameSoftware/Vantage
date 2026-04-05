@@ -222,7 +222,7 @@ export function CommandBlockList({
 
       {/* Block list */}
       {expanded && (
-        <div className="overflow-y-auto px-1 pb-1" style={{ maxHeight: "200px" }}>
+        <div className="overflow-y-auto scrollbar-thin px-1 pb-1" style={{ maxHeight: "200px" }}>
           {blocks.length === 0 ? (
             <div
               className="text-[10px] px-2 py-2 text-center"

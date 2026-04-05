@@ -41,7 +41,7 @@ export function SettingsPanel() {
     <div className="flex flex-col h-full overflow-hidden">
       {/* Tab bar */}
       <div
-        className="flex items-center gap-0 shrink-0 overflow-x-auto min-w-0"
+        className="flex items-center gap-0 shrink-0 overflow-x-auto scrollbar-hide min-w-0"
         style={{
           borderBottom: "1px solid var(--color-surface-0)",
           backgroundColor: "var(--color-mantle)",

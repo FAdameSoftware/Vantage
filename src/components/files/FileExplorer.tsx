@@ -586,7 +586,7 @@ export function FileExplorer() {
       <ContextMenu>
         <ContextMenuTrigger>
           <div
-            className="flex-1 overflow-y-auto py-1"
+            className="flex-1 overflow-y-auto scrollbar-thin py-1"
             role="tree"
             aria-label="File Explorer"
           >
