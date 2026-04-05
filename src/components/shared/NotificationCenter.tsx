@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Bell,
   X,
@@ -190,12 +191,12 @@ export function NotificationCenter() {
     };
   }, [isOpen]);
 
-  if (!isOpen) return null;
-
   const { today, earlier } = groupNotifications(notifications);
 
   return (
-    <div
+    <AnimatePresence>
+      {isOpen && (
+    <motion.div
       ref={panelRef}
       className="fixed bottom-7 left-[140px] z-[100] rounded-lg shadow-xl flex flex-col"
       style={{
@@ -204,6 +205,10 @@ export function NotificationCenter() {
         width: "340px",
         maxHeight: "420px",
       }}
+      initial={{ opacity: 0, y: 8, scale: 0.97 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: 8, scale: 0.97 }}
+      transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
     >
       {/* Header */}
       <div
@@ -313,6 +318,8 @@ export function NotificationCenter() {
           </>
         )}
       </div>
-    </div>
+    </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
