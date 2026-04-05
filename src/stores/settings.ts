@@ -3,6 +3,8 @@ import { persist } from "zustand/middleware";
 
 export type ThemeName = "vantage-dark" | "vantage-light" | "vantage-high-contrast";
 
+export type ThinkingMode = "auto" | "think" | "think_hard" | "think_harder" | "ultrathink";
+
 export interface SettingsState {
   theme: ThemeName;
   fontSizeEditor: number;
@@ -22,8 +24,12 @@ export interface SettingsState {
   showBuddy: boolean;
   /** Claude Code effort level: controls reasoning depth */
   effortLevel: "low" | "medium" | "high";
+  /** Thinking mode: controls how much reasoning Claude applies */
+  thinkingMode: ThinkingMode;
   /** Whether to start sessions in plan mode (--permission-mode plan) */
   planMode: boolean;
+  /** Whether to skip all permission prompts (--dangerously-skip-permissions) */
+  skipPermissions: boolean;
   /** Whether to auto-format files on save (via Prettier) */
   formatOnSave: boolean;
   /** Editor cursor style */
@@ -65,7 +71,9 @@ export interface SettingsState {
   setVimMode: (value: boolean) => void;
   toggleBuddy: () => void;
   setEffortLevel: (level: "low" | "medium" | "high") => void;
+  setThinkingMode: (mode: ThinkingMode) => void;
   setPlanMode: (value: boolean) => void;
+  setSkipPermissions: (value: boolean) => void;
   setFormatOnSave: (value: boolean) => void;
   setCursorStyle: (style: "line" | "block" | "underline") => void;
   setCursorBlinking: (style: "blink" | "smooth" | "expand" | "solid" | "phase") => void;
@@ -101,7 +109,9 @@ export const useSettingsStore = create<SettingsState>()(
       vimMode: false,
       showBuddy: true,
       effortLevel: "high",
+      thinkingMode: "auto" as ThinkingMode,
       planMode: false,
+      skipPermissions: false,
       formatOnSave: false,
       cursorStyle: "line",
       cursorBlinking: "blink",
@@ -130,7 +140,9 @@ export const useSettingsStore = create<SettingsState>()(
       setVimMode: (value) => set({ vimMode: value }),
       toggleBuddy: () => set((state) => ({ showBuddy: !state.showBuddy })),
       setEffortLevel: (level) => set({ effortLevel: level }),
+      setThinkingMode: (mode) => set({ thinkingMode: mode }),
       setPlanMode: (value) => set({ planMode: value }),
+      setSkipPermissions: (value) => set({ skipPermissions: value }),
       setFormatOnSave: (value) => set({ formatOnSave: value }),
       setCursorStyle: (style) => set({ cursorStyle: style }),
       setCursorBlinking: (style) => set({ cursorBlinking: style }),
@@ -173,6 +185,7 @@ export const useSettingsStore = create<SettingsState>()(
         vimMode: state.vimMode,
         showBuddy: state.showBuddy,
         effortLevel: state.effortLevel,
+        thinkingMode: state.thinkingMode,
         planMode: state.planMode,
         formatOnSave: state.formatOnSave,
         cursorStyle: state.cursorStyle,

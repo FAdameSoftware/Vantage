@@ -622,6 +622,7 @@ export function useClaude() {
             effortLevel: settings.effortLevel,
             planMode: settings.planMode,
             fromPr: fromPr ?? null,
+            skipPermissions: settings.skipPermissions ?? false,
           });
           sessionIdRef.current = id;
           const session: SessionMetadata = {

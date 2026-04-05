@@ -23,6 +23,8 @@ pub struct SpawnOptions {
     pub plan_mode: bool,
     /// If set, pass --from-pr <number> to the CLI.
     pub from_pr: Option<u32>,
+    /// If true, pass --dangerously-skip-permissions to the CLI.
+    pub skip_permissions: bool,
 }
 
 /// Manages a single Claude Code CLI child process.
@@ -93,6 +95,11 @@ impl ClaudeProcess {
         // Resume from PR
         if let Some(pr_number) = options.from_pr {
             cmd.arg("--from-pr").arg(pr_number.to_string());
+        }
+
+        // Skip permissions (dangerous — bypasses all permission prompts)
+        if options.skip_permissions {
+            cmd.arg("--dangerously-skip-permissions");
         }
 
         cmd.current_dir(cwd);
