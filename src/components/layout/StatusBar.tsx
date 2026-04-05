@@ -288,11 +288,16 @@ export function StatusBar() {
 
   return (
     <div className="relative">
-      {showUsage && (
-        <div className="absolute bottom-7 right-2 z-50">
-          <UsagePanel />
-        </div>
-      )}
+      <AnimatePresence>
+        {showUsage && (
+          <motion.div
+            className="absolute bottom-7 right-2 z-50"
+            {...popupMotion}
+          >
+            <UsagePanel />
+          </motion.div>
+        )}
+      </AnimatePresence>
       <div
         className="flex items-center justify-between h-[22px] px-2.5 text-[11px] shrink-0 select-none"
         style={{
