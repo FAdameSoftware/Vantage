@@ -590,21 +590,21 @@ export function ChatPanel() {
     >
       {/* Header */}
       <div
-        className="flex items-center justify-between px-4 h-9 shrink-0"
+        className="flex items-center justify-between px-4 h-9 shrink-0 min-w-0"
         style={{
           borderBottom: "1px solid var(--color-surface-0)",
         }}
       >
-        <div className="flex items-center gap-2">
-          <MessageSquare size={14} style={{ color: "var(--color-blue)" }} />
+        <div className="flex items-center gap-2 min-w-0 shrink-0">
+          <MessageSquare size={14} className="shrink-0" style={{ color: "var(--color-blue)" }} />
           <span
-            className="text-xs font-semibold uppercase tracking-wider"
+            className="text-xs font-semibold uppercase tracking-wider truncate"
             style={{ color: "var(--color-subtext-0)" }}
           >
             Chat
           </span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           {/* Pinned filter toggle */}
           {pinnedMessageIds.size > 0 && (
             <button

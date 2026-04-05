@@ -8,12 +8,18 @@ export function SecondarySidebar() {
 
   if (selectedAgentId) {
     return (
-      <AgentDetailPanel
-        agentId={selectedAgentId}
-        onClose={() => setSelectedAgentId(null)}
-      />
+      <div className="h-full overflow-hidden min-w-0">
+        <AgentDetailPanel
+          agentId={selectedAgentId}
+          onClose={() => setSelectedAgentId(null)}
+        />
+      </div>
     );
   }
 
-  return <ChatPanel />;
+  return (
+    <div className="h-full overflow-hidden min-w-0">
+      <ChatPanel />
+    </div>
+  );
 }

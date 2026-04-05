@@ -271,7 +271,7 @@ export function StatusBar() {
         aria-label="Status Bar"
       >
         {/* Left side - workspace scoped */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 min-w-0 overflow-hidden">
           {/* Git branch -> click opens branch picker */}
           {isGitRepo && branch?.branch && (
             <div ref={branchPickerRef} className="relative">
@@ -376,7 +376,7 @@ export function StatusBar() {
         </div>
 
         {/* Right side - file/session scoped */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 min-w-0 overflow-hidden">
           {/* Vim mode indicator */}
           {vimMode && (
             <span

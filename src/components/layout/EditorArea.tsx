@@ -183,7 +183,7 @@ function Breadcrumbs() {
 
   return (
     <div
-      className="flex items-center h-6 px-3 text-xs shrink-0 overflow-x-auto"
+      className="flex items-center h-6 px-3 text-xs shrink-0 overflow-x-auto min-w-0"
       style={{
         backgroundColor: "var(--color-base)",
         color: "var(--color-subtext-0)",

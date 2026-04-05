@@ -152,14 +152,14 @@ export function PrimarySidebar() {
     >
       {/* Header */}
       <div
-        className="flex items-center gap-2 px-4 h-9 shrink-0 text-xs font-semibold uppercase tracking-wider"
+        className="flex items-center gap-2 px-4 h-9 shrink-0 text-xs font-semibold uppercase tracking-wider min-w-0"
         style={{
           color: "var(--color-subtext-0)",
           borderBottom: "1px solid var(--color-surface-0)",
         }}
       >
-        {config.icon}
-        <span>{config.title}</span>
+        <span className="shrink-0">{config.icon}</span>
+        <span className="truncate min-w-0">{config.title}</span>
         {activeItem === "agents" && <AgentsViewToggle />}
       </div>
 

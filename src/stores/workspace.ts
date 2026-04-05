@@ -195,6 +195,8 @@ function collectWorkspaceState(projectPath: string): WorkspaceFile {
       panelSize: layout.panelSize,
       primarySidebarPixelWidth: layout.primarySidebarPixelWidth,
       secondarySidebarPixelWidth: layout.secondarySidebarPixelWidth,
+      horizontalLayout: layout.horizontalLayout,
+      verticalLayout: layout.verticalLayout,
       activePanelTab: layout.activePanelTab,
       agentsViewMode: layout.agentsViewMode,
       previewUrl: layout.previewUrl,
@@ -264,6 +266,8 @@ async function applyWorkspaceState(ws: WorkspaceFile): Promise<void> {
     panelSize: ws.layout.panelSize,
     primarySidebarPixelWidth: ws.layout.primarySidebarPixelWidth ?? 240,
     secondarySidebarPixelWidth: ws.layout.secondarySidebarPixelWidth ?? 300,
+    horizontalLayout: ws.layout.horizontalLayout ?? [15, 60, 25],
+    verticalLayout: ws.layout.verticalLayout ?? [70, 30],
     activePanelTab: ws.layout.activePanelTab,
     agentsViewMode: ws.layout.agentsViewMode,
     previewUrl: ws.layout.previewUrl,
@@ -610,7 +614,7 @@ export const useWorkspaceStore = create<WorkspaceManagerState>()(
       // Layout: sidebar/panel changes
       let prevLayoutSnap = (() => {
         const s = useLayoutStore.getState();
-        return `${s.primarySidebarVisible}|${s.secondarySidebarVisible}|${s.panelVisible}|${s.activeActivityBarItem}|${s.primarySidebarSize}|${s.secondarySidebarSize}|${s.panelSize}|${s.activePanelTab}|${s.agentsViewMode}|${s.primarySidebarPixelWidth}|${s.secondarySidebarPixelWidth}`;
+        return `${s.primarySidebarVisible}|${s.secondarySidebarVisible}|${s.panelVisible}|${s.activeActivityBarItem}|${s.primarySidebarSize}|${s.secondarySidebarSize}|${s.panelSize}|${s.activePanelTab}|${s.agentsViewMode}|${s.primarySidebarPixelWidth}|${s.secondarySidebarPixelWidth}|${s.horizontalLayout.join(",")}|${s.verticalLayout.join(",")}`;
       })();
       unsubs.push(
         useLayoutStore.subscribe((state) => {

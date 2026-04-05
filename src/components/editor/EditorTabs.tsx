@@ -369,7 +369,7 @@ function SortableTab({
       ) : (
         <FileCode size={14} style={{ color: "var(--color-blue)" }} />
       )}
-      <span>{tab.name}</span>
+      <span className="truncate min-w-0">{tab.name}</span>
 
       {/* Dirty indicator OR close button */}
       {tab.isDirty ? (

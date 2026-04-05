@@ -52,7 +52,7 @@ export function PanelArea() {
 
   return (
     <div
-      className="flex flex-col h-full overflow-hidden"
+      className="flex flex-col h-full overflow-hidden min-w-0 min-h-0"
       style={{
         backgroundColor: "var(--color-base)",
         borderTop: "1px solid var(--color-surface-0)",
@@ -60,7 +60,7 @@ export function PanelArea() {
     >
       {/* Panel-level mode tabs (Terminal | Browser | Verification) */}
       <div
-        className="flex items-center shrink-0 gap-0 px-1"
+        className="flex items-center shrink-0 gap-0 px-1 min-w-0"
         style={{
           backgroundColor: "var(--color-mantle)",
           borderBottom: "1px solid var(--color-surface-0)",
@@ -70,7 +70,7 @@ export function PanelArea() {
           <button
             key={tab.id}
             onClick={() => setActivePanelTab(tab.id)}
-            className="flex items-center gap-1 px-2 h-6 text-[11px] transition-colors relative"
+            className="flex items-center gap-1 px-2 h-6 text-[11px] transition-colors relative shrink-0"
             style={{
               color:
                 activePanelTab === tab.id

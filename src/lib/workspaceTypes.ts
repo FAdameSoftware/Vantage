@@ -37,10 +37,14 @@ export interface WorkspaceLayout {
   primarySidebarSize: number;
   secondarySidebarSize: number;
   panelSize: number;
-  /** Persisted pixel width of the primary sidebar */
+  /** @deprecated Kept for migration from old workspace files */
   primarySidebarPixelWidth?: number;
-  /** Persisted pixel width of the secondary sidebar */
+  /** @deprecated Kept for migration from old workspace files */
   secondarySidebarPixelWidth?: number;
+  /** Persisted percentage-based layout for outer horizontal group [primarySidebar, center, rightPanel] */
+  horizontalLayout?: number[];
+  /** Persisted percentage-based layout for center vertical group [editor, bottomPanel] */
+  verticalLayout?: number[];
   activePanelTab: "terminal" | "browser" | "verification";
   agentsViewMode: "kanban" | "tree";
   previewUrl: string | null;

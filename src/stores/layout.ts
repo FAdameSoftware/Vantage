@@ -18,10 +18,14 @@ export interface LayoutState {
   primarySidebarSize: number;
   secondarySidebarSize: number;
   panelSize: number;
-  /** Pixel width of the primary sidebar drag handle (persisted) */
+  /** @deprecated Use panelLayout percentages instead. Kept for workspace migration. */
   primarySidebarPixelWidth: number;
-  /** Pixel width of the secondary sidebar drag handle (persisted) */
+  /** @deprecated Use panelLayout percentages instead. Kept for workspace migration. */
   secondarySidebarPixelWidth: number;
+  /** Persisted percentage-based layout for the outer horizontal panel group [primarySidebar, center, rightPanel] */
+  horizontalLayout: number[];
+  /** Persisted percentage-based layout for the center vertical panel group [editor, bottomPanel] */
+  verticalLayout: number[];
   /** The currently open project root path (set when a folder is opened) */
   projectRootPath: string | null;
   /** URL currently shown in the browser preview (null = no preview) */
@@ -47,6 +51,8 @@ export interface LayoutState {
   setPanelSize: (size: number) => void;
   setPrimarySidebarPixelWidth: (width: number) => void;
   setSecondarySidebarPixelWidth: (width: number) => void;
+  setHorizontalLayout: (sizes: number[]) => void;
+  setVerticalLayout: (sizes: number[]) => void;
   setProjectRootPath: (path: string | null) => void;
   setPreviewUrl: (url: string | null) => void;
   setPreviewActive: (active: boolean) => void;
@@ -70,6 +76,8 @@ export const useLayoutStore = create<LayoutState>()(
       panelSize: 30,
       primarySidebarPixelWidth: 240,
       secondarySidebarPixelWidth: 300,
+      horizontalLayout: [15, 60, 25],
+      verticalLayout: [70, 30],
       projectRootPath: null,
       previewUrl: null,
       previewActive: false,
@@ -94,6 +102,8 @@ export const useLayoutStore = create<LayoutState>()(
       setPanelSize: (size) => set({ panelSize: size }),
       setPrimarySidebarPixelWidth: (width) => set({ primarySidebarPixelWidth: width }),
       setSecondarySidebarPixelWidth: (width) => set({ secondarySidebarPixelWidth: width }),
+      setHorizontalLayout: (sizes) => set({ horizontalLayout: sizes }),
+      setVerticalLayout: (sizes) => set({ verticalLayout: sizes }),
       setProjectRootPath: (path) => {
         const prev = get().projectRootPath;
         set({ projectRootPath: path });
@@ -150,6 +160,8 @@ export const useLayoutStore = create<LayoutState>()(
           panelSize: 30,
           primarySidebarPixelWidth: 240,
           secondarySidebarPixelWidth: 300,
+          horizontalLayout: [15, 60, 25],
+          verticalLayout: [70, 30],
           projectRootPath: currentPath, // preserve
           previewUrl: null,
           previewActive: false,
