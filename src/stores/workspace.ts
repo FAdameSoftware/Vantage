@@ -9,6 +9,7 @@
 import { create } from "zustand";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { toast } from "sonner";
 
 import type {
   WorkspaceFile,
@@ -16,6 +17,7 @@ import type {
   SerializedMessage,
   SerializedToolCall,
   SerializedAgent,
+  SerializedAgentConversation,
 } from "@/lib/workspaceTypes";
 import {
   loadOrCreateWorkspace,
@@ -34,6 +36,7 @@ import type { Agent, AgentTimelineEvent } from "./agents";
 import { useMergeQueueStore } from "./mergeQueue";
 import { useVerificationStore } from "./verification";
 import { useUsageStore } from "./usage";
+import { useAgentConversationsStore } from "./agentConversations";
 
 // ─── Constants ─────────────────────────────────────────────────────
 
@@ -127,7 +130,8 @@ function deserializeMessage(msg: SerializedMessage): ConversationMessage {
 function safeParseJson(json: string): Record<string, unknown> {
   try {
     return JSON.parse(json || "{}") as Record<string, unknown>;
-  } catch {
+  } catch (err) {
+    console.warn("safeParseJson: failed to parse tool call inputJson —", err);
     return {};
   }
 }
@@ -175,6 +179,7 @@ function collectWorkspaceState(projectPath: string): WorkspaceFile {
   const editor = useEditorStore.getState();
   const conversation = useConversationStore.getState();
   const agents = useAgentsStore.getState();
+  const agentConversations = useAgentConversationsStore.getState();
 
   return {
     version: 1,
@@ -194,13 +199,15 @@ function collectWorkspaceState(projectPath: string): WorkspaceFile {
       previewActive: layout.previewActive,
     },
     editor: {
+      // Cursor position is transient — not worth per-tab persistence complexity.
+      // All tabs get a default position on restore.
       tabs: editor.tabs.map((t) => ({
         id: t.id,
         path: t.path,
         name: t.name,
         language: t.language,
         isPreview: t.isPreview,
-        cursorPosition: { ...editor.cursorPosition },
+        cursorPosition: { line: 1, column: 1 },
         scrollTop: undefined,
       })),
       activeTabId: editor.activeTabId,
@@ -221,6 +228,18 @@ function collectWorkspaceState(projectPath: string): WorkspaceFile {
         review: [...agents.columnOrder.review],
         done: [...agents.columnOrder.done],
       },
+    },
+    agentConversations: {
+      conversations: Object.fromEntries(
+        [...agentConversations.conversations.entries()].map(([agentId, conv]) => [
+          agentId,
+          {
+            messages: conv.messages.slice(-MAX_PERSISTED_MESSAGES).map(serializeMessage),
+            totalCost: conv.totalCost,
+            totalTokens: { ...conv.totalTokens },
+          } satisfies SerializedAgentConversation,
+        ]),
+      ),
     },
     terminal: {
       tabs: [],
@@ -336,6 +355,29 @@ async function applyWorkspaceState(ws: WorkspaceFile): Promise<void> {
       done: [...(ws.agents.columnOrder.done ?? [])],
     },
   });
+
+  // 5. Agent conversations — restore per-agent messages
+  if (ws.agentConversations) {
+    const convMap = new Map<string, import("./agentConversations").AgentConversationState>();
+    for (const [agentId, serialized] of Object.entries(ws.agentConversations.conversations)) {
+      convMap.set(agentId, {
+        messages: serialized.messages.map(deserializeMessage),
+        isStreaming: false,
+        isThinking: false,
+        thinkingStartedAt: null,
+        activeBlocks: new Map(),
+        activeMessageId: null,
+        session: null,
+        totalCost: serialized.totalCost,
+        totalTokens: { ...serialized.totalTokens },
+        lastResult: null,
+        connectionStatus: "disconnected",
+        connectionError: null,
+        pendingPermission: null,
+      });
+    }
+    useAgentConversationsStore.setState({ conversations: convMap });
+  }
 }
 
 // ─── Debounce helper ───────────────────────────────────────────────
@@ -395,6 +437,7 @@ export const useWorkspaceStore = create<WorkspaceManagerState>()(
         useMergeQueueStore.getState().resetToDefaults();
         useVerificationStore.getState().resetToDefaults();
         useUsageStore.getState().reset();
+        useAgentConversationsStore.getState().resetToDefaults();
 
         // 3. Load workspace for the new project
         const ws = await loadOrCreateWorkspace(projectPath);
@@ -463,6 +506,7 @@ export const useWorkspaceStore = create<WorkspaceManagerState>()(
       useMergeQueueStore.getState().resetToDefaults();
       useVerificationStore.getState().resetToDefaults();
       useUsageStore.getState().reset();
+      useAgentConversationsStore.getState().resetToDefaults();
 
       // Clear the project path in layout store
       useLayoutStore.setState({ projectRootPath: null });
@@ -487,6 +531,8 @@ export const useWorkspaceStore = create<WorkspaceManagerState>()(
         await saveWorkspace(currentProjectPath, state);
       } catch (err) {
         console.error("Failed to save workspace:", err);
+        const message = err instanceof Error ? err.message : String(err);
+        toast.error("Failed to save workspace", { description: message });
       } finally {
         set({ isSaving: false });
       }

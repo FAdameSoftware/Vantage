@@ -100,6 +100,7 @@ cd src-tauri && cargo test  # Run Rust backend tests (76 tests)
 - 1 store is global (settings — theme, font, vim mode)
 - Auto-saves with 2-second debounce on store changes
 - `resetToDefaults()` on all workspace stores when switching projects
+- Single-instance per project — no file locking, running two Vantage windows on same project will corrupt workspace state
 
 ## Windows Notes
 

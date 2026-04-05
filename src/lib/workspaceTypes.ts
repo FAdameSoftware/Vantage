@@ -23,6 +23,7 @@ export interface WorkspaceFile {
   editor: WorkspaceEditorState;
   chat: WorkspaceChatState;
   agents: WorkspaceAgentState;
+  agentConversations?: WorkspaceAgentConversationsState;
   terminal: WorkspaceTerminalState;
 }
 
@@ -148,6 +149,19 @@ export interface SerializedAgent {
   };
 }
 
+// ─── Agent Conversations ──────────────────────────────────────────
+
+export interface WorkspaceAgentConversationsState {
+  /** Per-agent conversations, keyed by agent ID */
+  conversations: Record<string, SerializedAgentConversation>;
+}
+
+export interface SerializedAgentConversation {
+  messages: SerializedMessage[];
+  totalCost: number;
+  totalTokens: { input: number; output: number };
+}
+
 // ─── Terminal ──────────────────────────────────────────────────────
 
 export interface WorkspaceTerminalState {
@@ -227,6 +241,9 @@ export function createDefaultWorkspaceFile(projectPath: string): WorkspaceFile {
         review: [],
         done: [],
       },
+    },
+    agentConversations: {
+      conversations: {},
     },
     terminal: {
       tabs: [],

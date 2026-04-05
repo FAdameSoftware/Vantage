@@ -62,6 +62,9 @@ interface AgentConversationsStore {
 
   /** Remove conversation state when an agent is deleted */
   removeConversation: (agentId: string) => void;
+
+  /** Reset all agent conversations to defaults (used on project switch) */
+  resetToDefaults: () => void;
 }
 
 // ── Store implementation ────────────────────────────────────────────
@@ -99,6 +102,10 @@ export const useAgentConversationsStore = create<AgentConversationsStore>()(
         next.delete(agentId);
         return { conversations: next };
       });
+    },
+
+    resetToDefaults() {
+      set({ conversations: new Map() });
     },
   }),
 );

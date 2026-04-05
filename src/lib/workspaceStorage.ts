@@ -71,6 +71,13 @@ export async function loadWorkspace(
       );
       return null;
     }
+    // Validate that the stored projectPath matches the requested project
+    if (parsed.projectPath !== normalizePath(projectPath)) {
+      console.warn(
+        `Workspace file projectPath mismatch: expected "${normalizePath(projectPath)}", got "${parsed.projectPath}", using defaults`,
+      );
+      return null;
+    }
     return parsed;
   } catch (err) {
     console.warn("Failed to load workspace file:", err);
