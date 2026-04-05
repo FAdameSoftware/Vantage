@@ -27,6 +27,7 @@ import {
   BookOpen,
   Globe,
   Keyboard,
+  Maximize2,
 } from "lucide-react";
 import { useCommandPaletteStore } from "@/stores/commandPalette";
 import { useLayoutStore } from "@/stores/layout";
@@ -198,6 +199,7 @@ export function CommandPalette() {
   const togglePrimarySidebar = useLayoutStore((s) => s.togglePrimarySidebar);
   const toggleSecondarySidebar = useLayoutStore((s) => s.toggleSecondarySidebar);
   const togglePanel = useLayoutStore((s) => s.togglePanel);
+  const toggleZenMode = useLayoutStore((s) => s.toggleZenMode);
   const setActiveActivityBarItem = useLayoutStore((s) => s.setActiveActivityBarItem);
   const projectRootPath = useLayoutStore((s) => s.projectRootPath);
 
@@ -457,6 +459,14 @@ export function CommandPalette() {
         setActiveActivityBarItem("settings");
         window.dispatchEvent(new CustomEvent("vantage:open-keybindings"));
       },
+    },
+    {
+      id: "toggle-zen-mode",
+      label: "Toggle Zen Mode",
+      shortcut: "Ctrl+Shift+Z",
+      icon: <Maximize2 className="size-4 shrink-0 text-muted-foreground" />,
+      category: "View",
+      action: toggleZenMode,
     },
     {
       id: "jump-to-bracket",

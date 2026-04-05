@@ -3,6 +3,7 @@ import { Send, Square, Brain } from "lucide-react";
 import { SlashAutocomplete } from "./SlashAutocomplete";
 import { MentionAutocomplete } from "./MentionAutocomplete";
 import { MentionChip } from "./MentionChip";
+import { ImagePreview } from "./ImagePreview";
 import {
   buildCommandList,
   filterCommands,
@@ -18,6 +19,7 @@ import {
   type ResolvedMention,
 } from "@/lib/mentionResolver";
 import { useEditorStore } from "@/stores/editor";
+import { useImagePaste } from "@/hooks/useImagePaste";
 
 interface ChatInputProps {
   onSend: (message: string) => void;
@@ -77,6 +79,9 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   const [resolvedMentions, setResolvedMentions] = useState<ResolvedMention[]>([]);
   const [isResolvingMention, setIsResolvingMention] = useState(false);
 
+  // Image paste/drop state
+  const imagePaste = useImagePaste();
+
   // Rebuild command list when installedSkills changes
   useEffect(() => {
     if (installedSkills) {
@@ -102,7 +107,8 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
 
   const handleSend = useCallback(() => {
     const trimmed = text.trim();
-    if (!trimmed || isStreaming || disabled) return;
+    if (isStreaming || disabled) return;
+    if (!trimmed && !imagePaste.hasImages) return;
 
     // Route slash commands through the local handler first.
     // If the handler returns true, the command was handled locally and we
@@ -123,11 +129,18 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     // Format message with any resolved @-mention context
     const withContext = formatMessageWithMentions(resolvedMentions, trimmed);
 
+    // Append image data if any images are pasted
+    const imageContext = imagePaste.formatImagesForMessage();
+    const withImages = imageContext
+      ? `${withContext}\n\n${imageContext}`
+      : withContext;
+
     // Prepend ultrathink keyword when Deep Think is enabled
-    const message = ultrathink ? `ultrathink ${withContext}` : withContext;
+    const message = ultrathink ? `ultrathink ${withImages}` : withImages;
     onSend(message);
     setText("");
     setResolvedMentions([]);
+    imagePaste.clearImages();
     setShowSlash(false);
     setSlashQuery("");
     setShowMention(false);
@@ -136,7 +149,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
     }
-  }, [text, isStreaming, disabled, onSend, ultrathink, resolvedMentions]);
+  }, [text, isStreaming, disabled, onSend, ultrathink, resolvedMentions, imagePaste]);
 
   const handleSlashSelect = useCallback((cmd: SlashCommand) => {
     if (cmd.name === "interview") {
@@ -315,14 +328,19 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     ? "Ctrl+C to stop"
     : isResolvingMention
       ? "Resolving context..."
-      : "Shift+Enter for newline · @ to add context";
+      : imagePaste.hasImages
+        ? "Shift+Enter for newline · Images attached"
+        : "Shift+Enter for newline · @ to add context · Ctrl+V to paste images";
 
   const hasText = text.trim().length > 0;
+  const hasContent = hasText || imagePaste.hasImages;
 
   return (
     <div
       className="shrink-0 px-2 py-1.5"
       style={{ borderTop: "1px solid var(--color-surface-0)" }}
+      onDragOver={imagePaste.handleDragOver}
+      onDrop={imagePaste.handleDrop}
     >
       <div className="relative">
         <SlashAutocomplete
@@ -350,6 +368,20 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
             ))}
           </div>
         )}
+        {/* Image previews */}
+        <ImagePreview
+          images={imagePaste.images}
+          onRemove={imagePaste.removeImage}
+        />
+        {/* Image paste error */}
+        {imagePaste.error && (
+          <div
+            className="text-[10px] px-1 mb-1"
+            style={{ color: "var(--color-red)" }}
+          >
+            {imagePaste.error}
+          </div>
+        )}
         <div
           className="flex items-end gap-1.5 rounded-md p-1.5"
           style={{
@@ -370,6 +402,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
             value={text}
             onChange={handleChange}
             onKeyDown={handleKeyDown}
+            onPaste={imagePaste.handlePaste}
             disabled={disabled}
             maxLength={100000}
           />
@@ -404,10 +437,10 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
               type="button"
               className="p-1 rounded transition-colors hover:bg-[var(--color-surface-1)]"
               style={{
-                color: hasText ? "var(--color-blue)" : "var(--color-overlay-0)",
+                color: hasContent ? "var(--color-blue)" : "var(--color-overlay-0)",
               }}
               onClick={handleSend}
-              disabled={!hasText || disabled}
+              disabled={!hasContent || disabled}
               aria-label="Send message"
             >
               <Send size={14} />

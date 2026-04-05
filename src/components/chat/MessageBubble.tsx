@@ -1,10 +1,77 @@
-import { useState, useCallback, memo } from "react";
+import { useState, useCallback, useMemo, memo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { User, Brain, Copy, Check, Pencil, RefreshCw } from "lucide-react";
 import type { ConversationMessage } from "@/stores/conversation";
 import { CodeBlock } from "./CodeBlock";
 import { ToolCallCard } from "./ToolCallCard";
+import { TokenBadge } from "./TokenBadge";
+
+// ─── Image extraction helpers ──────────────────────────────────────────────
+
+/** Regex to match base64 data URL images in message text */
+const DATA_URL_IMAGE_REGEX = /!\[([^\]]*)\]\((data:image\/[^)]+)\)/g;
+
+interface ExtractedImage {
+  alt: string;
+  dataUrl: string;
+}
+
+/** Extract base64 images from message text, returning images and cleaned text */
+function extractImages(text: string): { cleanText: string; images: ExtractedImage[] } {
+  const images: ExtractedImage[] = [];
+  // Also remove the "[Attached image: ...]" prefix lines
+  let cleanText = text.replace(/\[Attached image: [^\]]*\]\n?/g, "");
+  let match: RegExpExecArray | null;
+  const regex = new RegExp(DATA_URL_IMAGE_REGEX.source, "g");
+  while ((match = regex.exec(cleanText)) !== null) {
+    images.push({ alt: match[1], dataUrl: match[2] });
+  }
+  // Remove the image markdown from the text so it doesn't render as broken content
+  cleanText = cleanText.replace(DATA_URL_IMAGE_REGEX, "").trim();
+  return { cleanText, images };
+}
+
+// ─── Inline image display ──────────────────────────────────────────────────
+
+function InlineImage({ image }: { image: ExtractedImage }) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <>
+      <button
+        type="button"
+        className="rounded overflow-hidden border my-1 cursor-pointer hover:opacity-90 transition-opacity block"
+        style={{
+          borderColor: "var(--color-surface-1)",
+          maxWidth: expanded ? "100%" : 200,
+        }}
+        onClick={() => setExpanded((e) => !e)}
+        aria-label={expanded ? "Collapse image" : "Expand image"}
+      >
+        <img
+          src={image.dataUrl}
+          alt={image.alt}
+          className="block"
+          style={{
+            maxWidth: "100%",
+            maxHeight: expanded ? 600 : 120,
+            objectFit: "contain",
+          }}
+          draggable={false}
+        />
+      </button>
+      {expanded && (
+        <span
+          className="text-[10px] block mb-1"
+          style={{ color: "var(--color-overlay-0)" }}
+        >
+          {image.alt || "Pasted image"} — click to collapse
+        </span>
+      )}
+    </>
+  );
+}
 
 // ─── Markdown code renderer ─────────────────────────────────────────────────
 
@@ -48,6 +115,11 @@ function UserBubble({
   message: ConversationMessage;
   onEdit?: (text: string) => void;
 }) {
+  const { cleanText, images } = useMemo(
+    () => extractImages(message.text),
+    [message.text],
+  );
+
   return (
     <div className="flex justify-end mb-3 group/user">
       <div className="flex items-start gap-2 max-w-[85%]">
@@ -74,7 +146,15 @@ function UserBubble({
             color: "var(--color-text)",
           }}
         >
-          {message.text}
+          {/* Inline images */}
+          {images.length > 0 && (
+            <div className="flex flex-wrap gap-1 mb-1">
+              {images.map((img, i) => (
+                <InlineImage key={i} image={img} />
+              ))}
+            </div>
+          )}
+          {cleanText}
         </div>
         <div
           className="flex items-center justify-center w-6 h-6 rounded-full shrink-0"
@@ -100,10 +180,6 @@ function AssistantBubble({
 }) {
   const [thinkingExpanded, setThinkingExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
-
-  const totalTokens = message.usage
-    ? message.usage.input_tokens + message.usage.output_tokens
-    : null;
 
   const handleCopy = useCallback(() => {
     const textToCopy = message.text || message.thinking || "";
@@ -281,19 +357,17 @@ function AssistantBubble({
           </div>
         )}
 
-        {/* Metadata footer */}
+        {/* Metadata footer: token attribution + regenerate */}
         <div
           className="flex items-center gap-2 mt-1 text-xs"
           style={{ color: "var(--color-overlay-0)" }}
         >
-          {totalTokens !== null && (
-            <span>{totalTokens.toLocaleString()} tokens</span>
-          )}
+          <TokenBadge message={message} />
           {showRegenerate && onRegenerate && (
             <button
               type="button"
               onClick={onRegenerate}
-              className="flex items-center gap-1 px-1.5 py-0.5 rounded transition-colors hover:bg-[var(--color-surface-0)]"
+              className="flex items-center gap-1 px-1.5 py-0.5 rounded transition-colors hover:bg-[var(--color-surface-0)] ml-auto"
               style={{ color: "var(--color-overlay-1)" }}
               aria-label="Regenerate response"
               title="Regenerate response"

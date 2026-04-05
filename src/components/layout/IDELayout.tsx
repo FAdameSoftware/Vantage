@@ -13,6 +13,7 @@ import { SecondarySidebar } from "./SecondarySidebar";
 import { PanelArea } from "./PanelArea";
 import { StatusBar } from "./StatusBar";
 import { TitleBar } from "./TitleBar";
+import { ZenModeOverlay } from "./ZenModeOverlay";
 import { useQuickQuestionStore } from "@/stores/quickQuestion";
 
 function VerticalResizeHandle() {
@@ -47,6 +48,10 @@ function HorizontalResizeHandle({ onMouseDown }: { onMouseDown: (e: React.MouseE
 
 export function IDELayout() {
   const primarySidebarVisible = useLayoutStore((s) => s.primarySidebarVisible);
+  const secondarySidebarVisible = useLayoutStore((s) => s.secondarySidebarVisible);
+  const panelVisible = useLayoutStore((s) => s.panelVisible);
+  const zenMode = useLayoutStore((s) => s.zenMode);
+  const toggleZenMode = useLayoutStore((s) => s.toggleZenMode);
 
   // Ctrl+Shift+Q — open Quick Question overlay
   useEffect(() => {
@@ -59,10 +64,18 @@ export function IDELayout() {
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, []);
-  const secondarySidebarVisible = useLayoutStore(
-    (s) => s.secondarySidebarVisible
-  );
-  const panelVisible = useLayoutStore((s) => s.panelVisible);
+
+  // Ctrl+Shift+Z — toggle zen mode
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && (e.key === "Z" || e.key === "z")) {
+        e.preventDefault();
+        toggleZenMode();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [toggleZenMode]);
 
   const primarySidebar = useResizable({
     initialSize: 240,
@@ -77,6 +90,26 @@ export function IDELayout() {
     maxSize: 500,
     direction: "left",
   });
+
+  // Zen mode: show only the editor centered in the viewport
+  if (zenMode) {
+    return (
+      <div
+        className="flex flex-col h-screen w-screen overflow-hidden transition-all duration-300"
+        style={{ backgroundColor: "var(--color-base)" }}
+      >
+        <div className="flex flex-1 items-stretch justify-center overflow-hidden">
+          <div
+            className="flex flex-col overflow-hidden w-full"
+            style={{ maxWidth: "900px" }}
+          >
+            <EditorArea />
+          </div>
+        </div>
+        <ZenModeOverlay />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden">
