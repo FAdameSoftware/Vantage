@@ -268,6 +268,46 @@ pub fn delete_dir(path: &str) -> Result<(), String> {
     fs::remove_dir_all(dir_path).map_err(|e| format!("Failed to delete directory: {}", e))
 }
 
+/// Format a file using Prettier (`npx prettier --write <path>`).
+///
+/// Returns the formatted file content after Prettier runs.
+/// Validates the path before executing to prevent injection attacks.
+pub fn format_file(path: &str) -> Result<String, String> {
+    // Security: validate path against traversal attacks
+    let validated = validate_path(path)?;
+    let file_path = validated.as_path();
+
+    if !file_path.exists() {
+        return Err(format!("File does not exist: {}", path));
+    }
+    if !file_path.is_file() {
+        return Err(format!("Not a file: {}", path));
+    }
+
+    // Run prettier --write on the file
+    // We pass the path as a separate argument (not interpolated into a shell string)
+    // to prevent command injection.
+    let output = std::process::Command::new("npx")
+        .arg("prettier")
+        .arg("--write")
+        .arg(file_path)
+        .output()
+        .map_err(|e| format!("Failed to run prettier: {}", e))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        // If prettier fails (e.g., unsupported file type), return a useful error
+        // but don't treat it as catastrophic — the file is unchanged.
+        return Err(format!("Prettier formatting failed: {}", stderr.trim()));
+    }
+
+    // Re-read the formatted file content
+    let content = fs::read_to_string(file_path)
+        .map_err(|e| format!("Failed to read formatted file: {}", e))?;
+
+    Ok(content)
+}
+
 // ── Tests ─────────────────────────────────────────────────────────
 
 #[cfg(test)]

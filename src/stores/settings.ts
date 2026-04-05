@@ -22,6 +22,8 @@ export interface SettingsState {
   effortLevel: "low" | "medium" | "high";
   /** Whether to start sessions in plan mode (--permission-mode plan) */
   planMode: boolean;
+  /** Whether to auto-format files on save (via Prettier) */
+  formatOnSave: boolean;
   setTheme: (theme: ThemeName) => void;
   setFontSizeEditor: (size: number) => void;
   setFontSizeUI: (size: number) => void;
@@ -37,6 +39,7 @@ export interface SettingsState {
   toggleBuddy: () => void;
   setEffortLevel: (level: "low" | "medium" | "high") => void;
   setPlanMode: (value: boolean) => void;
+  setFormatOnSave: (value: boolean) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -57,6 +60,7 @@ export const useSettingsStore = create<SettingsState>()(
       showBuddy: true,
       effortLevel: "high",
       planMode: false,
+      formatOnSave: false,
       setTheme: (theme) => set({ theme }),
       setFontSizeEditor: (size) => set({ fontSizeEditor: Math.max(8, Math.min(32, size)) }),
       setFontSizeUI: (size) => set({ fontSizeUI: Math.max(10, Math.min(24, size)) }),
@@ -72,6 +76,7 @@ export const useSettingsStore = create<SettingsState>()(
       toggleBuddy: () => set((state) => ({ showBuddy: !state.showBuddy })),
       setEffortLevel: (level) => set({ effortLevel: level }),
       setPlanMode: (value) => set({ planMode: value }),
+      setFormatOnSave: (value) => set({ formatOnSave: value }),
     }),
     {
       name: "vantage-settings",
@@ -91,6 +96,7 @@ export const useSettingsStore = create<SettingsState>()(
         showBuddy: state.showBuddy,
         effortLevel: state.effortLevel,
         planMode: state.planMode,
+        formatOnSave: state.formatOnSave,
       }),
     }
   )

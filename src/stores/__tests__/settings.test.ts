@@ -16,6 +16,7 @@ beforeEach(() => {
     terminalScrollback: 10000,
     effortLevel: "high",
     planMode: false,
+    formatOnSave: false,
   });
 });
 
@@ -94,5 +95,17 @@ describe("Settings Store", () => {
     expect(useSettingsStore.getState().planMode).toBe(true);
     setPlanMode(false);
     expect(useSettingsStore.getState().planMode).toBe(false);
+  });
+
+  it("has formatOnSave default false", () => {
+    expect(useSettingsStore.getState().formatOnSave).toBe(false);
+  });
+
+  it("toggles formatOnSave", () => {
+    const { setFormatOnSave } = useSettingsStore.getState();
+    setFormatOnSave(true);
+    expect(useSettingsStore.getState().formatOnSave).toBe(true);
+    setFormatOnSave(false);
+    expect(useSettingsStore.getState().formatOnSave).toBe(false);
   });
 });
