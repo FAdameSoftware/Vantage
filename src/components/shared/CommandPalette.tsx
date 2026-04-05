@@ -458,6 +458,20 @@ export function CommandPalette() {
         window.dispatchEvent(new CustomEvent("vantage:open-keybindings"));
       },
     },
+    {
+      id: "jump-to-bracket",
+      label: "Jump to Matching Bracket",
+      shortcut: "Ctrl+Shift+\\",
+      icon: <FileCode className="size-4 shrink-0 text-muted-foreground" />,
+      category: "Editor",
+      action: () => {
+        const editors = monaco.editor.getEditors();
+        if (editors.length > 0) {
+          const action = editors[0].getAction("editor.action.jumpToBracket");
+          if (action) action.run();
+        }
+      },
+    },
   ];
 
   // Fetch files when mode switches to "files" and palette opens

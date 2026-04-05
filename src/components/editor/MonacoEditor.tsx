@@ -164,6 +164,19 @@ export function MonacoEditor({
         }
       });
 
+      // Register "Jump to Matching Bracket" keybinding (Ctrl+Shift+\)
+      editor.addAction({
+        id: "editor.action.jumpToBracket",
+        label: "Jump to Matching Bracket",
+        keybindings: [
+          monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.Backslash,
+        ],
+        run: (ed) => {
+          const action = ed.getAction("editor.action.jumpToBracket");
+          if (action) action.run();
+        },
+      });
+
       // Focus the editor
       editor.focus();
     },
@@ -195,7 +208,12 @@ export function MonacoEditor({
             tabSize,
             insertSpaces,
             wordWrap: wordWrap ? "on" : "off",
-            minimap: { enabled: minimapEnabled },
+            minimap: {
+              enabled: minimapEnabled,
+              showSlider: "always",
+              renderCharacters: true,
+              maxColumn: 80,
+            },
             lineNumbers: lineNumbers ? "on" : "off",
             readOnly,
             automaticLayout: true,

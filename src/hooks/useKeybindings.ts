@@ -71,6 +71,7 @@ export const DEFAULT_KEYBINDING_DEFINITIONS: Omit<KeybindingDefinition, "source"
   { id: "ctrl-w", key: "w", ctrl: true, description: "Close Active Tab" },
   { id: "ctrl-tab", key: "Tab", ctrl: true, description: "Next Tab" },
   { id: "ctrl-shift-tab", key: "Tab", ctrl: true, shift: true, description: "Previous Tab" },
+  { id: "ctrl-shift-backslash", key: "\\", ctrl: true, shift: true, description: "Jump to Matching Bracket" },
 ].map((d) => ({ ...d, id: d.id || makeKeybindingId(d) }));
 
 export function useKeybindings() {
