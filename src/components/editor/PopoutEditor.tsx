@@ -46,7 +46,9 @@ export function PopoutEditor() {
 
       // Notify the main window
       emit("popout-content-changed", { tabId, content: value }).catch(
-        () => {},
+        (err) => {
+          console.error("Failed to emit popout-content-changed event:", err);
+        },
       );
     },
     [tabId, updateContent],
@@ -71,9 +73,13 @@ export function PopoutEditor() {
             emit("popout-tab-saved", {
               tabId,
               content: currentTab.content,
-            }).catch(() => {});
+            }).catch((err) => {
+              console.error("Failed to emit popout-tab-saved event:", err);
+            });
           })
-          .catch(() => {});
+          .catch((err) => {
+            console.error("Failed to save file from popout editor:", err);
+          });
       }
     }
 

@@ -70,6 +70,27 @@ fn validate_same_volume(path_a: &str, path_b: &str) -> Result<(), String> {
     Ok(())
 }
 
+/// Validate a branch name for git worktree commands.
+/// Allows alphanumeric, `.`, `_`, `-`, `/`.
+fn validate_branch_name(name: &str) -> Result<(), String> {
+    if name.is_empty() {
+        return Err("Branch name must not be empty".to_string());
+    }
+    let valid = name
+        .chars()
+        .all(|c| c.is_alphanumeric() || matches!(c, '.' | '_' | '-' | '/'));
+    if !valid {
+        return Err(format!(
+            "Invalid branch name '{}': only alphanumeric, '.', '_', '-', '/' characters are allowed",
+            name
+        ));
+    }
+    if name.contains("..") {
+        return Err(format!("Invalid branch name '{}': '..' is not allowed", name));
+    }
+    Ok(())
+}
+
 /// Create a new git worktree with a new branch at the specified path.
 /// If the branch already exists, checks it out instead of creating it.
 pub fn create_worktree(
@@ -77,6 +98,8 @@ pub fn create_worktree(
     branch_name: &str,
     worktree_path: &str,
 ) -> Result<WorktreeCreateResult, String> {
+    // Security: validate branch name
+    validate_branch_name(branch_name)?;
     validate_same_volume(repo_path, worktree_path)?;
 
     // Ensure the parent directory of the worktree path exists
@@ -331,10 +354,67 @@ pub fn agent_worktree_path(repo_path: &str, agent_name: &str, agent_id: &str) ->
     worktree_dir.to_string_lossy().to_string()
 }
 
+/// Validate a path from `.worktreeinclude`.
+/// - Must be relative (no leading `/` or drive letter)
+/// - Must not contain `..` traversal
+/// - Must not point to known sensitive files
+fn validate_worktree_include_path(line: &str) -> Result<(), String> {
+    // Must not be empty
+    if line.is_empty() {
+        return Err("Empty path in .worktreeinclude".to_string());
+    }
+
+    // Must be relative — reject absolute paths
+    if line.starts_with('/') || line.starts_with('\\') {
+        return Err(format!(
+            "Absolute path '{}' is not allowed in .worktreeinclude",
+            line
+        ));
+    }
+    // Reject Windows drive letters (e.g., C:\...)
+    if line.len() >= 2 && line.chars().nth(0).map_or(false, |c| c.is_ascii_alphabetic()) && line.chars().nth(1) == Some(':') {
+        return Err(format!(
+            "Absolute path '{}' is not allowed in .worktreeinclude",
+            line
+        ));
+    }
+
+    // Must not contain ".." traversal
+    let normalized = line.replace('\\', "/");
+    for component in normalized.split('/') {
+        if component == ".." {
+            return Err(format!(
+                "Path '{}' contains directory traversal (..) which is not allowed in .worktreeinclude",
+                line
+            ));
+        }
+    }
+
+    // Must not point to known sensitive paths
+    let lower = normalized.to_lowercase();
+    let sensitive_patterns = [
+        ".ssh", ".gnupg", ".aws/credentials", ".env.local", ".env.production",
+        "id_rsa", "id_ed25519", ".npmrc", ".pypirc",
+    ];
+    for pattern in &sensitive_patterns {
+        if lower.contains(pattern) {
+            return Err(format!(
+                "Path '{}' matches sensitive pattern '{}' and is not allowed in .worktreeinclude",
+                line, pattern
+            ));
+        }
+    }
+
+    Ok(())
+}
+
 /// Read `.worktreeinclude` from the project root and copy listed files
 /// into the given worktree directory. Lines starting with `#` are comments.
 /// Empty lines are skipped. Each non-comment line is a relative path from
 /// the project root.
+///
+/// Security: Paths are validated to prevent directory traversal and
+/// access to sensitive files.
 pub fn apply_worktree_includes(project_root: &str, worktree_path: &str) -> Result<Vec<String>, String> {
     let include_path = Path::new(project_root).join(".worktreeinclude");
     if !include_path.exists() {
@@ -351,8 +431,24 @@ pub fn apply_worktree_includes(project_root: &str, worktree_path: &str) -> Resul
             continue;
         }
 
+        // Security: validate each path entry
+        validate_worktree_include_path(line)?;
+
         let src = Path::new(project_root).join(line);
         let dest = Path::new(worktree_path).join(line);
+
+        // Extra safety: verify the resolved source is actually within project_root
+        if let (Ok(canonical_root), Ok(canonical_src)) = (
+            Path::new(project_root).canonicalize(),
+            src.canonicalize(),
+        ) {
+            if !canonical_src.starts_with(&canonical_root) {
+                return Err(format!(
+                    "Path '{}' resolves outside the project root and is not allowed",
+                    line
+                ));
+            }
+        }
 
         if src.exists() {
             // Create parent directories in the worktree

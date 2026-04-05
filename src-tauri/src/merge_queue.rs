@@ -3,6 +3,86 @@ use specta::Type;
 use std::process::Command;
 use std::time::Instant;
 
+// ── Security: Input Validation ─────────────────────────────────────
+
+/// Shell metacharacters that could enable command injection.
+const SHELL_METACHARACTERS: &[char] = &[';', '|', '&', '$', '`', '(', ')', '{', '}', '<', '>', '!', '#', '~', '\n', '\r'];
+
+/// Whitelist of allowed quality gate command patterns.
+/// Commands must start with one of these prefixes.
+const ALLOWED_COMMAND_PREFIXES: &[&str] = &[
+    "npm ",
+    "npm.cmd ",
+    "npx ",
+    "npx.cmd ",
+    "yarn ",
+    "pnpm ",
+    "node ",
+    "cargo ",
+    "make ",
+    "tsc ",
+    "eslint ",
+    "prettier ",
+    "vitest ",
+    "jest ",
+    "playwright ",
+    "biome ",
+];
+
+/// Validate a quality gate command against injection attacks.
+/// Rejects commands containing shell metacharacters and commands that
+/// don't match the allowed prefix whitelist.
+fn validate_quality_gate_command(command: &str) -> Result<(), String> {
+    let command_trimmed = command.trim();
+
+    if command_trimmed.is_empty() {
+        return Err("Quality gate command must not be empty".to_string());
+    }
+
+    // Reject shell metacharacters
+    for &ch in SHELL_METACHARACTERS {
+        if command_trimmed.contains(ch) {
+            return Err(format!(
+                "Quality gate command contains forbidden character '{}'. Commands must not contain shell metacharacters.",
+                ch.escape_default()
+            ));
+        }
+    }
+
+    // Must match an allowed command prefix
+    let lower = command_trimmed.to_lowercase();
+    let matches_prefix = ALLOWED_COMMAND_PREFIXES.iter().any(|prefix| lower.starts_with(prefix));
+    if !matches_prefix {
+        return Err(format!(
+            "Quality gate command '{}' does not match any allowed prefix. Allowed: npm, npx, yarn, pnpm, node, cargo, make, tsc, eslint, prettier, vitest, jest, playwright, biome",
+            command_trimmed
+        ));
+    }
+
+    Ok(())
+}
+
+/// Validate a git branch name. Allows alphanumeric, `.`, `_`, `-`, `/`.
+fn validate_branch_name(name: &str) -> Result<(), String> {
+    if name.is_empty() {
+        return Err("Branch name must not be empty".to_string());
+    }
+    let valid = name
+        .chars()
+        .all(|c| c.is_alphanumeric() || c == '.' || c == '_' || c == '-' || c == '/');
+    if !valid {
+        return Err(format!(
+            "Invalid branch name '{}': only alphanumeric, '.', '_', '-', '/' characters are allowed",
+            name
+        ));
+    }
+    // Reject directory traversal in branch names
+    if name.contains("..") {
+        return Err(format!("Invalid branch name '{}': '..' is not allowed", name));
+    }
+    Ok(())
+}
+
 // ── Quality Gate ────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
@@ -19,25 +99,32 @@ pub struct QualityGateResult {
 /// Run a quality gate command (e.g., `npm test`, `npm run lint`) in a given
 /// working directory. Returns a structured result with pass/fail, output,
 /// and duration.
+///
+/// Security: Commands are validated against a whitelist of allowed prefixes
+/// and rejected if they contain shell metacharacters.
 pub fn run_quality_gate(
     cwd: &str,
     gate_name: &str,
     command: &str,
 ) -> Result<QualityGateResult, String> {
+    // Security: validate command before execution
+    validate_quality_gate_command(command)?;
+
     let start = Instant::now();
 
-    // Use platform-appropriate shell
-    let output = if cfg!(target_os = "windows") {
-        Command::new("cmd")
-            .args(["/C", command])
-            .current_dir(cwd)
-            .output()
-    } else {
-        Command::new("sh")
-            .args(["-c", command])
-            .current_dir(cwd)
-            .output()
-    };
+    // Tokenize the command into program + arguments instead of passing to shell
+    let parts: Vec<&str> = command.trim().split_whitespace().collect();
+    if parts.is_empty() {
+        return Err("Quality gate command is empty after parsing".to_string());
+    }
+
+    let program = parts[0];
+    let args = &parts[1..];
+
+    let output = Command::new(program)
+        .args(args)
+        .current_dir(cwd)
+        .output();
 
     let output = output.map_err(|e| format!("Failed to run quality gate '{}': {}", gate_name, e))?;
     let duration_ms = start.elapsed().as_millis() as u64;
@@ -116,6 +203,9 @@ pub fn merge_branch(
     branch_name: &str,
     no_ff: bool,
 ) -> Result<MergeResult, String> {
+    // Security: validate branch name
+    validate_branch_name(branch_name)?;
+
     let mut args = vec!["merge"];
     if no_ff {
         args.push("--no-ff");
@@ -191,6 +281,9 @@ pub fn merge_branch(
 /// Returns `true` if successful. On conflict, aborts the rebase and
 /// returns an error.
 pub fn rebase_branch(worktree_path: &str, onto_branch: &str) -> Result<bool, String> {
+    // Security: validate branch name
+    validate_branch_name(onto_branch)?;
+
     let output = Command::new("git")
         .args(["rebase", onto_branch])
         .current_dir(worktree_path)

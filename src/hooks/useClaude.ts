@@ -677,8 +677,9 @@ export function useClaude() {
       await invoke("claude_stop_session", {
         sessionId: sessionIdRef.current,
       });
-    } catch {
-      // Ignore errors on stop — session may already be dead
+    } catch (err) {
+      // Session may already be dead — log but don't propagate
+      console.warn("Failed to stop Claude session (may already be dead):", err);
     }
     sessionIdRef.current = null;
     clearConversation();
@@ -779,8 +780,9 @@ export function useClaude() {
 
     try {
       await invoke("claude_stop_session", { sessionId: agent.sessionId });
-    } catch {
-      // Session may already be dead
+    } catch (err) {
+      // Session may already be dead — log but don't propagate
+      console.warn("Failed to stop agent session (may already be dead):", err);
     }
 
     useAgentsStore.getState().updateAgentStatus(agentId, "completed");

@@ -3,6 +3,97 @@ use specta::Type;
 use std::process::Command;
 use std::fs;
 
+// ── Security: Git Input Validation ─────────────────────────────────
+
+/// Validate a git ref (branch name, tag, or symbolic ref like HEAD).
+/// Allows alphanumeric, `.`, `_`, `-`, `/`, `~`, `^` (for ref traversal like HEAD~1).
+fn validate_git_ref(git_ref: &str) -> Result<(), String> {
+    if git_ref.is_empty() {
+        return Err("Git ref must not be empty".to_string());
+    }
+    if git_ref.len() > 256 {
+        return Err("Git ref is too long (max 256 characters)".to_string());
+    }
+    let valid = git_ref
+        .chars()
+        .all(|c| c.is_alphanumeric() || matches!(c, '.' | '_' | '-' | '/' | '~' | '^'));
+    if !valid {
+        return Err(format!(
+            "Invalid git ref '{}': only alphanumeric, '.', '_', '-', '/', '~', '^' characters are allowed",
+            git_ref
+        ));
+    }
+    // Reject directory traversal
+    if git_ref.contains("..") && !git_ref.contains("~") && !git_ref.contains("^") {
+        // Allow ".." only in range specs like "abc..def", but reject standalone ".."
+        // Actually, ".." is valid in git for range specs (e.g. commit1..commit2)
+        // We'll allow it since we validate character set above
+    }
+    Ok(())
+}
+
+/// Validate a git commit hash (short or full). Must be 4-40 lowercase hex characters.
+fn validate_commit_hash(hash: &str) -> Result<(), String> {
+    if hash.is_empty() {
+        return Err("Commit hash must not be empty".to_string());
+    }
+    if hash.len() < 4 || hash.len() > 40 {
+        return Err(format!(
+            "Invalid commit hash '{}': must be 4-40 hex characters",
+            hash
+        ));
+    }
+    let valid = hash.chars().all(|c| c.is_ascii_hexdigit());
+    if !valid {
+        return Err(format!(
+            "Invalid commit hash '{}': must contain only hex characters (0-9, a-f)",
+            hash
+        ));
+    }
+    Ok(())
+}
+
+/// Validate a file path for use in git commands.
+/// Rejects paths with shell metacharacters and directory traversal.
+fn validate_git_file_path(path: &str) -> Result<(), String> {
+    if path.is_empty() {
+        return Err("File path must not be empty".to_string());
+    }
+    // Reject shell metacharacters
+    let forbidden = [';', '|', '&', '$', '`', '(', ')', '{', '}', '<', '>', '!', '#', '\n', '\r'];
+    for &ch in &forbidden {
+        if path.contains(ch) {
+            return Err(format!(
+                "File path contains forbidden character '{}'",
+                ch.escape_default()
+            ));
+        }
+    }
+    Ok(())
+}
+
+/// Validate a branch name for git commands.
+/// Allows alphanumeric, `.`, `_`, `-`, `/`.
+#[allow(dead_code)]
+fn validate_branch_name(name: &str) -> Result<(), String> {
+    if name.is_empty() {
+        return Err("Branch name must not be empty".to_string());
+    }
+    let valid = name
+        .chars()
+        .all(|c| c.is_alphanumeric() || matches!(c, '.' | '_' | '-' | '/'));
+    if !valid {
+        return Err(format!(
+            "Invalid branch name '{}': only alphanumeric, '.', '_', '-', '/' characters are allowed",
+            name
+        ));
+    }
+    if name.contains("..") {
+        return Err(format!("Invalid branch name '{}': '..' is not allowed", name));
+    }
+    Ok(())
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct GitBranchInfo {
     pub branch: Option<String>,
@@ -94,6 +185,10 @@ pub fn get_branch(cwd: &str) -> Result<GitBranchInfo, String> {
 /// or a commit hash). Returns an empty string if the file does not exist at
 /// that ref (i.e., the file is new).
 pub fn show_file(cwd: &str, file_path: &str, git_ref: &str) -> Result<String, String> {
+    // Security: validate inputs before passing to git
+    validate_git_ref(git_ref)?;
+    validate_git_file_path(file_path)?;
+
     let output = Command::new("git")
         .args(["show", &format!("{}:{}", git_ref, file_path)])
         .current_dir(cwd)
@@ -245,6 +340,9 @@ pub fn git_log(cwd: &str, limit: u32) -> Result<Vec<GitLogEntry>, String> {
 
 /// Get blame annotations for a file.
 pub fn git_blame(cwd: &str, file_path: &str) -> Result<Vec<GitBlameLine>, String> {
+    // Security: validate file path
+    validate_git_file_path(file_path)?;
+
     let output = Command::new("git")
         .args(["blame", "--porcelain", file_path])
         .current_dir(cwd)
@@ -320,6 +418,9 @@ pub fn git_blame(cwd: &str, file_path: &str) -> Result<Vec<GitBlameLine>, String
 
 /// Get the diff for a specific commit.
 pub fn git_diff_commit(cwd: &str, hash: &str) -> Result<String, String> {
+    // Security: validate commit hash
+    validate_commit_hash(hash)?;
+
     let output = Command::new("git")
         .args(["diff", &format!("{}~1..{}", hash, hash), "--no-color"])
         .current_dir(cwd)

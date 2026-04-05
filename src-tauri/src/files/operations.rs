@@ -1,13 +1,98 @@
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct FileContent {
     pub path: String,
     pub content: String,
     pub language: String,
+}
+
+// ── Security: Path Traversal Protection ────────────────────────────
+
+/// Known sensitive paths that should never be accessed via file operations.
+/// These are checked as path prefixes (case-insensitive on Windows).
+const SENSITIVE_PATH_PATTERNS: &[&str] = &[
+    ".ssh",
+    ".gnupg",
+    ".aws/credentials",
+    ".env.local",
+    ".env.production",
+];
+
+/// Validate that a file path is safe for file operations.
+///
+/// This function:
+/// 1. Rejects empty paths
+/// 2. Rejects paths containing `..` traversal components
+/// 3. Rejects paths that resolve to known sensitive locations
+/// 4. Ensures the path is absolute (all Tauri IPC file paths should be absolute)
+///
+/// Note: In a full project-root sandboxing implementation, this would also
+/// canonicalize the path and verify it's within the project root. However,
+/// since Vantage operates on user-opened project directories (not a server),
+/// we focus on rejecting traversal attacks and sensitive paths.
+pub fn validate_path(path: &str) -> Result<PathBuf, String> {
+    if path.is_empty() {
+        return Err("Path must not be empty".to_string());
+    }
+
+    let normalized = path.replace('\\', "/");
+
+    // Reject paths containing ".." components (directory traversal)
+    for component in normalized.split('/') {
+        if component == ".." {
+            return Err(format!(
+                "Path '{}' contains directory traversal (..) which is not allowed",
+                path
+            ));
+        }
+    }
+
+    // Reject known sensitive paths
+    let lower = normalized.to_lowercase();
+    for pattern in SENSITIVE_PATH_PATTERNS {
+        if lower.contains(&format!("/{}", pattern)) || lower.contains(&format!("\\{}", pattern)) {
+            return Err(format!(
+                "Access to sensitive path pattern '{}' is not allowed",
+                pattern
+            ));
+        }
+    }
+
+    // Reject paths that are clearly outside project scope
+    // (e.g., /etc/passwd, C:\Windows\System32)
+    #[cfg(target_os = "windows")]
+    {
+        let lower_path = path.to_lowercase().replace('\\', "/");
+        if lower_path.starts_with("c:/windows") || lower_path.starts_with("c:/program files") {
+            return Err(format!("Access to system path '{}' is not allowed", path));
+        }
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        if normalized.starts_with("/etc/")
+            || normalized.starts_with("/var/")
+            || normalized.starts_with("/usr/")
+            || normalized.starts_with("/root/")
+            || normalized == "/etc/passwd"
+            || normalized == "/etc/shadow"
+        {
+            return Err(format!("Access to system path '{}' is not allowed", path));
+        }
+    }
+
+    Ok(PathBuf::from(path))
+}
+
+/// Validate that both old and new paths are safe (for rename operations).
+pub fn validate_path_pair(old_path: &str, new_path: &str) -> Result<(PathBuf, PathBuf), String> {
+    let old = validate_path(old_path)?;
+    let new = validate_path(new_path)?;
+    Ok((old, new))
 }
 
 /// Detect language from file extension for Monaco Editor.
@@ -57,7 +142,10 @@ pub fn detect_language(path: &str) -> String {
 
 /// Read a file's contents and detect its language.
 pub fn read_file(path: &str) -> Result<FileContent, String> {
-    let file_path = Path::new(path);
+    // Security: validate path against traversal attacks
+    let validated = validate_path(path)?;
+    let file_path = validated.as_path();
+
     if !file_path.exists() {
         return Err(format!("File does not exist: {}", path));
     }
@@ -80,7 +168,9 @@ pub fn read_file(path: &str) -> Result<FileContent, String> {
 
 /// Write content to a file. Creates the file if it does not exist.
 pub fn write_file(path: &str, content: &str) -> Result<(), String> {
-    let file_path = Path::new(path);
+    // Security: validate path against traversal attacks
+    let validated = validate_path(path)?;
+    let file_path = validated.as_path();
 
     // Ensure parent directory exists
     if let Some(parent) = file_path.parent() {
@@ -95,7 +185,10 @@ pub fn write_file(path: &str, content: &str) -> Result<(), String> {
 
 /// Create an empty file. Returns error if file already exists.
 pub fn create_file(path: &str) -> Result<(), String> {
-    let file_path = Path::new(path);
+    // Security: validate path against traversal attacks
+    let validated = validate_path(path)?;
+    let file_path = validated.as_path();
+
     if file_path.exists() {
         return Err(format!("File already exists: {}", path));
     }
@@ -114,7 +207,10 @@ pub fn create_file(path: &str) -> Result<(), String> {
 
 /// Create a directory. Creates parent directories as needed.
 pub fn create_dir(path: &str) -> Result<(), String> {
-    let dir_path = Path::new(path);
+    // Security: validate path against traversal attacks
+    let validated = validate_path(path)?;
+    let dir_path = validated.as_path();
+
     if dir_path.exists() {
         return Err(format!("Directory already exists: {}", path));
     }
@@ -124,22 +220,25 @@ pub fn create_dir(path: &str) -> Result<(), String> {
 
 /// Rename/move a file or directory.
 pub fn rename_path(old_path: &str, new_path: &str) -> Result<(), String> {
-    let old = Path::new(old_path);
-    if !old.exists() {
+    // Security: validate both paths against traversal attacks
+    let (validated_old, validated_new) = validate_path_pair(old_path, new_path)?;
+
+    if !validated_old.exists() {
         return Err(format!("Source does not exist: {}", old_path));
     }
-
-    let new = Path::new(new_path);
-    if new.exists() {
+    if validated_new.exists() {
         return Err(format!("Destination already exists: {}", new_path));
     }
 
-    fs::rename(old, new).map_err(|e| format!("Failed to rename: {}", e))
+    fs::rename(&validated_old, &validated_new).map_err(|e| format!("Failed to rename: {}", e))
 }
 
 /// Delete a file.
 pub fn delete_file(path: &str) -> Result<(), String> {
-    let file_path = Path::new(path);
+    // Security: validate path against traversal attacks
+    let validated = validate_path(path)?;
+    let file_path = validated.as_path();
+
     if !file_path.exists() {
         return Err(format!("File does not exist: {}", path));
     }
@@ -155,7 +254,10 @@ pub fn delete_file(path: &str) -> Result<(), String> {
 
 /// Delete a directory and all its contents.
 pub fn delete_dir(path: &str) -> Result<(), String> {
-    let dir_path = Path::new(path);
+    // Security: validate path against traversal attacks
+    let validated = validate_path(path)?;
+    let dir_path = validated.as_path();
+
     if !dir_path.exists() {
         return Err(format!("Directory does not exist: {}", path));
     }

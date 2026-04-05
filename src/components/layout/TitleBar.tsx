@@ -8,14 +8,18 @@ function WindowControls() {
   useEffect(() => {
     const appWindow = getCurrentWindow();
 
-    appWindow.isMaximized().then(setIsMaximized).catch(() => {});
+    appWindow.isMaximized().then(setIsMaximized).catch((err) => {
+      console.error("Failed to check window maximized state:", err);
+    });
 
     let unlisten: (() => void) | undefined;
     appWindow
       .onResized(async () => {
         try {
           setIsMaximized(await appWindow.isMaximized());
-        } catch {}
+        } catch (err) {
+          console.error("Failed to update maximized state on resize:", err);
+        }
       })
       .then((fn) => {
         unlisten = fn;

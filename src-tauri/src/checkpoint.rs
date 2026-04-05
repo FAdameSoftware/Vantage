@@ -3,6 +3,59 @@ use specta::Type;
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+// ── Security: Input Validation ─────────────────────────────────────
+
+/// Validate an agent ID for use in git tag names.
+/// Allows alphanumeric, `-`, `_`, `.`, `/`.
+fn validate_agent_id(agent_id: &str) -> Result<(), String> {
+    if agent_id.is_empty() {
+        return Err("Agent ID must not be empty".to_string());
+    }
+    if agent_id.len() > 128 {
+        return Err("Agent ID is too long (max 128 characters)".to_string());
+    }
+    let valid = agent_id
+        .chars()
+        .all(|c| c.is_alphanumeric() || matches!(c, '-' | '_' | '.' | '/'));
+    if !valid {
+        return Err(format!(
+            "Invalid agent ID '{}': only alphanumeric, '-', '_', '.', '/' characters are allowed",
+            agent_id
+        ));
+    }
+    if agent_id.contains("..") {
+        return Err(format!("Invalid agent ID '{}': '..' is not allowed", agent_id));
+    }
+    Ok(())
+}
+
+/// Validate a checkpoint tag name.
+/// Must start with "vantage-checkpoint/" and contain only safe characters.
+fn validate_tag_name(tag_name: &str) -> Result<(), String> {
+    if tag_name.is_empty() {
+        return Err("Tag name must not be empty".to_string());
+    }
+    if !tag_name.starts_with("vantage-checkpoint/") {
+        return Err(format!(
+            "Invalid checkpoint tag '{}': must start with 'vantage-checkpoint/'",
+            tag_name
+        ));
+    }
+    let valid = tag_name
+        .chars()
+        .all(|c| c.is_alphanumeric() || matches!(c, '-' | '_' | '.' | '/'));
+    if !valid {
+        return Err(format!(
+            "Invalid tag name '{}': only alphanumeric, '-', '_', '.', '/' characters are allowed",
+            tag_name
+        ));
+    }
+    if tag_name.contains("..") {
+        return Err(format!("Invalid tag name '{}': '..' is not allowed", tag_name));
+    }
+    Ok(())
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct Checkpoint {
     pub tag_name: String,
@@ -136,6 +189,9 @@ pub fn create_checkpoint(
     agent_id: &str,
     agent_name: &str,
 ) -> Result<Checkpoint, String> {
+    // Security: validate agent_id before using in tag name
+    validate_agent_id(agent_id)?;
+
     let hash = get_head_hash(cwd)?;
     let timestamp = now_compact();
     let created_at = now_iso8601();
@@ -169,6 +225,11 @@ pub fn list_checkpoints(
     cwd: &str,
     agent_id: Option<&str>,
 ) -> Result<Vec<Checkpoint>, String> {
+    // Security: validate agent_id if provided
+    if let Some(id) = agent_id {
+        validate_agent_id(id)?;
+    }
+
     let pattern = match agent_id {
         Some(id) => format!("vantage-checkpoint/{}/*", id),
         None => "vantage-checkpoint/*".to_string(),
@@ -246,6 +307,9 @@ pub fn list_checkpoints(
 /// Restore working tree to a checkpoint.
 /// Uses `git checkout <tag> -- .` to restore files without changing HEAD.
 pub fn restore_checkpoint(cwd: &str, tag_name: &str) -> Result<(), String> {
+    // Security: validate tag name
+    validate_tag_name(tag_name)?;
+
     let output = Command::new("git")
         .args(["checkout", tag_name, "--", "."])
         .current_dir(cwd)
@@ -263,6 +327,9 @@ pub fn restore_checkpoint(cwd: &str, tag_name: &str) -> Result<(), String> {
 
 /// Delete a checkpoint tag.
 pub fn delete_checkpoint(cwd: &str, tag_name: &str) -> Result<(), String> {
+    // Security: validate tag name
+    validate_tag_name(tag_name)?;
+
     let output = Command::new("git")
         .args(["tag", "-d", tag_name])
         .current_dir(cwd)

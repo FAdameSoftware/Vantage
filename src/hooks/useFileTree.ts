@@ -168,7 +168,9 @@ export function useFileTree(): UseFileTreeReturn {
   // Cleanup watcher on unmount
   useEffect(() => {
     return () => {
-      invoke("stop_file_watcher").catch(() => {});
+      invoke("stop_file_watcher").catch((err) => {
+        console.error("Failed to stop file watcher on cleanup:", err);
+      });
     };
   }, []);
 

@@ -382,7 +382,8 @@ pub fn toggle_plugin(plugin_name: &str, enabled: bool) -> Result<(), String> {
     }
 
     // Get or create the disabledPlugins array
-    let obj = value.as_object_mut().unwrap();
+    let obj = value.as_object_mut()
+        .ok_or_else(|| "Settings value is not a JSON object despite type check".to_string())?;
     let arr = obj
         .entry("disabledPlugins")
         .or_insert_with(|| serde_json::Value::Array(vec![]));

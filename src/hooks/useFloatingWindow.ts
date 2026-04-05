@@ -109,7 +109,9 @@ export function useFloatingWindow() {
           name: tab.name,
           language: tab.language,
           content: tab.content,
-        }).catch(() => {});
+        }).catch((err) => {
+          console.error("Failed to emit popout-init event:", err);
+        });
       }, 500);
 
       // Listen for close to return the tab
@@ -140,7 +142,9 @@ export function useFloatingWindow() {
     (tabId: string, content: string) => {
       const isPopped = useEditorStore.getState().isPopout(tabId);
       if (isPopped) {
-        emit("main-content-changed", { tabId, content }).catch(() => {});
+        emit("main-content-changed", { tabId, content }).catch((err) => {
+          console.error("Failed to emit main-content-changed event:", err);
+        });
       }
     },
     [],
