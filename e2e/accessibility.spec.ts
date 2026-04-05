@@ -31,7 +31,7 @@ async function dismissPrereqDialog(page: import("@playwright/test").Page) {
 }
 
 async function loadApp(page: import("@playwright/test").Page) {
-  await page.goto("/");
+  await page.goto("http://localhost:1420/");
   await page.waitForSelector("text=Vantage", { timeout: 15_000 });
   await dismissPrereqDialog(page);
 }
@@ -333,7 +333,7 @@ test.describe("keyboard: navigation and interaction", () => {
 test.describe("focus management", () => {
   test("prerequisite dialog receives focus on open", async ({ page }) => {
     // Navigate fresh so the dialog appears before any dismissal
-    await page.goto("/");
+    await page.goto("http://localhost:1420/");
     await page.waitForSelector("text=Vantage", { timeout: 15_000 });
     await page.waitForTimeout(1500);
 
@@ -360,7 +360,7 @@ test.describe("focus management", () => {
   test("closing prerequisite dialog removes it from the DOM", async ({
     page,
   }) => {
-    await page.goto("/");
+    await page.goto("http://localhost:1420/");
     await page.waitForSelector("text=Vantage", { timeout: 15_000 });
     await page.waitForTimeout(1500);
 

@@ -44,7 +44,7 @@ async function dismissPrereqDialog(page: import("@playwright/test").Page) {
 
 test.describe("Vantage IDE — Basic Rendering", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto("/");
+    await page.goto("http://localhost:1420/");
     await page.waitForSelector("text=Vantage", { timeout: 15_000 });
     await dismissPrereqDialog(page);
   });
@@ -70,7 +70,7 @@ test.describe("Vantage IDE — Basic Rendering", () => {
       errors.push(err.message);
     });
 
-    await page.goto("/");
+    await page.goto("http://localhost:1420/");
     await page.waitForSelector("text=Vantage", { timeout: 15_000 });
     await page.waitForTimeout(2000);
 
@@ -88,7 +88,7 @@ test.describe("Vantage IDE — Basic Rendering", () => {
     page,
   }) => {
     await page.evaluate(() => localStorage.clear());
-    await page.goto("/");
+    await page.goto("http://localhost:1420/");
     await page.waitForSelector("text=Vantage", { timeout: 15_000 });
     await page.waitForTimeout(1500);
 
@@ -110,7 +110,7 @@ test.describe("Vantage IDE — Basic Rendering", () => {
 
 test.describe("Navigation Flow", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto("/");
+    await page.goto("http://localhost:1420/");
     await page.waitForSelector("text=Vantage", { timeout: 15_000 });
     await dismissPrereqDialog(page);
   });
@@ -248,7 +248,7 @@ test.describe("Navigation Flow", () => {
 
 test.describe("Settings Flow", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto("/");
+    await page.goto("http://localhost:1420/");
     await page.waitForSelector("text=Vantage", { timeout: 15_000 });
     await dismissPrereqDialog(page);
     // Navigate to Settings
@@ -305,7 +305,7 @@ test.describe("Settings Flow", () => {
 
 test.describe("Agents Flow", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto("/");
+    await page.goto("http://localhost:1420/");
     await page.waitForSelector("text=Vantage", { timeout: 15_000 });
     await dismissPrereqDialog(page);
     // Navigate to Agents
@@ -391,7 +391,7 @@ test.describe("Agents Flow", () => {
 
 test.describe("Command Palette", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto("/");
+    await page.goto("http://localhost:1420/");
     await page.waitForSelector("text=Vantage", { timeout: 15_000 });
     await dismissPrereqDialog(page);
   });
@@ -443,7 +443,7 @@ test.describe("Command Palette", () => {
 
 test.describe("Chat Panel", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto("/");
+    await page.goto("http://localhost:1420/");
     await page.waitForSelector("text=Vantage", { timeout: 15_000 });
     await dismissPrereqDialog(page);
   });
@@ -510,7 +510,7 @@ test.describe("Chat Panel", () => {
 
 test.describe("Status Bar", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto("/");
+    await page.goto("http://localhost:1420/");
     await page.waitForSelector("text=Vantage", { timeout: 15_000 });
     await dismissPrereqDialog(page);
   });
@@ -585,7 +585,7 @@ test.describe("Status Bar", () => {
 
 test.describe("Theme Switching", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto("/");
+    await page.goto("http://localhost:1420/");
     await page.waitForSelector("text=Vantage", { timeout: 15_000 });
     await dismissPrereqDialog(page);
   });
@@ -640,7 +640,7 @@ test.describe("Theme Switching", () => {
 
 test.describe("Visual Verification", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto("/");
+    await page.goto("http://localhost:1420/");
     await page.waitForSelector("text=Vantage", { timeout: 15_000 });
     await dismissPrereqDialog(page);
   });

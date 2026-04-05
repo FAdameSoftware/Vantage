@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+import path from "node:path";
 
 /**
  * Playwright config for Vantage E2E tests.
@@ -7,6 +8,9 @@ import { defineConfig, devices } from "@playwright/test";
  * The Tauri mock layer (src/lib/tauriMock.ts) intercepts all
  * native API calls so the full UI renders in a regular browser.
  */
+
+const BASE_URL = "http://localhost:1420";
+
 export default defineConfig({
   testDir: ".",
   testMatch: "**/*.spec.ts",
@@ -18,7 +22,7 @@ export default defineConfig({
   timeout: 30_000,
 
   use: {
-    baseURL: "http://localhost:1420",
+    baseURL: BASE_URL,
     trace: "on-first-retry",
     screenshot: "only-on-failure",
   },
@@ -33,9 +37,9 @@ export default defineConfig({
   /* Start the Vite dev server before running tests */
   webServer: {
     command: "npx vite --port 1420",
-    port: 1420,
+    url: BASE_URL,
     reuseExistingServer: !process.env.CI,
     timeout: 30_000,
-    cwd: "C:/CursorProjects/Vantage",
+    cwd: path.resolve(__dirname, ".."),
   },
 });
