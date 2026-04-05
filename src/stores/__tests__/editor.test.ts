@@ -180,4 +180,89 @@ describe("editorStore", () => {
     const state = useEditorStore.getState();
     expect(state.secondaryActiveTabId).toBe("c:/project/b.ts");
   });
+
+  // ── reorderTabs tests ───────────────────────────────────────────
+
+  it("reorderTabs moves a tab forward", () => {
+    const store = useEditorStore.getState();
+    store.openFile("C:/project/a.ts", "a.ts", "typescript", "a");
+    store.openFile("C:/project/b.ts", "b.ts", "typescript", "b");
+    store.openFile("C:/project/c.ts", "c.ts", "typescript", "c");
+    // Move a.ts (index 0) to index 2
+    store.reorderTabs(0, 2);
+
+    const state = useEditorStore.getState();
+    expect(state.tabs.map((t) => t.name)).toEqual(["b.ts", "c.ts", "a.ts"]);
+  });
+
+  it("reorderTabs moves a tab backward", () => {
+    const store = useEditorStore.getState();
+    store.openFile("C:/project/a.ts", "a.ts", "typescript", "a");
+    store.openFile("C:/project/b.ts", "b.ts", "typescript", "b");
+    store.openFile("C:/project/c.ts", "c.ts", "typescript", "c");
+    // Move c.ts (index 2) to index 0
+    store.reorderTabs(2, 0);
+
+    const state = useEditorStore.getState();
+    expect(state.tabs.map((t) => t.name)).toEqual(["c.ts", "a.ts", "b.ts"]);
+  });
+
+  it("reorderTabs is a no-op when indices are equal", () => {
+    const store = useEditorStore.getState();
+    store.openFile("C:/project/a.ts", "a.ts", "typescript", "a");
+    store.openFile("C:/project/b.ts", "b.ts", "typescript", "b");
+    store.reorderTabs(0, 0);
+
+    const state = useEditorStore.getState();
+    expect(state.tabs.map((t) => t.name)).toEqual(["a.ts", "b.ts"]);
+  });
+
+  // ── closeTabsToTheRight tests ───────────────────────────────────
+
+  it("closeTabsToTheRight removes tabs after the given id", () => {
+    const store = useEditorStore.getState();
+    store.openFile("C:/project/a.ts", "a.ts", "typescript", "a");
+    store.openFile("C:/project/b.ts", "b.ts", "typescript", "b");
+    store.openFile("C:/project/c.ts", "c.ts", "typescript", "c");
+    store.closeTabsToTheRight("c:/project/a.ts");
+
+    const state = useEditorStore.getState();
+    expect(state.tabs.map((t) => t.name)).toEqual(["a.ts"]);
+    expect(state.activeTabId).toBe("c:/project/a.ts");
+  });
+
+  it("closeTabsToTheRight is a no-op on the last tab", () => {
+    const store = useEditorStore.getState();
+    store.openFile("C:/project/a.ts", "a.ts", "typescript", "a");
+    store.openFile("C:/project/b.ts", "b.ts", "typescript", "b");
+    store.closeTabsToTheRight("c:/project/b.ts");
+
+    const state = useEditorStore.getState();
+    expect(state.tabs.map((t) => t.name)).toEqual(["a.ts", "b.ts"]);
+  });
+
+  // ── preview / pin double-click flow ────────────────────────────
+
+  it("double-clicking a file (openFile non-preview) pins existing preview tab", () => {
+    const store = useEditorStore.getState();
+    // Single-click: open as preview
+    store.openFile("C:/project/a.ts", "a.ts", "typescript", "a", true);
+    expect(useEditorStore.getState().tabs[0].isPreview).toBe(true);
+    // Double-click: open same file as non-preview — should pin it
+    store.openFile("C:/project/a.ts", "a.ts", "typescript", "a", false);
+
+    const state = useEditorStore.getState();
+    expect(state.tabs).toHaveLength(1);
+    expect(state.tabs[0].isPreview).toBe(false);
+  });
+
+  it("single-clicking a second file replaces the preview tab", () => {
+    const store = useEditorStore.getState();
+    store.openFile("C:/project/a.ts", "a.ts", "typescript", "a", true);
+    store.openFile("C:/project/b.ts", "b.ts", "typescript", "b", true);
+
+    const state = useEditorStore.getState();
+    expect(state.tabs).toHaveLength(1);
+    expect(state.tabs[0].name).toBe("b.ts");
+  });
 });
