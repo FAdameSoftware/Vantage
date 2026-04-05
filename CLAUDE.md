@@ -59,7 +59,8 @@ src-tauri/              # Rust backend
 - Testing strategy: `docs/testing/testing-strategy.md`
 - Workspace design: `docs/specs/workspace-model-design.md`
 - Audit reports: `External-Teams/Audit-Team/`
-- Research: `research/` (10 documents, 480KB+)
+- Research: `research/` (12 documents, 500KB+)
+- Reference repos: `reference-repos/` (gitignored — opcode, companion, kanna, claude-devtools, codepilot, clauductor)
 
 ## Commands
 
