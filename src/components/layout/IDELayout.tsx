@@ -15,6 +15,7 @@ import { PanelArea } from "./PanelArea";
 import { StatusBar } from "./StatusBar";
 import { TitleBar } from "./TitleBar";
 import { ZenModeOverlay } from "./ZenModeOverlay";
+import { ClaudeViewLayout } from "./ClaudeViewLayout";
 import { useQuickQuestionStore } from "@/stores/quickQuestion";
 
 function HorizontalSeparator() {
@@ -82,6 +83,7 @@ function arrayToVerticalLayout(arr: number[]): Layout {
 }
 
 export function IDELayout() {
+  const viewMode = useLayoutStore((s) => s.viewMode);
   const primarySidebarVisible = useLayoutStore((s) => s.primarySidebarVisible);
   const secondarySidebarVisible = useLayoutStore((s) => s.secondarySidebarVisible);
   const panelVisible = useLayoutStore((s) => s.panelVisible);
@@ -228,6 +230,18 @@ export function IDELayout() {
     );
   }
 
+  // Claude View: chat-first layout with navigation strip
+  if (viewMode === "claude") {
+    return (
+      <div className="flex flex-col h-screen w-screen overflow-hidden">
+        <TitleBar />
+        <ClaudeViewLayout />
+        <StatusBar />
+      </div>
+    );
+  }
+
+  // IDE View: traditional editor layout
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden">
       <TitleBar />

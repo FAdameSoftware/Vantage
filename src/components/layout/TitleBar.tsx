@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
-import { Minus, Square, X, Copy } from "lucide-react";
+import { Minus, Square, X, Copy, MessageSquare, Code } from "lucide-react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
 import { useEditorStore } from "@/stores/editor";
 import { useWorkspaceStore } from "@/stores/workspace";
+import { useLayoutStore, type ViewMode } from "@/stores/layout";
 import { MenuBar } from "./MenuBar";
 
 function WindowControls() {
@@ -198,6 +199,49 @@ function extractProjectName(projectPath: string | null): string | null {
   return parts[parts.length - 1] || null;
 }
 
+function ViewModeToggle() {
+  const viewMode = useLayoutStore((s) => s.viewMode);
+  const setViewMode = useLayoutStore((s) => s.setViewMode);
+
+  const segments: { mode: ViewMode; label: string; icon: React.ReactNode; shortcut: string }[] = [
+    { mode: "claude", label: "Claude", icon: <MessageSquare size={12} />, shortcut: "Ctrl+1" },
+    { mode: "ide", label: "IDE", icon: <Code size={12} />, shortcut: "Ctrl+2" },
+  ];
+
+  return (
+    <div
+      className="flex items-center h-6 rounded-md overflow-hidden shrink-0"
+      style={{
+        backgroundColor: "var(--color-surface-0)",
+        border: "1px solid var(--color-surface-1)",
+      }}
+      role="tablist"
+      aria-label="View mode"
+    >
+      {segments.map((seg) => {
+        const isActive = viewMode === seg.mode;
+        return (
+          <button
+            key={seg.mode}
+            role="tab"
+            aria-selected={isActive}
+            title={`${seg.label} View (${seg.shortcut})`}
+            onClick={() => setViewMode(seg.mode)}
+            className="flex items-center gap-1 px-2 h-full text-[11px] font-medium transition-colors"
+            style={{
+              backgroundColor: isActive ? "color-mix(in srgb, var(--color-blue) 20%, transparent)" : "transparent",
+              color: isActive ? "var(--color-blue)" : "var(--color-subtext-0)",
+            }}
+          >
+            {seg.icon}
+            {seg.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export function TitleBar() {
   const currentProjectPath = useWorkspaceStore((s) => s.currentProjectPath);
   const name = extractProjectName(currentProjectPath);
@@ -236,6 +280,11 @@ export function TitleBar() {
 
       {/* Menu bar */}
       <MenuBar />
+
+      {/* View mode toggle */}
+      <div className="flex items-center px-2 shrink-0">
+        <ViewModeToggle />
+      </div>
 
       {/* Drag region fills remaining space */}
       <div

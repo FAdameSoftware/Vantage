@@ -72,6 +72,8 @@ export const DEFAULT_KEYBINDING_DEFINITIONS: Omit<KeybindingDefinition, "source"
   { id: "ctrl-tab", key: "Tab", ctrl: true, description: "Next Tab" },
   { id: "ctrl-shift-tab", key: "Tab", ctrl: true, shift: true, description: "Previous Tab" },
   { id: "ctrl-shift-backslash", key: "\\", ctrl: true, shift: true, description: "Jump to Matching Bracket" },
+  { id: "ctrl-1", key: "1", ctrl: true, description: "Switch to Claude View" },
+  { id: "ctrl-2", key: "2", ctrl: true, description: "Switch to IDE View" },
 ].map((d) => ({ ...d, id: d.id || makeKeybindingId(d) }));
 
 export function useKeybindings() {
@@ -83,6 +85,7 @@ export function useKeybindings() {
   const setActiveActivityBarItem = useLayoutStore(
     (s) => s.setActiveActivityBarItem
   );
+  const setViewMode = useLayoutStore((s) => s.setViewMode);
   const openPalette = useCommandPaletteStore((s) => s.open);
 
   const currentTheme = useSettingsStore((s) => s.theme);
@@ -277,10 +280,25 @@ export function useKeybindings() {
       action: handlePrevTab,
       description: "Previous Tab",
     },
+
+    // View mode switching
+    {
+      key: "1",
+      ctrl: true,
+      action: () => setViewMode("claude"),
+      description: "Switch to Claude View",
+    },
+    {
+      key: "2",
+      ctrl: true,
+      action: () => setViewMode("ide"),
+      description: "Switch to IDE View",
+    },
   ], [
     togglePrimarySidebar, togglePanel, toggleSecondarySidebar,
     openPalette, setActiveActivityBarItem, handleCycleTheme,
     handleSave, handleCloseActiveTab, handleNextTab, handlePrevTab,
+    setViewMode,
   ]);
 
   const handleKeyDown = useCallback(

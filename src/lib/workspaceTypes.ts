@@ -49,6 +49,8 @@ export interface WorkspaceLayout {
   agentsViewMode: "kanban" | "tree";
   previewUrl: string | null;
   previewActive: boolean;
+  /** Active view mode — "claude" (chat-first) or "ide" (traditional editor) */
+  viewMode?: "claude" | "ide";
 }
 
 // ─── Editor tabs ───────────────────────────────────────────────────

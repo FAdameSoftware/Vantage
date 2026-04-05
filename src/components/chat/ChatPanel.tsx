@@ -425,7 +425,12 @@ const selectSession = (s: import("@/stores/conversation").ConversationState) => 
 const selectConnectionStatus = (s: import("@/stores/conversation").ConversationState) => s.connectionStatus;
 const selectTotalCost = (s: import("@/stores/conversation").ConversationState) => s.totalCost;
 
-export function ChatPanel() {
+export interface ChatPanelProps {
+  /** "full" = Claude View (centered, max-w-3xl); "sidebar" = IDE View (fill width) */
+  mode?: "full" | "sidebar";
+}
+
+export function ChatPanel({ mode = "sidebar" }: ChatPanelProps) {
   const messages = useConversationStore(selectMessages);
   const isStreaming = useConversationStore(selectIsStreaming);
   const isThinking = useConversationStore(selectIsThinking);
@@ -693,9 +698,10 @@ export function ChatPanel() {
           <div className="flex-1 relative overflow-hidden">
           <div
             ref={scrollContainerRef}
-            className="h-full overflow-y-auto p-4"
+            className={`h-full overflow-y-auto p-4 ${mode === "full" ? "flex justify-center" : ""}`}
             onScroll={handleScroll}
           >
+          <div className={mode === "full" ? "w-full max-w-3xl" : "w-full"}>
             {/* Empty state */}
             {messages.length === 0 && !isStreaming && (
               <div className="flex flex-col items-center justify-center h-full">
@@ -789,6 +795,7 @@ export function ChatPanel() {
 
             {/* Scroll anchor */}
             <div ref={messagesEndRef} />
+          </div>
           </div>
 
           {/* Scroll to bottom button (Feature 4) */}

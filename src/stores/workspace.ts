@@ -201,6 +201,7 @@ function collectWorkspaceState(projectPath: string): WorkspaceFile {
       agentsViewMode: layout.agentsViewMode,
       previewUrl: layout.previewUrl,
       previewActive: layout.previewActive,
+      viewMode: layout.viewMode,
     },
     editor: {
       // Cursor position is transient — not worth per-tab persistence complexity.
@@ -272,6 +273,7 @@ async function applyWorkspaceState(ws: WorkspaceFile): Promise<void> {
     agentsViewMode: ws.layout.agentsViewMode,
     previewUrl: ws.layout.previewUrl,
     previewActive: ws.layout.previewActive,
+    viewMode: ws.layout.viewMode ?? "claude",
     projectRootPath: ws.projectPath,
   });
 

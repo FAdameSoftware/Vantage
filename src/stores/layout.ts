@@ -10,6 +10,8 @@ export interface ZenModeSnapshot {
   panelVisible: boolean;
 }
 
+export type ViewMode = "claude" | "ide";
+
 export interface LayoutState {
   primarySidebarVisible: boolean;
   secondarySidebarVisible: boolean;
@@ -42,6 +44,10 @@ export interface LayoutState {
   zenMode: boolean;
   /** Saved panel visibility state before zen mode was activated */
   zenModeSnapshot: ZenModeSnapshot | null;
+  /** Active view mode: "claude" for chat-first layout, "ide" for traditional editor layout */
+  viewMode: ViewMode;
+  /** When true, auto-open file previews when Claude touches a file */
+  autoOpenFiles: boolean;
   togglePrimarySidebar: () => void;
   toggleSecondarySidebar: () => void;
   togglePanel: () => void;
@@ -60,6 +66,10 @@ export interface LayoutState {
   setAgentsViewMode: (mode: "kanban" | "tree") => void;
   setSelectedAgentId: (id: string | null) => void;
   toggleZenMode: () => void;
+  /** Set the view mode directly */
+  setViewMode: (mode: ViewMode) => void;
+  /** Toggle between claude and ide view modes */
+  toggleViewMode: () => void;
 
   /** Reset layout to defaults, preserving projectRootPath (used on workspace switch) */
   resetToDefaults: () => void;
@@ -86,6 +96,8 @@ export const useLayoutStore = create<LayoutState>()(
       selectedAgentId: null,
       zenMode: false,
       zenModeSnapshot: null,
+      viewMode: "claude",
+      autoOpenFiles: true,
       togglePrimarySidebar: () => set({ primarySidebarVisible: !get().primarySidebarVisible }),
       toggleSecondarySidebar: () => set({ secondarySidebarVisible: !get().secondarySidebarVisible }),
       togglePanel: () => set({ panelVisible: !get().panelVisible }),
@@ -148,6 +160,9 @@ export const useLayoutStore = create<LayoutState>()(
         }
       },
 
+      setViewMode: (mode) => set({ viewMode: mode }),
+      toggleViewMode: () => set({ viewMode: get().viewMode === "claude" ? "ide" : "claude" }),
+
       resetToDefaults: () => {
         const currentPath = get().projectRootPath;
         set({
@@ -170,6 +185,8 @@ export const useLayoutStore = create<LayoutState>()(
           selectedAgentId: null,
           zenMode: false,
           zenModeSnapshot: null,
+          viewMode: "claude",
+          autoOpenFiles: true,
         });
       },
     }),
