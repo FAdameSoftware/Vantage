@@ -193,6 +193,8 @@ function collectWorkspaceState(projectPath: string): WorkspaceFile {
       primarySidebarSize: layout.primarySidebarSize,
       secondarySidebarSize: layout.secondarySidebarSize,
       panelSize: layout.panelSize,
+      primarySidebarPixelWidth: layout.primarySidebarPixelWidth,
+      secondarySidebarPixelWidth: layout.secondarySidebarPixelWidth,
       activePanelTab: layout.activePanelTab,
       agentsViewMode: layout.agentsViewMode,
       previewUrl: layout.previewUrl,
@@ -260,6 +262,8 @@ async function applyWorkspaceState(ws: WorkspaceFile): Promise<void> {
     primarySidebarSize: ws.layout.primarySidebarSize,
     secondarySidebarSize: ws.layout.secondarySidebarSize,
     panelSize: ws.layout.panelSize,
+    primarySidebarPixelWidth: ws.layout.primarySidebarPixelWidth ?? 240,
+    secondarySidebarPixelWidth: ws.layout.secondarySidebarPixelWidth ?? 300,
     activePanelTab: ws.layout.activePanelTab,
     agentsViewMode: ws.layout.agentsViewMode,
     previewUrl: ws.layout.previewUrl,
@@ -606,11 +610,11 @@ export const useWorkspaceStore = create<WorkspaceManagerState>()(
       // Layout: sidebar/panel changes
       let prevLayoutSnap = (() => {
         const s = useLayoutStore.getState();
-        return `${s.primarySidebarVisible}|${s.secondarySidebarVisible}|${s.panelVisible}|${s.activeActivityBarItem}|${s.primarySidebarSize}|${s.secondarySidebarSize}|${s.panelSize}|${s.activePanelTab}|${s.agentsViewMode}`;
+        return `${s.primarySidebarVisible}|${s.secondarySidebarVisible}|${s.panelVisible}|${s.activeActivityBarItem}|${s.primarySidebarSize}|${s.secondarySidebarSize}|${s.panelSize}|${s.activePanelTab}|${s.agentsViewMode}|${s.primarySidebarPixelWidth}|${s.secondarySidebarPixelWidth}`;
       })();
       unsubs.push(
         useLayoutStore.subscribe((state) => {
-          const snap = `${state.primarySidebarVisible}|${state.secondarySidebarVisible}|${state.panelVisible}|${state.activeActivityBarItem}|${state.primarySidebarSize}|${state.secondarySidebarSize}|${state.panelSize}|${state.activePanelTab}|${state.agentsViewMode}`;
+          const snap = `${state.primarySidebarVisible}|${state.secondarySidebarVisible}|${state.panelVisible}|${state.activeActivityBarItem}|${state.primarySidebarSize}|${state.secondarySidebarSize}|${state.panelSize}|${state.activePanelTab}|${state.agentsViewMode}|${state.primarySidebarPixelWidth}|${state.secondarySidebarPixelWidth}`;
           if (snap !== prevLayoutSnap) {
             prevLayoutSnap = snap;
             markDirty();

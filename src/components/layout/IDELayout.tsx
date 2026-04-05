@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
 import {
   Panel,
   Group,
@@ -52,6 +52,10 @@ export function IDELayout() {
   const panelVisible = useLayoutStore((s) => s.panelVisible);
   const zenMode = useLayoutStore((s) => s.zenMode);
   const toggleZenMode = useLayoutStore((s) => s.toggleZenMode);
+  const primarySidebarPixelWidth = useLayoutStore((s) => s.primarySidebarPixelWidth);
+  const secondarySidebarPixelWidth = useLayoutStore((s) => s.secondarySidebarPixelWidth);
+  const setPrimarySidebarPixelWidth = useLayoutStore((s) => s.setPrimarySidebarPixelWidth);
+  const setSecondarySidebarPixelWidth = useLayoutStore((s) => s.setSecondarySidebarPixelWidth);
 
   // Ctrl+Shift+Q — open Quick Question overlay
   useEffect(() => {
@@ -77,18 +81,30 @@ export function IDELayout() {
     return () => window.removeEventListener("keydown", handler);
   }, [toggleZenMode]);
 
+  const handlePrimaryWidthChange = useCallback(
+    (w: number) => setPrimarySidebarPixelWidth(w),
+    [setPrimarySidebarPixelWidth],
+  );
+
+  const handleSecondaryWidthChange = useCallback(
+    (w: number) => setSecondarySidebarPixelWidth(w),
+    [setSecondarySidebarPixelWidth],
+  );
+
   const primarySidebar = useResizable({
-    initialSize: 240,
+    initialSize: primarySidebarPixelWidth,
     minSize: 180,
     maxSize: 400,
     direction: "right",
+    onSizeChange: handlePrimaryWidthChange,
   });
 
   const secondarySidebar = useResizable({
-    initialSize: 300,
+    initialSize: secondarySidebarPixelWidth,
     minSize: 220,
     maxSize: 500,
     direction: "left",
+    onSizeChange: handleSecondaryWidthChange,
   });
 
   // Zen mode: show only the editor centered in the viewport

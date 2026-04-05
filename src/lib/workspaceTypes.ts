@@ -37,6 +37,10 @@ export interface WorkspaceLayout {
   primarySidebarSize: number;
   secondarySidebarSize: number;
   panelSize: number;
+  /** Persisted pixel width of the primary sidebar */
+  primarySidebarPixelWidth?: number;
+  /** Persisted pixel width of the secondary sidebar */
+  secondarySidebarPixelWidth?: number;
   activePanelTab: "terminal" | "browser" | "verification";
   agentsViewMode: "kanban" | "tree";
   previewUrl: string | null;

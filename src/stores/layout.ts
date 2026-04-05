@@ -18,6 +18,10 @@ export interface LayoutState {
   primarySidebarSize: number;
   secondarySidebarSize: number;
   panelSize: number;
+  /** Pixel width of the primary sidebar drag handle (persisted) */
+  primarySidebarPixelWidth: number;
+  /** Pixel width of the secondary sidebar drag handle (persisted) */
+  secondarySidebarPixelWidth: number;
   /** The currently open project root path (set when a folder is opened) */
   projectRootPath: string | null;
   /** URL currently shown in the browser preview (null = no preview) */
@@ -41,6 +45,8 @@ export interface LayoutState {
   setPrimarySidebarSize: (size: number) => void;
   setSecondarySidebarSize: (size: number) => void;
   setPanelSize: (size: number) => void;
+  setPrimarySidebarPixelWidth: (width: number) => void;
+  setSecondarySidebarPixelWidth: (width: number) => void;
   setProjectRootPath: (path: string | null) => void;
   setPreviewUrl: (url: string | null) => void;
   setPreviewActive: (active: boolean) => void;
@@ -62,6 +68,8 @@ export const useLayoutStore = create<LayoutState>()(
       primarySidebarSize: 20,
       secondarySidebarSize: 25,
       panelSize: 30,
+      primarySidebarPixelWidth: 240,
+      secondarySidebarPixelWidth: 300,
       projectRootPath: null,
       previewUrl: null,
       previewActive: false,
@@ -84,6 +92,8 @@ export const useLayoutStore = create<LayoutState>()(
       setPrimarySidebarSize: (size) => set({ primarySidebarSize: size }),
       setSecondarySidebarSize: (size) => set({ secondarySidebarSize: size }),
       setPanelSize: (size) => set({ panelSize: size }),
+      setPrimarySidebarPixelWidth: (width) => set({ primarySidebarPixelWidth: width }),
+      setSecondarySidebarPixelWidth: (width) => set({ secondarySidebarPixelWidth: width }),
       setProjectRootPath: (path) => {
         const prev = get().projectRootPath;
         set({ projectRootPath: path });
@@ -138,6 +148,8 @@ export const useLayoutStore = create<LayoutState>()(
           primarySidebarSize: 20,
           secondarySidebarSize: 25,
           panelSize: 30,
+          primarySidebarPixelWidth: 240,
+          secondarySidebarPixelWidth: 300,
           projectRootPath: currentPath, // preserve
           previewUrl: null,
           previewActive: false,
