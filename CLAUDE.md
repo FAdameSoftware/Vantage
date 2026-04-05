@@ -67,7 +67,7 @@ src-tauri/              # Rust backend
 npm run dev           # Vite dev server only (no Tauri)
 npm run tauri dev     # Full Tauri dev mode (needs cargo on PATH)
 npm run build         # Vite production build
-npx vitest run        # Run frontend tests (355 tests, 22 files)
+npx vitest run        # Run frontend tests (362 tests, 22 files)
 npx playwright test   # Run E2E tests (needs Vite server running)
 npm run lint:security # Semgrep security scan (TypeScript + React rules)
 cd src-tauri && cargo test  # Run Rust backend tests (76 tests)
@@ -187,6 +187,7 @@ cd src-tauri && cargo test  # Run Rust backend tests (76 tests)
 - Auto-saves with 2-second debounce on store changes
 - `resetToDefaults()` on all workspace stores when switching projects
 - Single-instance per project — no file locking, running two Vantage windows on same project will corrupt workspace state
+- **Tauri MCP Bridge** — `tauri-plugin-mcp-bridge` enables AI testing of the real app (screenshots, DOM, clicks, IPC). Only active in debug builds. Requires `npm run tauri dev` to test.
 
 ## Windows Notes
 
