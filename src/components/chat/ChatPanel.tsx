@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from "react";
-import { MessageSquare, Plus, Search, X, ChevronUp, ChevronDown, GitBranch } from "lucide-react";
+import { MessageSquare, Plus, Search, X, ChevronUp, ChevronDown, GitBranch, ArrowDown } from "lucide-react";
 import { useConversationStore } from "@/stores/conversation";
 import { useLayoutStore } from "@/stores/layout";
 import { useClaude } from "@/hooks/useClaude";
@@ -223,6 +223,11 @@ export function ChatPanel() {
   const autoScrollRef = useRef(true);
   const chatInputRef = useRef<ChatInputHandle | null>(null);
 
+  // ── Scroll-to-bottom button state (Feature 4) ──
+  const [isScrolledUp, setIsScrolledUp] = useState(false);
+  const [newMessageCount, setNewMessageCount] = useState(0);
+  const prevMessageCountRef = useRef(messages.length);
+
   // ── Keyboard shortcut: Ctrl+Shift+F for search ──
 
   useEffect(() => {
@@ -241,7 +246,15 @@ export function ChatPanel() {
   useEffect(() => {
     if (autoScrollRef.current) {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      setNewMessageCount(0);
+    } else {
+      // User is scrolled up — count new messages since they scrolled away
+      const added = messages.length - prevMessageCountRef.current;
+      if (added > 0) {
+        setNewMessageCount((prev) => prev + added);
+      }
     }
+    prevMessageCountRef.current = messages.length;
   }, [messages, isStreaming, isThinking]);
 
   // ── Detect user scrolling away from bottom ──
@@ -252,7 +265,20 @@ export function ChatPanel() {
     const distanceFromBottom =
       container.scrollHeight - container.scrollTop - container.clientHeight;
     // If within 50px of bottom, resume auto-scroll
-    autoScrollRef.current = distanceFromBottom < 50;
+    const atBottom = distanceFromBottom < 50;
+    autoScrollRef.current = atBottom;
+    setIsScrolledUp(!atBottom);
+    if (atBottom) {
+      setNewMessageCount(0);
+    }
+  }, []);
+
+  // ── Scroll to bottom button handler (Feature 4) ──
+  const handleScrollToBottom = useCallback(() => {
+    autoScrollRef.current = true;
+    setIsScrolledUp(false);
+    setNewMessageCount(0);
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
 
   // ── New session ──
@@ -411,10 +437,11 @@ export function ChatPanel() {
         <ExecutionMap />
       ) : (
         <>
-          {/* Message list */}
+          {/* Message list (relative so scroll-to-bottom btn can be positioned) */}
+          <div className="flex-1 relative overflow-hidden">
           <div
             ref={scrollContainerRef}
-            className="flex-1 overflow-y-auto p-4"
+            className="h-full overflow-y-auto p-4"
             onScroll={handleScroll}
           >
             {/* Empty state */}
@@ -441,16 +468,26 @@ export function ChatPanel() {
             )}
 
             {/* Messages */}
-            {messages.map((msg, idx) => (
-              <div key={msg.id} data-message-index={idx}>
-                <MessageBubble
-                  message={msg}
-                  onEdit={msg.role === "user" ? handleEditMessage : undefined}
-                  showRegenerate={msg.id === lastAssistantMsgId && !isStreaming}
-                  onRegenerate={msg.id === lastAssistantMsgId ? handleRegenerate : undefined}
-                />
-              </div>
-            ))}
+            {messages.map((msg, idx) => {
+              // isGroupFirst: true if this is the first message or previous message has a different role
+              const prevMsg = idx > 0 ? messages[idx - 1] : null;
+              const isGroupFirst = !prevMsg || prevMsg.role !== msg.role;
+              // isForked: true if this assistant message immediately follows another assistant message
+              // (indicates a regeneration/fork rather than a natural continuation)
+              const isForked = msg.role === "assistant" && prevMsg?.role === "assistant";
+              return (
+                <div key={msg.id} data-message-index={idx}>
+                  <MessageBubble
+                    message={msg}
+                    isGroupFirst={isGroupFirst}
+                    isForked={isForked}
+                    onEdit={msg.role === "user" ? handleEditMessage : undefined}
+                    showRegenerate={msg.id === lastAssistantMsgId && !isStreaming}
+                    onRegenerate={msg.id === lastAssistantMsgId ? handleRegenerate : undefined}
+                  />
+                </div>
+              );
+            })}
 
             {/* Thinking indicator (during active thinking) */}
             {isThinking && thinkingStartedAt !== null && (
@@ -479,6 +516,30 @@ export function ChatPanel() {
 
             {/* Scroll anchor */}
             <div ref={messagesEndRef} />
+          </div>
+
+          {/* Scroll to bottom button (Feature 4) */}
+          {isScrolledUp && (
+            <button
+              type="button"
+              onClick={handleScrollToBottom}
+              className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs shadow-lg transition-all hover:scale-105 z-20"
+              style={{
+                backgroundColor: "var(--color-blue)",
+                color: "var(--color-base)",
+              }}
+              aria-label="Scroll to latest messages"
+            >
+              <ArrowDown size={12} />
+              {newMessageCount > 0 ? (
+                <span>
+                  {newMessageCount} new message{newMessageCount !== 1 ? "s" : ""}
+                </span>
+              ) : (
+                <span>Latest</span>
+              )}
+            </button>
+          )}
           </div>
 
           {/* Activity Trail — live sidebar of files Claude touched */}

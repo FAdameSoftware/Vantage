@@ -1,11 +1,22 @@
 import { useState, useCallback, useMemo, memo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { User, Brain, Copy, Check, Pencil, RefreshCw } from "lucide-react";
+import { User, Brain, Copy, Check, Pencil, RefreshCw, ChevronsUpDown, ChevronsDownUp, FileCode2 } from "lucide-react";
 import type { ConversationMessage } from "@/stores/conversation";
 import { CodeBlock } from "./CodeBlock";
 import { ToolCallCard } from "./ToolCallCard";
 import { TokenBadge } from "./TokenBadge";
+
+// ─── Timestamp formatting ───────────────────────────────────────────────────
+
+function formatTimestamp(ts: number): string {
+  const d = new Date(ts);
+  const h = d.getHours();
+  const m = d.getMinutes().toString().padStart(2, "0");
+  const period = h >= 12 ? "PM" : "AM";
+  const h12 = h % 12 || 12;
+  return `${h12}:${m} ${period}`;
+}
 
 // ─── Image extraction helpers ──────────────────────────────────────────────
 
@@ -110,9 +121,11 @@ function MarkdownCode({ children, className }: CodeProps) {
 
 function UserBubble({
   message,
+  isGroupFirst,
   onEdit,
 }: {
   message: ConversationMessage;
+  isGroupFirst: boolean;
   onEdit?: (text: string) => void;
 }) {
   const { cleanText, images } = useMemo(
@@ -139,25 +152,34 @@ function UserBubble({
             <Pencil size={11} />
           </button>
         )}
-        <div
-          className="rounded-lg px-3 py-2 text-xs whitespace-pre-wrap break-words"
-          style={{
-            backgroundColor: "var(--color-surface-0)",
-            color: "var(--color-text)",
-          }}
-        >
-          {/* Inline images */}
-          {images.length > 0 && (
-            <div className="flex flex-wrap gap-1 mb-1">
-              {images.map((img, i) => (
-                <InlineImage key={i} image={img} />
-              ))}
-            </div>
-          )}
-          {cleanText}
+        <div className="flex flex-col items-end gap-0.5">
+          <div
+            className="rounded-lg px-3 py-2 text-xs whitespace-pre-wrap break-words"
+            style={{
+              backgroundColor: "var(--color-surface-0)",
+              color: "var(--color-text)",
+            }}
+          >
+            {/* Inline images */}
+            {images.length > 0 && (
+              <div className="flex flex-wrap gap-1 mb-1">
+                {images.map((img, i) => (
+                  <InlineImage key={i} image={img} />
+                ))}
+              </div>
+            )}
+            {cleanText}
+          </div>
+          {/* Timestamp — always visible on first message of a group, hover-only otherwise */}
+          <span
+            className={`text-[10px] px-1 transition-opacity ${isGroupFirst ? "opacity-100" : "opacity-0 group-hover/user:opacity-100"}`}
+            style={{ color: "var(--color-overlay-0)" }}
+          >
+            {formatTimestamp(message.timestamp)}
+          </span>
         </div>
         <div
-          className="flex items-center justify-center w-6 h-6 rounded-full shrink-0"
+          className="flex items-center justify-center w-6 h-6 rounded-full shrink-0 mt-0.5"
           style={{ backgroundColor: "var(--color-surface-0)" }}
         >
           <User size={12} style={{ color: "var(--color-blue)" }} />
@@ -171,16 +193,24 @@ function UserBubble({
 
 function AssistantBubble({
   message,
+  isGroupFirst,
+  isForked,
   showRegenerate,
   onRegenerate,
 }: {
   message: ConversationMessage;
+  isGroupFirst: boolean;
+  isForked?: boolean;
   showRegenerate?: boolean;
   onRegenerate?: () => void;
 }) {
   const [thinkingExpanded, setThinkingExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [copiedMarkdown, setCopiedMarkdown] = useState(false);
+  // null = per-card state, true = all expanded, false = all collapsed
+  const [forceExpanded, setForceExpanded] = useState<boolean | null>(null);
 
+  // ── Copy plain text ──
   const handleCopy = useCallback(() => {
     const textToCopy = message.text || message.thinking || "";
     navigator.clipboard.writeText(textToCopy).then(() => {
@@ -191,23 +221,92 @@ function AssistantBubble({
     });
   }, [message.text, message.thinking]);
 
+  // ── Copy as Markdown (Feature 6) ──
+  const handleCopyMarkdown = useCallback(() => {
+    // Build proper markdown including thinking section and tool call summaries
+    let md = "";
+    if (message.thinking) {
+      md += `> **Thought process**\n>\n`;
+      const thoughtLines = message.thinking.split("\n");
+      for (const line of thoughtLines) {
+        md += `> ${line}\n`;
+      }
+      md += "\n";
+    }
+    if (message.text) {
+      md += message.text;
+    }
+    if (message.toolCalls.length > 0) {
+      md += "\n\n";
+      for (const tc of message.toolCalls) {
+        md += `**Tool: ${tc.name}**\n`;
+        if (tc.output) {
+          md += "```\n" + tc.output.slice(0, 500) + (tc.output.length > 500 ? "\n... (truncated)" : "") + "\n```\n";
+        }
+      }
+    }
+    navigator.clipboard.writeText(md.trim()).then(() => {
+      setCopiedMarkdown(true);
+      setTimeout(() => setCopiedMarkdown(false), 2000);
+    }).catch((err) => {
+      console.error("Failed to copy markdown:", err);
+    });
+  }, [message.text, message.thinking, message.toolCalls]);
+
+  const hasToolCalls = message.toolCalls.length > 0;
+
   return (
     <div className="flex justify-start mb-3 group/msg">
       <div className="max-w-[95%] w-full relative">
-        {/* Copy button — appears on hover */}
-        <button
-          type="button"
-          onClick={handleCopy}
-          className="absolute top-0 right-0 p-1 rounded opacity-0 group-hover/msg:opacity-100 transition-opacity z-10"
-          style={{
-            backgroundColor: "var(--color-surface-0)",
-            color: copied ? "var(--color-green)" : "var(--color-overlay-1)",
-          }}
-          aria-label="Copy message"
-          title="Copy message text"
+        {/* Action buttons — appear on hover */}
+        <div
+          className="absolute top-0 right-0 flex items-center gap-1 opacity-0 group-hover/msg:opacity-100 transition-opacity z-10"
         >
-          {copied ? <Check size={12} /> : <Copy size={12} />}
-        </button>
+          {/* Copy as Markdown button (Feature 6) */}
+          <button
+            type="button"
+            onClick={handleCopyMarkdown}
+            className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] transition-colors hover:bg-[var(--color-surface-1)]"
+            style={{
+              backgroundColor: "var(--color-surface-0)",
+              color: copiedMarkdown ? "var(--color-green)" : "var(--color-overlay-1)",
+            }}
+            aria-label="Copy as Markdown"
+            title="Copy as Markdown"
+          >
+            {copiedMarkdown ? <Check size={11} /> : <FileCode2 size={11} />}
+            <span>{copiedMarkdown ? "Copied!" : "MD"}</span>
+          </button>
+          {/* Copy plain text button */}
+          <button
+            type="button"
+            onClick={handleCopy}
+            className="p-1 rounded transition-colors hover:bg-[var(--color-surface-1)]"
+            style={{
+              backgroundColor: "var(--color-surface-0)",
+              color: copied ? "var(--color-green)" : "var(--color-overlay-1)",
+            }}
+            aria-label="Copy message"
+            title="Copy message text"
+          >
+            {copied ? <Check size={12} /> : <Copy size={12} />}
+          </button>
+        </div>
+
+        {/* Fork label (Feature 2) */}
+        {isForked && (
+          <div
+            className="flex items-center gap-1 mb-1 text-[10px]"
+            style={{ color: "var(--color-mauve)" }}
+          >
+            <span
+              className="inline-block w-2 h-2 rounded-full"
+              style={{ backgroundColor: "var(--color-mauve)" }}
+              aria-hidden="true"
+            />
+            Regenerated
+          </div>
+        )}
 
         {/* Thinking section (collapsible) */}
         {message.thinking && (
@@ -348,20 +447,64 @@ function AssistantBubble({
           </div>
         )}
 
-        {/* Tool call cards */}
-        {message.toolCalls.length > 0 && (
+        {/* Tool call cards (Feature 5) */}
+        {hasToolCalls && (
           <div className="mt-2">
+            {/* Expand All / Collapse All controls */}
+            <div
+              className="flex items-center gap-2 mb-1"
+            >
+              <span
+                className="text-[10px]"
+                style={{ color: "var(--color-overlay-0)" }}
+              >
+                {message.toolCalls.length} tool call{message.toolCalls.length !== 1 ? "s" : ""}
+              </span>
+              <button
+                type="button"
+                onClick={() => setForceExpanded((prev) => (prev === true ? null : true))}
+                className="flex items-center gap-0.5 text-[10px] px-1 py-0.5 rounded hover:bg-[var(--color-surface-0)] transition-colors"
+                style={{ color: "var(--color-overlay-1)" }}
+                title="Expand all tool calls"
+                aria-label="Expand all tool calls"
+              >
+                <ChevronsUpDown size={10} />
+                Expand all
+              </button>
+              <button
+                type="button"
+                onClick={() => setForceExpanded((prev) => (prev === false ? null : false))}
+                className="flex items-center gap-0.5 text-[10px] px-1 py-0.5 rounded hover:bg-[var(--color-surface-0)] transition-colors"
+                style={{ color: "var(--color-overlay-1)" }}
+                title="Collapse all tool calls"
+                aria-label="Collapse all tool calls"
+              >
+                <ChevronsDownUp size={10} />
+                Collapse all
+              </button>
+            </div>
             {message.toolCalls.map((tc) => (
-              <ToolCallCard key={tc.id} toolCall={tc} />
+              <ToolCallCard
+                key={tc.id}
+                toolCall={tc}
+                forceExpanded={forceExpanded !== null ? forceExpanded : undefined}
+              />
             ))}
           </div>
         )}
 
-        {/* Metadata footer: token attribution + regenerate */}
+        {/* Metadata footer: timestamp + token attribution + regenerate */}
         <div
           className="flex items-center gap-2 mt-1 text-xs"
           style={{ color: "var(--color-overlay-0)" }}
         >
+          {/* Timestamp (Feature 1) */}
+          <span
+            className={`text-[10px] transition-opacity ${isGroupFirst ? "opacity-100" : "opacity-0 group-hover/msg:opacity-100"}`}
+            style={{ color: "var(--color-overlay-0)" }}
+          >
+            {formatTimestamp(message.timestamp)}
+          </span>
           <TokenBadge message={message} />
           {showRegenerate && onRegenerate && (
             <button
@@ -386,6 +529,10 @@ function AssistantBubble({
 
 interface MessageBubbleProps {
   message: ConversationMessage;
+  /** Whether this is the first message in a same-role group (for timestamp display) */
+  isGroupFirst?: boolean;
+  /** Whether this assistant message is a regenerated/forked response */
+  isForked?: boolean;
   /** Callback when user clicks "Edit" on a user message */
   onEdit?: (text: string) => void;
   /** Whether to show the "Regenerate" button (only on last assistant message) */
@@ -396,18 +543,22 @@ interface MessageBubbleProps {
 
 export const MessageBubble = memo(function MessageBubble({
   message,
+  isGroupFirst = true,
+  isForked = false,
   onEdit,
   showRegenerate,
   onRegenerate,
 }: MessageBubbleProps) {
   if (message.role === "user") {
-    return <UserBubble message={message} onEdit={onEdit} />;
+    return <UserBubble message={message} isGroupFirst={isGroupFirst} onEdit={onEdit} />;
   }
 
   if (message.role === "assistant") {
     return (
       <AssistantBubble
         message={message}
+        isGroupFirst={isGroupFirst}
+        isForked={isForked}
         showRegenerate={showRegenerate}
         onRegenerate={onRegenerate}
       />

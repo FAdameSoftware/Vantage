@@ -2,6 +2,64 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Copy, Check } from "lucide-react";
 import { codeToHtml } from "shiki";
 
+// ─── Language display name map ──────────────────────────────────────────────
+
+const LANGUAGE_DISPLAY_NAMES: Record<string, string> = {
+  js: "JavaScript",
+  javascript: "JavaScript",
+  ts: "TypeScript",
+  typescript: "TypeScript",
+  tsx: "TSX",
+  jsx: "JSX",
+  py: "Python",
+  python: "Python",
+  rs: "Rust",
+  rust: "Rust",
+  go: "Go",
+  java: "Java",
+  cs: "C#",
+  cpp: "C++",
+  c: "C",
+  rb: "Ruby",
+  ruby: "Ruby",
+  sh: "Shell",
+  shell: "Shell",
+  bash: "Bash",
+  zsh: "Zsh",
+  fish: "Fish",
+  ps1: "PowerShell",
+  powershell: "PowerShell",
+  json: "JSON",
+  yaml: "YAML",
+  yml: "YAML",
+  toml: "TOML",
+  xml: "XML",
+  html: "HTML",
+  css: "CSS",
+  scss: "SCSS",
+  sql: "SQL",
+  md: "Markdown",
+  markdown: "Markdown",
+  text: "Plain Text",
+  txt: "Plain Text",
+  diff: "Diff",
+  dockerfile: "Dockerfile",
+  graphql: "GraphQL",
+  prisma: "Prisma",
+  swift: "Swift",
+  kotlin: "Kotlin",
+  dart: "Dart",
+  lua: "Lua",
+  vim: "Vim Script",
+  r: "R",
+  scala: "Scala",
+  php: "PHP",
+};
+
+function getDisplayName(lang: string): string {
+  return LANGUAGE_DISPLAY_NAMES[lang.toLowerCase()] ?? lang;
+}
+
 interface CodeBlockProps {
   code: string;
   language?: string;
@@ -70,7 +128,8 @@ export function CodeBlock({ code, language, filename }: CodeBlockProps) {
     }
   }, [code]);
 
-  const displayLang = language ?? "text";
+  const rawLang = language ?? "text";
+  const displayLang = filename ? filename : getDisplayName(rawLang);
 
   return (
     <div
@@ -88,17 +147,22 @@ export function CodeBlock({ code, language, filename }: CodeBlockProps) {
           borderBottom: "1px solid var(--color-surface-0)",
         }}
       >
-        <div className="flex items-center gap-2">
-          <span
-            className="text-xs"
-            style={{
-              fontFamily: "var(--font-mono)",
-              color: "var(--color-subtext-0)",
-            }}
-          >
-            {filename ?? displayLang}
-          </span>
-        </div>
+        {/* Language label — clickable to copy */}
+        <button
+          type="button"
+          className="flex items-center gap-2 px-1 py-0.5 rounded text-xs transition-colors hover:bg-[var(--color-surface-1)] cursor-pointer"
+          style={{
+            fontFamily: "var(--font-mono)",
+            color: "var(--color-subtext-0)",
+            background: "none",
+            border: "none",
+          }}
+          onClick={handleCopy}
+          title="Click to copy code"
+          aria-label={`${displayLang} — click to copy`}
+        >
+          {displayLang}
+        </button>
         <button
           type="button"
           className="flex items-center gap-1 px-1.5 py-0.5 rounded text-xs transition-colors hover:bg-[var(--color-surface-1)]"

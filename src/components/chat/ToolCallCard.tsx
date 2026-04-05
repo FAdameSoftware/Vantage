@@ -205,10 +205,13 @@ function ToolExpandedContent({ toolCall }: { toolCall: ToolCall }) {
 
 interface ToolCallCardProps {
   toolCall: ToolCall;
+  /** If provided, overrides internal expanded state (controlled mode) */
+  forceExpanded?: boolean;
 }
 
-export function ToolCallCard({ toolCall }: ToolCallCardProps) {
+export function ToolCallCard({ toolCall, forceExpanded }: ToolCallCardProps) {
   const [expanded, setExpanded] = useState(false);
+  const isExpanded = forceExpanded !== undefined ? forceExpanded : expanded;
   const meta = getToolMeta(toolCall.name);
   const Icon = meta.icon;
   const summary = getInputSummary(toolCall.name, toolCall.input);
@@ -229,7 +232,7 @@ export function ToolCallCard({ toolCall }: ToolCallCardProps) {
         className="flex items-center gap-2 w-full px-3 py-2 text-left bg-transparent border-none cursor-pointer hover:bg-[var(--color-surface-1)] transition-colors"
         onClick={() => setExpanded(!expanded)}
       >
-        {expanded ? (
+        {isExpanded ? (
           <ChevronDown size={12} style={{ color: "var(--color-overlay-1)" }} />
         ) : (
           <ChevronRight size={12} style={{ color: "var(--color-overlay-1)" }} />
@@ -265,7 +268,7 @@ export function ToolCallCard({ toolCall }: ToolCallCardProps) {
       </button>
 
       {/* Expanded content */}
-      {expanded && (
+      {isExpanded && (
         <div
           className="px-3 py-2"
           style={{ borderTop: "1px solid var(--color-surface-1)" }}
