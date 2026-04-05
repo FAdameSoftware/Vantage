@@ -1,4 +1,5 @@
 import { useEffect, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { ShieldAlert, ShieldCheck, ShieldX, Shield } from "lucide-react";
 import { useConversationStore } from "@/stores/conversation";
 import { useClaude } from "@/hooks/useClaude";
@@ -383,25 +384,32 @@ export function PermissionDialog() {
     return () => window.removeEventListener("keydown", onKeyDown, { capture: true });
   }, [pendingPermission, handleAllow, handleDeny, handleAllowSession]);
 
-  if (!pendingPermission) return null;
+  const showDialog = !!pendingPermission && !isToolAllowedForSession(pendingPermission?.toolName ?? "");
 
-  // Don't show dialog if this tool was already allowed for the session
-  // (the useEffect above will auto-approve it)
-  if (isToolAllowedForSession(pendingPermission.toolName)) return null;
-
-  const { toolName, toolInput } = pendingPermission;
+  const toolName = pendingPermission?.toolName ?? "";
+  const toolInput = pendingPermission?.toolInput ?? {};
   const risk = getRiskLevel(toolName, toolInput);
   const { color, barColor, label, Icon } = RISK_CONFIG[risk];
 
   return (
+    <AnimatePresence>
+      {showDialog && (
     // Fixed overlay backdrop
-    <div
+    <motion.div
       className="fixed inset-0 z-50 flex items-center justify-center"
       style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.15 }}
     >
       {/* Dialog panel */}
-      <div
+      <motion.div
         className="relative w-full max-w-lg mx-4 rounded-xl overflow-hidden flex flex-col"
+        initial={{ opacity: 0, scale: 0.95, y: 8 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 8 }}
+        transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
         style={{
           backgroundColor: "var(--color-mantle)",
           border: "1px solid var(--color-surface-0)",
@@ -513,7 +521,9 @@ export function PermissionDialog() {
             <Kbd>N</Kbd>
           </button>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
