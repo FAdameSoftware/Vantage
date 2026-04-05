@@ -14,7 +14,7 @@ import { UsageDashboard } from "@/components/analytics/UsageDashboard";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 import { FileIcon } from "@/components/files/FileIcon";
 import { useCrossFileIntelligence } from "@/hooks/useCrossFileIntelligence";
-import { addRecentFile } from "@/hooks/useRecentFiles";
+import { addRecentFile, getRecentFiles, type RecentFile } from "@/hooks/useRecentFiles";
 
 interface SiblingEntry {
   name: string;
@@ -293,9 +293,8 @@ function WelcomeScreen() {
   const setActiveActivityBarItem = useLayoutStore((s) => s.setActiveActivityBarItem);
 
   // Recent files (localStorage)
-  const [recentFiles, setRecentFiles] = useState<import("@/hooks/useRecentFiles").RecentFile[]>([]);
+  const [recentFiles, setRecentFiles] = useState<RecentFile[]>([]);
   useEffect(() => {
-    const { getRecentFiles } = require("@/hooks/useRecentFiles");
     setRecentFiles(getRecentFiles().slice(0, 8));
   }, []);
 

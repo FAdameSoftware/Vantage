@@ -1,24 +1,48 @@
 {
   "mcpServers": {
+    "tauri-mcp": {
+      "command": "cmd",
+      "args": [
+        "/c",
+        "npx",
+        "-y",
+        "@hypothesi/tauri-mcp-server@latest"
+      ],
+      "env": {},
+      "enabled": true
+    },
     "shadcn": {
       "command": "cmd",
-      "args": ["/c", "npx", "shadcn@latest", "mcp"],
-      "env": {}
+      "args": [
+        "/c",
+        "npx",
+        "shadcn@latest",
+        "mcp"
+      ],
+      "env": {},
+      "enabled": true
     },
     "a11y": {
       "command": "cmd",
-      "args": ["/c", "npx", "-y", "a11y-mcp"],
-      "env": {}
+      "args": [
+        "/c",
+        "npx",
+        "-y",
+        "a11y-mcp"
+      ],
+      "env": {},
+      "enabled": true
     },
     "memory": {
       "command": "cmd",
-      "args": ["/c", "npx", "-y", "@modelcontextprotocol/server-memory"],
-      "env": {}
-    },
-    "tauri-mcp": {
-      "command": "cmd",
-      "args": ["/c", "npx", "-y", "@hypothesi/tauri-mcp-server@latest"],
-      "env": {}
+      "args": [
+        "/c",
+        "npx",
+        "-y",
+        "@modelcontextprotocol/server-memory"
+      ],
+      "env": {},
+      "enabled": true
     }
   }
 }

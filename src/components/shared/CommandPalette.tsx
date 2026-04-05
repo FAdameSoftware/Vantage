@@ -531,9 +531,7 @@ export function CommandPalette() {
       icon: <BarChart3 className="size-4 shrink-0 text-muted-foreground" />,
       category: "View",
       action: () => {
-        const { useEditorStore } = require("@/stores/editor");
-        const store = useEditorStore.getState();
-        store.openFile(
+        useEditorStore.getState().openFile(
           "__vantage://analytics",
           "Usage Analytics",
           "plaintext",
@@ -567,11 +565,8 @@ export function CommandPalette() {
             );
             await invoke("write_theme_file", { content: template });
           }
-          const { useEditorStore } = require("@/stores/editor");
           const content = await invoke<string | null>("read_theme_file");
-          useEditorStore
-            .getState()
-            .openFile(filePath, "theme.json", "json", content ?? "{}");
+          useEditorStore.getState().openFile(filePath, "theme.json", "json", content ?? "{}");
         } catch (err) {
           console.error("Failed to open theme file:", err);
         }
@@ -595,7 +590,6 @@ export function CommandPalette() {
       icon: <Globe className="size-4 shrink-0 text-muted-foreground" />,
       category: "View",
       action: () => {
-        const { useLayoutStore } = require("@/stores/layout");
         useLayoutStore.getState().setActivePanelTab("browser");
         // Ensure panel is visible
         const state = useLayoutStore.getState();
