@@ -7,13 +7,19 @@ import { useAutoUpdate } from "@/hooks/useAutoUpdate";
 import { useCustomTheme } from "@/hooks/useCustomTheme";
 import { PermissionDialog } from "@/components/permissions/PermissionDialog";
 import { CommandPalette } from "@/components/shared/CommandPalette";
+import { NotificationCenter } from "@/components/shared/NotificationCenter";
 import { PrerequisiteCheck } from "@/components/shared/PrerequisiteCheck";
 import { PopoutEditor } from "@/components/editor/PopoutEditor";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 import { DevPanel } from "@/components/dev/DevPanel";
 import { useSettingsStore } from "@/stores/settings";
 import { useWorkspaceStore } from "@/stores/workspace";
+import { initToastCapture } from "@/lib/notifyToast";
 import type { ThemeName } from "@/stores/settings";
+
+// Initialize toast capture so all sonner toast calls are recorded in the
+// notification store for the notification center history.
+initToastCapture();
 
 /** Map theme name to the HTML class that activates it */
 function getThemeClass(theme: ThemeName): string {
@@ -78,6 +84,7 @@ function App() {
       <IDELayout />
       <CommandPalette />
       <PermissionDialog />
+      <NotificationCenter />
       <PrerequisiteCheck />
       <Toaster
         position="bottom-right"
