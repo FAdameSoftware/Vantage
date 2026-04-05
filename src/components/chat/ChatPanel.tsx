@@ -1,4 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { MessageSquare, Plus, Search, X, ChevronUp, ChevronDown, GitBranch, ArrowDown, Pin, Info, Download } from "lucide-react";
 import { useConversationStore } from "@/stores/conversation";
 import { useLayoutStore } from "@/stores/layout";
@@ -93,13 +94,18 @@ function SessionInfoBadge() {
           {modelName}
         </span>
       </button>
-      {expanded && (
-        <div
+      <AnimatePresence>
+        {expanded && (
+        <motion.div
           className="mt-1 pt-1 text-[10px] space-y-0.5"
           style={{
             borderTop: "1px solid var(--color-surface-1)",
             color: "var(--color-overlay-1)",
           }}
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          exit={{ opacity: 0, height: 0 }}
+          transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
         >
           <div>
             <span style={{ color: "var(--color-overlay-0)" }}>Session ID: </span>
@@ -129,8 +135,9 @@ function SessionInfoBadge() {
               <span>{session.tools.length} available</span>
             </div>
           )}
-        </div>
-      )}
+        </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -181,30 +188,36 @@ function ExportMenu() {
       >
         <Download size={14} />
       </button>
-      {open && (
-        <div
-          className="absolute right-0 top-full mt-1 rounded-md shadow-lg z-50 py-1 min-w-[160px]"
-          style={{
-            backgroundColor: "var(--color-surface-0)",
-            border: "1px solid var(--color-surface-1)",
-          }}
-        >
-          {EXPORT_FORMATS.map((fmt) => (
-            <button
-              key={fmt.id}
-              type="button"
-              className="block w-full text-left px-3 py-1.5 text-xs hover:bg-[var(--color-surface-1)] transition-colors"
-              style={{ color: "var(--color-text)" }}
-              onClick={() => {
-                fmt.handler();
-                setOpen(false);
-              }}
-            >
-              {fmt.label}
-            </button>
-          ))}
-        </div>
-      )}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            className="absolute right-0 top-full mt-1 rounded-md shadow-lg z-50 py-1 min-w-[160px]"
+            style={{
+              backgroundColor: "var(--color-surface-0)",
+              border: "1px solid var(--color-surface-1)",
+            }}
+            initial={{ opacity: 0, y: -4, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -4, scale: 0.98 }}
+            transition={{ duration: 0.12, ease: [0.4, 0, 0.2, 1] }}
+          >
+            {EXPORT_FORMATS.map((fmt) => (
+              <button
+                key={fmt.id}
+                type="button"
+                className="block w-full text-left px-3 py-1.5 text-xs hover:bg-[var(--color-surface-1)] transition-colors"
+                style={{ color: "var(--color-text)" }}
+                onClick={() => {
+                  fmt.handler();
+                  setOpen(false);
+                }}
+              >
+                {fmt.label}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -813,27 +826,33 @@ export function ChatPanel({ mode = "sidebar" }: ChatPanelProps) {
           </div>
 
           {/* Scroll to bottom button (Feature 4) */}
-          {isScrolledUp && (
-            <button
-              type="button"
-              onClick={handleScrollToBottom}
-              className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs shadow-lg transition-all hover:scale-105 z-20"
-              style={{
-                backgroundColor: "var(--color-blue)",
-                color: "var(--color-base)",
-              }}
-              aria-label="Scroll to latest messages"
-            >
-              <ArrowDown size={12} />
-              {newMessageCount > 0 ? (
-                <span>
-                  {newMessageCount} new message{newMessageCount !== 1 ? "s" : ""}
-                </span>
-              ) : (
-                <span>Latest</span>
-              )}
-            </button>
-          )}
+          <AnimatePresence>
+            {isScrolledUp && (
+              <motion.button
+                type="button"
+                onClick={handleScrollToBottom}
+                className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs shadow-lg hover:scale-105 z-20"
+                style={{
+                  backgroundColor: "var(--color-blue)",
+                  color: "var(--color-base)",
+                }}
+                aria-label="Scroll to latest messages"
+                initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
+              >
+                <ArrowDown size={12} />
+                {newMessageCount > 0 ? (
+                  <span>
+                    {newMessageCount} new message{newMessageCount !== 1 ? "s" : ""}
+                  </span>
+                ) : (
+                  <span>Latest</span>
+                )}
+              </motion.button>
+            )}
+          </AnimatePresence>
           </div>
 
           {/* Activity Trail — live sidebar of files Claude touched */}
