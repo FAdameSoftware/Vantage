@@ -12,6 +12,8 @@ import { useQuickQuestionStore } from "@/stores/quickQuestion";
 import { CompactDialog } from "./CompactDialog";
 import { PlanModeToggle } from "./PlanModeToggle";
 import { WriterReviewerLauncher } from "@/components/agents/WriterReviewerLauncher";
+import { ActivityTrail } from "./ActivityTrail";
+import { SessionTimeline } from "./SessionTimeline";
 
 // ─── Streaming preview (live text accumulation) ─────────────────────────────
 
@@ -389,6 +391,9 @@ export function ChatPanel() {
       {/* Search bar */}
       {searchOpen && <ChatSearchBar onClose={() => setSearchOpen(false)} />}
 
+      {/* Session timeline (checkpoints) */}
+      <SessionTimeline />
+
       {/* Message list */}
       <div
         ref={scrollContainerRef}
@@ -458,6 +463,9 @@ export function ChatPanel() {
         {/* Scroll anchor */}
         <div ref={messagesEndRef} />
       </div>
+
+      {/* Activity Trail — live sidebar of files Claude touched */}
+      <ActivityTrail />
 
       {/* Input + Quick Question Overlay */}
       <div className="relative shrink-0">

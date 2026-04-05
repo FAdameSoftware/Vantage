@@ -93,6 +93,17 @@ export type ConnectionStatus =
   | "error"
   | "stopped";
 
+// ─── Session checkpoint ──────────────────────────────────────────────────────
+
+export interface ConversationCheckpoint {
+  /** Index into the messages array this checkpoint was taken after */
+  messageIndex: number;
+  /** Wall-clock time of checkpoint creation */
+  timestamp: number;
+  /** Human-readable label */
+  label: string;
+}
+
 // ─── Store state & actions ───────────────────────────────────────────────────
 
 export interface ConversationState {
@@ -132,6 +143,9 @@ export interface ConversationState {
   // Session-level auto-approved tools (cleared when session ends)
   sessionAllowedTools: Set<string>;
 
+  // Session timeline checkpoints
+  checkpoints: ConversationCheckpoint[];
+
   // ── Actions ──
   addUserMessage: (text: string) => void;
   handleSystemInit: (msg: SystemInitMessage) => void;
@@ -144,6 +158,11 @@ export interface ConversationState {
   setSession: (session: SessionMetadata) => void;
   allowToolForSession: (toolName: string) => void;
   isToolAllowedForSession: (toolName: string) => boolean;
+
+  /** Create a named checkpoint at the current message index */
+  createCheckpoint: (label?: string) => void;
+  /** Restore the conversation to the state at a given checkpoint index */
+  restoreCheckpoint: (checkpointIndex: number) => void;
 
   /** Reset the conversation store to its default state (used on workspace switch) */
   resetToDefaults: () => void;
@@ -280,6 +299,8 @@ const DEFAULT_STATE: Omit<
   | "setSession"
   | "allowToolForSession"
   | "isToolAllowedForSession"
+  | "createCheckpoint"
+  | "restoreCheckpoint"
   | "resetToDefaults"
 > = {
   messages: [],
@@ -296,6 +317,7 @@ const DEFAULT_STATE: Omit<
   connectionError: null,
   pendingPermission: null,
   sessionAllowedTools: new Set(),
+  checkpoints: [],
 };
 
 export const useConversationStore = create<ConversationState>()(
@@ -312,7 +334,20 @@ export const useConversationStore = create<ConversationState>()(
       timestamp: Date.now(),
       parentToolUseId: null,
     };
-    set((state) => ({ messages: [...state.messages, message] }));
+    set((state) => {
+      const newMessages = [...state.messages, message];
+      // Auto-checkpoint on each user turn so the timeline tracks conversation history
+      const label = text.length > 40 ? text.slice(0, 40) + "…" : text;
+      const checkpoint: ConversationCheckpoint = {
+        messageIndex: newMessages.length - 1,
+        timestamp: Date.now(),
+        label,
+      };
+      return {
+        messages: newMessages,
+        checkpoints: [...state.checkpoints, checkpoint],
+      };
+    });
   },
 
   handleSystemInit(msg: SystemInitMessage) {
@@ -576,6 +611,36 @@ export const useConversationStore = create<ConversationState>()(
 
   isToolAllowedForSession(toolName: string) {
     return get().sessionAllowedTools.has(toolName);
+  },
+
+  createCheckpoint(label?: string) {
+    const { messages, checkpoints } = get();
+    const messageIndex = messages.length - 1;
+    const checkpoint: ConversationCheckpoint = {
+      messageIndex,
+      timestamp: Date.now(),
+      label: label ?? `Checkpoint ${checkpoints.length + 1}`,
+    };
+    set((state) => ({ checkpoints: [...state.checkpoints, checkpoint] }));
+  },
+
+  restoreCheckpoint(checkpointIndex: number) {
+    const { messages, checkpoints } = get();
+    const checkpoint = checkpoints[checkpointIndex];
+    if (!checkpoint) return;
+    // Slice messages back to the checkpoint's message index (inclusive)
+    const slicedMessages = messages.slice(0, checkpoint.messageIndex + 1);
+    // Keep only checkpoints up to and including this one
+    const slicedCheckpoints = checkpoints.slice(0, checkpointIndex + 1);
+    set({
+      messages: slicedMessages,
+      checkpoints: slicedCheckpoints,
+      isStreaming: false,
+      isThinking: false,
+      thinkingStartedAt: null,
+      activeBlocks: new Map(),
+      activeMessageId: null,
+    });
   },
 
   resetToDefaults() {
