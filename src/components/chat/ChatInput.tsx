@@ -18,7 +18,6 @@ import {
   type MentionSource,
   type ResolvedMention,
 } from "@/lib/mentionResolver";
-import { useEditorStore } from "@/stores/editor";
 import { useImagePaste } from "@/hooks/useImagePaste";
 
 interface ChatInputProps {
@@ -45,6 +44,11 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   const [text, setText] = useState("");
   const [ultrathink, setUltrathink] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Chat input history (Feature 4: arrow up/down to cycle previous messages)
+  const historyRef = useRef<string[]>([]);
+  const historyIndexRef = useRef(-1);
+  const draftRef = useRef("");
 
   // Expose setEditText for parent to load edited text into input
   useImperativeHandle(ref, () => ({
@@ -110,6 +114,17 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     if (isStreaming || disabled) return;
     if (!trimmed && !imagePaste.hasImages) return;
 
+    // Add to input history
+    if (trimmed) {
+      historyRef.current.push(trimmed);
+      // Keep max 100 entries
+      if (historyRef.current.length > 100) {
+        historyRef.current.shift();
+      }
+      historyIndexRef.current = -1;
+      draftRef.current = "";
+    }
+
     // Route slash commands through the local handler first.
     // If the handler returns true, the command was handled locally and we
     // must not forward it to Claude.
@@ -170,44 +185,56 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
 
   const handleMentionSelect = useCallback(
     (source: MentionSource) => {
+      // For @file, don't close the mention autocomplete -- it will show
+      // the file picker sub-view. The MentionAutocomplete component
+      // handles this internally via its showFilePicker state.
+      if (source.needsExtra && source.type === "file") {
+        // The MentionAutocomplete component will switch to file picker view.
+        // We keep showMention=true so it stays visible.
+        return;
+      }
+
       setShowMention(false);
       setMentionQuery("");
 
       // Remove the @query text from the input
       setText((prev) => prev.replace(/@\w*$/, ""));
 
-      // For types that need extra input (e.g. @file needs a path),
-      // we would show a file picker here. For now, @file resolves
-      // the currently active editor tab as a pragmatic default.
-      if (source.needsExtra && source.type === "file") {
-        // Access the editor store directly (imported at top level)
-        const activeTab = useEditorStore.getState().getActiveTab();
-        if (!activeTab) {
-          textareaRef.current?.focus();
-          return;
-        }
-        setIsResolvingMention(true);
-        void resolveMention(source.type, activeTab.path).then(
-          (resolved) => {
-            setResolvedMentions((prev) => [...prev, resolved]);
-            setIsResolvingMention(false);
-          },
-          () => {
-            setIsResolvingMention(false);
-          },
-        );
-      } else {
-        setIsResolvingMention(true);
-        void resolveMention(source.type).then(
-          (resolved) => {
-            setResolvedMentions((prev) => [...prev, resolved]);
-            setIsResolvingMention(false);
-          },
-          () => {
-            setIsResolvingMention(false);
-          },
-        );
-      }
+      setIsResolvingMention(true);
+      void resolveMention(source.type).then(
+        (resolved) => {
+          setResolvedMentions((prev) => [...prev, resolved]);
+          setIsResolvingMention(false);
+        },
+        () => {
+          setIsResolvingMention(false);
+        },
+      );
+
+      textareaRef.current?.focus();
+    },
+    [],
+  );
+
+  // Handle file picker selection from the MentionAutocomplete sub-view
+  const handleFilePickerSelect = useCallback(
+    (filePath: string) => {
+      setShowMention(false);
+      setMentionQuery("");
+
+      // Remove the @query text from the input
+      setText((prev) => prev.replace(/@\w*$/, ""));
+
+      setIsResolvingMention(true);
+      void resolveMention("file", filePath).then(
+        (resolved) => {
+          setResolvedMentions((prev) => [...prev, resolved]);
+          setIsResolvingMention(false);
+        },
+        () => {
+          setIsResolvingMention(false);
+        },
+      );
 
       textareaRef.current?.focus();
     },
@@ -308,13 +335,49 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
           return;
         }
       }
+      // Chat input history: Arrow Up/Down (Feature 4)
+      // Only activate when cursor is at position 0 (start of input)
+      if (e.key === "ArrowUp" && !showSlash && !showMention) {
+        const el = textareaRef.current;
+        if (el && el.selectionStart === 0 && el.selectionEnd === 0) {
+          const history = historyRef.current;
+          if (history.length === 0) return;
+
+          e.preventDefault();
+          if (historyIndexRef.current === -1) {
+            // Save current draft before browsing history
+            draftRef.current = text;
+            historyIndexRef.current = history.length - 1;
+          } else if (historyIndexRef.current > 0) {
+            historyIndexRef.current -= 1;
+          }
+          setText(history[historyIndexRef.current]);
+          return;
+        }
+      }
+      if (e.key === "ArrowDown" && !showSlash && !showMention) {
+        const el = textareaRef.current;
+        if (el && historyIndexRef.current !== -1) {
+          const history = historyRef.current;
+          e.preventDefault();
+          if (historyIndexRef.current < history.length - 1) {
+            historyIndexRef.current += 1;
+            setText(history[historyIndexRef.current]);
+          } else {
+            // Restore draft when going past the end
+            historyIndexRef.current = -1;
+            setText(draftRef.current);
+          }
+          return;
+        }
+      }
       // Original Enter-to-send behavior
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
         handleSend();
       }
     },
-    [showSlash, filteredSlash, slashIndex, handleSlashSelect, showMention, filteredMentions, mentionIndex, handleMentionSelect, handleSend],
+    [showSlash, filteredSlash, slashIndex, handleSlashSelect, showMention, filteredMentions, mentionIndex, handleMentionSelect, handleSend, text],
   );
 
   const placeholder =
@@ -354,6 +417,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
           sources={filteredMentions}
           selectedIndex={mentionIndex}
           onSelect={handleMentionSelect}
+          onSelectFile={handleFilePickerSelect}
           visible={showMention && !showSlash}
         />
         {/* Mention chips */}

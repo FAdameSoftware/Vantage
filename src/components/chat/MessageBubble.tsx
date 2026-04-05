@@ -1,8 +1,9 @@
 import { useState, useCallback, useMemo, memo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { User, Brain, Copy, Check, Pencil, RefreshCw, ChevronsUpDown, ChevronsDownUp, FileCode2 } from "lucide-react";
+import { User, Brain, Copy, Check, Pencil, RefreshCw, ChevronsUpDown, ChevronsDownUp, FileCode2, Pin } from "lucide-react";
 import type { ConversationMessage } from "@/stores/conversation";
+import { useConversationStore } from "@/stores/conversation";
 import { CodeBlock } from "./CodeBlock";
 import { ToolCallCard } from "./ToolCallCard";
 import { TokenBadge } from "./TokenBadge";
@@ -123,10 +124,14 @@ function UserBubble({
   message,
   isGroupFirst,
   onEdit,
+  isPinned,
+  onTogglePin,
 }: {
   message: ConversationMessage;
   isGroupFirst: boolean;
   onEdit?: (text: string) => void;
+  isPinned: boolean;
+  onTogglePin: () => void;
 }) {
   const { cleanText, images } = useMemo(
     () => extractImages(message.text),
@@ -136,6 +141,20 @@ function UserBubble({
   return (
     <div className="flex justify-end mb-3 group/user">
       <div className="flex items-start gap-2 max-w-[85%]">
+        {/* Pin button — appears on hover */}
+        <button
+          type="button"
+          onClick={onTogglePin}
+          className="p-1 rounded opacity-0 group-hover/user:opacity-100 transition-opacity self-center"
+          style={{
+            backgroundColor: "var(--color-surface-0)",
+            color: isPinned ? "var(--color-yellow)" : "var(--color-overlay-1)",
+          }}
+          aria-label={isPinned ? "Unpin message" : "Pin message"}
+          title={isPinned ? "Unpin message" : "Pin message"}
+        >
+          <Pin size={11} />
+        </button>
         {/* Edit button — appears on hover */}
         {onEdit && (
           <button
@@ -158,6 +177,7 @@ function UserBubble({
             style={{
               backgroundColor: "var(--color-surface-0)",
               color: "var(--color-text)",
+              borderLeft: isPinned ? "2px solid var(--color-yellow)" : undefined,
             }}
           >
             {/* Inline images */}
@@ -197,12 +217,16 @@ function AssistantBubble({
   isForked,
   showRegenerate,
   onRegenerate,
+  isPinned,
+  onTogglePin,
 }: {
   message: ConversationMessage;
   isGroupFirst: boolean;
   isForked?: boolean;
   showRegenerate?: boolean;
   onRegenerate?: () => void;
+  isPinned: boolean;
+  onTogglePin: () => void;
 }) {
   const [thinkingExpanded, setThinkingExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -257,12 +281,32 @@ function AssistantBubble({
 
   return (
     <div className="flex justify-start mb-3 group/msg">
-      <div className="max-w-[95%] w-full relative">
+      <div
+        className="max-w-[95%] w-full relative"
+        style={{
+          borderLeft: isPinned ? "2px solid var(--color-yellow)" : undefined,
+          paddingLeft: isPinned ? "8px" : undefined,
+        }}
+      >
         {/* Action buttons — appear on hover */}
         <div
           className="absolute top-0 right-0 flex items-center gap-1 opacity-0 group-hover/msg:opacity-100 transition-opacity z-10"
         >
-          {/* Copy as Markdown button (Feature 6) */}
+          {/* Pin button */}
+          <button
+            type="button"
+            onClick={onTogglePin}
+            className="p-1 rounded transition-colors hover:bg-[var(--color-surface-1)]"
+            style={{
+              backgroundColor: "var(--color-surface-0)",
+              color: isPinned ? "var(--color-yellow)" : "var(--color-overlay-1)",
+            }}
+            aria-label={isPinned ? "Unpin message" : "Pin message"}
+            title={isPinned ? "Unpin message" : "Pin message"}
+          >
+            <Pin size={12} />
+          </button>
+          {/* Copy as Markdown button */}
           <button
             type="button"
             onClick={handleCopyMarkdown}
@@ -549,8 +593,20 @@ export const MessageBubble = memo(function MessageBubble({
   showRegenerate,
   onRegenerate,
 }: MessageBubbleProps) {
+  const isPinned = useConversationStore((s) => s.pinnedMessageIds.has(message.id));
+  const togglePin = useConversationStore((s) => s.togglePinMessage);
+  const handleTogglePin = useCallback(() => togglePin(message.id), [togglePin, message.id]);
+
   if (message.role === "user") {
-    return <UserBubble message={message} isGroupFirst={isGroupFirst} onEdit={onEdit} />;
+    return (
+      <UserBubble
+        message={message}
+        isGroupFirst={isGroupFirst}
+        onEdit={onEdit}
+        isPinned={isPinned}
+        onTogglePin={handleTogglePin}
+      />
+    );
   }
 
   if (message.role === "assistant") {
@@ -561,6 +617,8 @@ export const MessageBubble = memo(function MessageBubble({
         isForked={isForked}
         showRegenerate={showRegenerate}
         onRegenerate={onRegenerate}
+        isPinned={isPinned}
+        onTogglePin={handleTogglePin}
       />
     );
   }

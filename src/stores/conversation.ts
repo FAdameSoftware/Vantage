@@ -146,6 +146,9 @@ export interface ConversationState {
   // Session timeline checkpoints
   checkpoints: ConversationCheckpoint[];
 
+  // Pinned message IDs
+  pinnedMessageIds: Set<string>;
+
   // ── Actions ──
   addUserMessage: (text: string) => void;
   handleSystemInit: (msg: SystemInitMessage) => void;
@@ -163,6 +166,11 @@ export interface ConversationState {
   createCheckpoint: (label?: string) => void;
   /** Restore the conversation to the state at a given checkpoint index */
   restoreCheckpoint: (checkpointIndex: number) => void;
+
+  /** Toggle pin status for a message */
+  togglePinMessage: (messageId: string) => void;
+  /** Check if a message is pinned */
+  isMessagePinned: (messageId: string) => boolean;
 
   /** Reset the conversation store to its default state (used on workspace switch) */
   resetToDefaults: () => void;
@@ -301,6 +309,8 @@ const DEFAULT_STATE: Omit<
   | "isToolAllowedForSession"
   | "createCheckpoint"
   | "restoreCheckpoint"
+  | "togglePinMessage"
+  | "isMessagePinned"
   | "resetToDefaults"
 > = {
   messages: [],
@@ -318,6 +328,7 @@ const DEFAULT_STATE: Omit<
   pendingPermission: null,
   sessionAllowedTools: new Set(),
   checkpoints: [],
+  pinnedMessageIds: new Set(),
 };
 
 export const useConversationStore = create<ConversationState>()(
@@ -593,6 +604,7 @@ export const useConversationStore = create<ConversationState>()(
       ...DEFAULT_STATE,
       activeBlocks: new Map(),
       sessionAllowedTools: new Set(),
+      pinnedMessageIds: new Set(),
     });
     useUsageStore.getState().reset();
   },
@@ -643,11 +655,28 @@ export const useConversationStore = create<ConversationState>()(
     });
   },
 
+  togglePinMessage(messageId: string) {
+    set((state) => {
+      const next = new Set(state.pinnedMessageIds);
+      if (next.has(messageId)) {
+        next.delete(messageId);
+      } else {
+        next.add(messageId);
+      }
+      return { pinnedMessageIds: next };
+    });
+  },
+
+  isMessagePinned(messageId: string) {
+    return get().pinnedMessageIds.has(messageId);
+  },
+
   resetToDefaults() {
     set({
       ...DEFAULT_STATE,
       activeBlocks: new Map(),
       sessionAllowedTools: new Set(),
+      pinnedMessageIds: new Set(),
     });
     useUsageStore.getState().reset();
   },

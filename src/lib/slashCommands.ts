@@ -20,7 +20,7 @@ export const BUILTIN_COMMANDS: SlashCommand[] = [
   { name: "cost", description: "Show token usage and cost for this session", source: "built-in", isSkill: false },
   { name: "diff", description: "Show git diff of working changes", source: "built-in", isSkill: false },
   { name: "doctor", description: "Check Claude Code installation health", source: "built-in", isSkill: false },
-  { name: "export", description: "Export conversation as markdown", source: "built-in", isSkill: false },
+  { name: "export", description: "Export conversation (md/json/html)", source: "built-in", isSkill: false },
   { name: "fast", description: "Toggle fast mode for quicker responses", source: "built-in", isSkill: false },
   { name: "help", description: "Show available commands and usage information", source: "built-in", isSkill: false },
   { name: "init", description: "Initialize CLAUDE.md in the current project", source: "built-in", isSkill: false },

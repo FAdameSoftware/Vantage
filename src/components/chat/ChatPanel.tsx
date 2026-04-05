@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from "react";
-import { MessageSquare, Plus, Search, X, ChevronUp, ChevronDown, GitBranch, ArrowDown } from "lucide-react";
+import { MessageSquare, Plus, Search, X, ChevronUp, ChevronDown, GitBranch, ArrowDown, Pin, Info, Download } from "lucide-react";
 import { useConversationStore } from "@/stores/conversation";
 import { useLayoutStore } from "@/stores/layout";
 import { useSettingsStore } from "@/stores/settings";
@@ -16,6 +16,198 @@ import { WriterReviewerLauncher } from "@/components/agents/WriterReviewerLaunch
 import { ActivityTrail } from "./ActivityTrail";
 import { SessionTimeline } from "./SessionTimeline";
 import { ExecutionMap } from "./ExecutionMap";
+import { EXPORT_FORMATS } from "@/lib/slashHandlers";
+
+// ─── Session Info Badge (Feature 2) ─────────────────────────────────────────
+
+function SessionInfoBadge() {
+  const session = useConversationStore(selectSession);
+  const totalCost = useConversationStore(selectTotalCost);
+  const connectionStatus = useConversationStore(selectConnectionStatus);
+  const [elapsed, setElapsed] = useState("");
+  const [expanded, setExpanded] = useState(false);
+  const sessionStartRef = useRef<number>(Date.now());
+
+  // Reset start time when session changes
+  useEffect(() => {
+    if (session) {
+      sessionStartRef.current = Date.now();
+    }
+  }, [session?.sessionId]);
+
+  // Update elapsed timer every second
+  useEffect(() => {
+    if (!session) return;
+    const interval = setInterval(() => {
+      const diffMs = Date.now() - sessionStartRef.current;
+      const mins = Math.floor(diffMs / 60000);
+      const secs = Math.floor((diffMs % 60000) / 1000);
+      if (mins > 0) {
+        setElapsed(`${mins}m ${secs}s`);
+      } else {
+        setElapsed(`${secs}s`);
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [session?.sessionId]);
+
+  const isConnected = connectionStatus === "ready" || connectionStatus === "streaming";
+  if (!session || !isConnected) return null;
+
+  const truncatedId = session.sessionId
+    ? session.sessionId.slice(0, 8) + "..."
+    : "unknown";
+  const modelName = session.model ? stripModelDate(session.model) : "unknown";
+
+  return (
+    <div
+      className="shrink-0 px-3 py-1"
+      style={{
+        backgroundColor: "var(--color-surface-0)",
+        borderBottom: "1px solid var(--color-surface-1)",
+      }}
+    >
+      <button
+        type="button"
+        className="flex items-center gap-2 w-full text-left"
+        onClick={() => setExpanded((e) => !e)}
+        aria-label="Toggle session details"
+      >
+        <Info size={11} style={{ color: "var(--color-blue)" }} />
+        <span
+          className="text-[10px] font-mono"
+          style={{ color: "var(--color-subtext-0)" }}
+          title={`Session: ${session.sessionId}`}
+        >
+          {truncatedId}
+        </span>
+        <span className="text-[10px]" style={{ color: "var(--color-overlay-0)" }}>
+          {elapsed}
+        </span>
+        {totalCost > 0 && (
+          <span className="text-[10px]" style={{ color: "var(--color-green)" }}>
+            ${totalCost.toFixed(4)}
+          </span>
+        )}
+        <span className="text-[10px]" style={{ color: "var(--color-overlay-1)" }}>
+          {modelName}
+        </span>
+      </button>
+      {expanded && (
+        <div
+          className="mt-1 pt-1 text-[10px] space-y-0.5"
+          style={{
+            borderTop: "1px solid var(--color-surface-1)",
+            color: "var(--color-overlay-1)",
+          }}
+        >
+          <div>
+            <span style={{ color: "var(--color-overlay-0)" }}>Session ID: </span>
+            <span className="font-mono">{session.sessionId}</span>
+          </div>
+          {session.cwd && (
+            <div>
+              <span style={{ color: "var(--color-overlay-0)" }}>CWD: </span>
+              <span className="font-mono">{session.cwd}</span>
+            </div>
+          )}
+          {session.claudeCodeVersion && (
+            <div>
+              <span style={{ color: "var(--color-overlay-0)" }}>CLI: </span>
+              <span>v{session.claudeCodeVersion}</span>
+            </div>
+          )}
+          {session.permissionMode && (
+            <div>
+              <span style={{ color: "var(--color-overlay-0)" }}>Permissions: </span>
+              <span>{session.permissionMode}</span>
+            </div>
+          )}
+          {session.tools && session.tools.length > 0 && (
+            <div>
+              <span style={{ color: "var(--color-overlay-0)" }}>Tools: </span>
+              <span>{session.tools.length} available</span>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Typing Indicator (Feature 5) ──────────────────────────────────────────
+
+function TypingDots() {
+  return (
+    <div className="flex items-center gap-1.5 mb-3 pl-1">
+      <div className="flex items-center gap-1">
+        <span
+          className="w-1.5 h-1.5 rounded-full animate-bounce"
+          style={{ backgroundColor: "var(--color-blue)", animationDelay: "0ms", animationDuration: "1s" }}
+        />
+        <span
+          className="w-1.5 h-1.5 rounded-full animate-bounce"
+          style={{ backgroundColor: "var(--color-blue)", animationDelay: "150ms", animationDuration: "1s" }}
+        />
+        <span
+          className="w-1.5 h-1.5 rounded-full animate-bounce"
+          style={{ backgroundColor: "var(--color-blue)", animationDelay: "300ms", animationDuration: "1s" }}
+        />
+      </div>
+      <span className="text-[10px]" style={{ color: "var(--color-overlay-1)" }}>
+        Claude is thinking...
+      </span>
+    </div>
+  );
+}
+
+// ─── Export Menu ────────────────────────────────────────────────────────────
+
+function ExportMenu() {
+  const [open, setOpen] = useState(false);
+  const messages = useConversationStore(selectMessages);
+
+  if (messages.length === 0) return null;
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        className="p-1 rounded transition-colors hover:bg-[var(--color-surface-0)]"
+        style={{ color: "var(--color-overlay-1)" }}
+        onClick={() => setOpen((o) => !o)}
+        aria-label="Export conversation"
+        title="Export conversation"
+      >
+        <Download size={14} />
+      </button>
+      {open && (
+        <div
+          className="absolute right-0 top-full mt-1 rounded-md shadow-lg z-50 py-1 min-w-[160px]"
+          style={{
+            backgroundColor: "var(--color-surface-0)",
+            border: "1px solid var(--color-surface-1)",
+          }}
+        >
+          {EXPORT_FORMATS.map((fmt) => (
+            <button
+              key={fmt.id}
+              type="button"
+              className="block w-full text-left px-3 py-1.5 text-xs hover:bg-[var(--color-surface-1)] transition-colors"
+              style={{ color: "var(--color-text)" }}
+              onClick={() => {
+                fmt.handler();
+                setOpen(false);
+              }}
+            >
+              {fmt.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ─── Streaming preview (live text accumulation) ─────────────────────────────
 
@@ -244,11 +436,14 @@ export function ChatPanel() {
 
   const { startSession, sendMessage, interruptSession, stopSession } = useClaude();
 
+  const pinnedMessageIds = useConversationStore((s) => s.pinnedMessageIds);
+
   const [installedSkills, setInstalledSkills] = useState<
     Array<{ name: string; description: string; source: string }>
   >([]);
   const [searchOpen, setSearchOpen] = useState(false);
   const [showMap, setShowMap] = useState(false);
+  const [showPinnedOnly, setShowPinnedOnly] = useState(false);
 
   // Load installed skills on mount (currently returns empty — future extension point)
   useEffect(() => {
@@ -410,6 +605,20 @@ export function ChatPanel() {
           </span>
         </div>
         <div className="flex items-center gap-2">
+          {/* Pinned filter toggle */}
+          {pinnedMessageIds.size > 0 && (
+            <button
+              type="button"
+              className="p-1 rounded transition-colors hover:bg-[var(--color-surface-0)]"
+              style={{ color: showPinnedOnly ? "var(--color-yellow)" : "var(--color-overlay-1)" }}
+              onClick={() => setShowPinnedOnly((prev) => !prev)}
+              aria-label={showPinnedOnly ? "Show all messages" : "Show pinned only"}
+              title={showPinnedOnly ? "Show all messages" : `Show pinned (${pinnedMessageIds.size})`}
+            >
+              <Pin size={14} />
+            </button>
+          )}
+          <ExportMenu />
           <button
             type="button"
             className="p-1 rounded transition-colors hover:bg-[var(--color-surface-0)]"
@@ -469,6 +678,9 @@ export function ChatPanel() {
       {/* Search bar */}
       {searchOpen && <ChatSearchBar onClose={() => setSearchOpen(false)} />}
 
+      {/* Session info badge */}
+      <SessionInfoBadge />
+
       {/* Session timeline (checkpoints) */}
       <SessionTimeline />
 
@@ -507,8 +719,26 @@ export function ChatPanel() {
               </div>
             )}
 
+            {/* Pinned filter notice */}
+            {showPinnedOnly && (
+              <div
+                className="flex items-center justify-center gap-1.5 py-1.5 mb-2 rounded text-[10px]"
+                style={{
+                  backgroundColor: "var(--color-surface-0)",
+                  color: "var(--color-yellow)",
+                  border: "1px solid var(--color-surface-1)",
+                }}
+              >
+                <Pin size={10} />
+                Showing {pinnedMessageIds.size} pinned message{pinnedMessageIds.size !== 1 ? "s" : ""}
+              </div>
+            )}
+
             {/* Messages */}
             {messages.map((msg, idx) => {
+              // Filter to pinned only when active
+              if (showPinnedOnly && !pinnedMessageIds.has(msg.id)) return null;
+
               // isGroupFirst: true if this is the first message or previous message has a different role
               const prevMsg = idx > 0 ? messages[idx - 1] : null;
               const isGroupFirst = !prevMsg || prevMsg.role !== msg.role;
@@ -533,6 +763,9 @@ export function ChatPanel() {
             {isThinking && thinkingStartedAt !== null && (
               <ThinkingIndicator startedAt={thinkingStartedAt} />
             )}
+
+            {/* Typing indicator (streaming but not yet producing text) */}
+            {isStreaming && !isThinking && <TypingDots />}
 
             {/* Streaming preview */}
             {isStreaming && !isThinking && <StreamingPreview />}
