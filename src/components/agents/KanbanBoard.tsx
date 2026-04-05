@@ -99,7 +99,6 @@ export function KanbanBoard() {
   const agents = useAgentsStore((s) => s.agents);
   const columnOrder = useAgentsStore((s) => s.columnOrder);
   const moveAgent = useAgentsStore((s) => s.moveAgent);
-  const getAgentsInColumn = useAgentsStore((s) => s.getAgentsInColumn);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [activeAgentId, setActiveAgentId] = useState<string | null>(null);
@@ -191,8 +190,10 @@ export function KanbanBoard() {
         >
           <div className="flex flex-col gap-4">
             {COLUMNS.map((col) => {
-              const colAgents = getAgentsInColumn(col.id);
               const agentIds = columnOrder[col.id];
+              const colAgents = agentIds
+                .map((id) => agents.get(id))
+                .filter((a): a is Agent => a !== undefined);
               return (
                 <KanbanColumnView
                   key={col.id}

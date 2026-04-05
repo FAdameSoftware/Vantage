@@ -15,6 +15,9 @@ import {
 import { useAgentsStore } from "@/stores/agents";
 import type { AgentTimelineEvent } from "@/stores/agents";
 
+/** Stable empty array to avoid creating new references in selectors */
+const EMPTY_TIMELINE: AgentTimelineEvent[] = [];
+
 // ── Event type metadata ────────────────────────────────────────────────────────
 
 interface EventMeta {
@@ -161,7 +164,8 @@ interface AgentTimelineProps {
 }
 
 export function AgentTimeline({ agentId }: AgentTimelineProps) {
-  const timeline = useAgentsStore((s) => s.agents.get(agentId)?.timeline ?? []);
+  const agent = useAgentsStore((s) => s.agents.get(agentId));
+  const timeline = agent?.timeline ?? EMPTY_TIMELINE;
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const autoScrollRef = useRef(true);

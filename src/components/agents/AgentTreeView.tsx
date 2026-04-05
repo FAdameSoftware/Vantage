@@ -268,11 +268,20 @@ function AgentTreeNode({
 
 export function AgentTreeView() {
   const agents = useAgentsStore((s) => s.agents);
-  const getRootAgents = useAgentsStore((s) => s.getRootAgents);
-  const getActiveAgentCount = useAgentsStore((s) => s.getActiveAgentCount);
 
-  const rootAgents = getRootAgents();
-  const activeCount = getActiveAgentCount();
+  // Derive rootAgents and activeCount via useMemo instead of calling store
+  // functions in render (which create new arrays via .filter() each time).
+  const rootAgents = useMemo(
+    () => [...agents.values()].filter((a) => a.parentId === null),
+    [agents],
+  );
+  const activeCount = useMemo(
+    () =>
+      [...agents.values()].filter(
+        (a) => a.status === "working" || a.status === "waiting_permission",
+      ).length,
+    [agents],
+  );
 
   // Expanded node set -- defaults to all agents expanded
   const [expandedSet, setExpandedSet] = useState<Set<string>>(() => {

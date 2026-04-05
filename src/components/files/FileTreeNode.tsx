@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { ChevronRight, ChevronDown, AlertTriangle } from "lucide-react";
 import { FileIcon } from "./FileIcon";
 import { useAgentsStore } from "@/stores/agents";
@@ -33,7 +34,13 @@ export function FileTreeNode({
   const gitStatus = gitStatuses?.get(normalizedPath)?.status;
 
   // Agent ownership: find agents that have this file assigned
-  const agentsForFile = useAgentsStore((s) => s.getAgentsForFile)(normalizedPath);
+  // Derive from the agents Map instead of calling getAgentsForFile in render
+  // (which creates a new array via .filter() on every render, causing infinite loops).
+  const agents = useAgentsStore((s) => s.agents);
+  const agentsForFile = useMemo(
+    () => [...agents.values()].filter((a) => a.assignedFiles.includes(normalizedPath)),
+    [agents, normalizedPath],
+  );
   const hasConflict = agentsForFile.length > 1;
   const ownerAgent = agentsForFile.length === 1 ? agentsForFile[0] : null;
 

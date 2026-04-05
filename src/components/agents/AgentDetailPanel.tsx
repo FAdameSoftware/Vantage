@@ -251,10 +251,11 @@ function TabBar({ active, onChange, counts }: TabBarProps) {
 
 // ── Files tab ──────────────────────────────────────────────────────────────────
 
+const EMPTY_FILES: string[] = [];
+
 function FilesTab({ agentId }: { agentId: string }) {
-  const assignedFiles = useAgentsStore(
-    (s) => s.agents.get(agentId)?.assignedFiles ?? [],
-  );
+  const assignedFiles =
+    useAgentsStore((s) => s.agents.get(agentId)?.assignedFiles) ?? EMPTY_FILES;
 
   if (assignedFiles.length === 0) {
     return (
