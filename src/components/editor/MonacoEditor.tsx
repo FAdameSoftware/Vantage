@@ -14,6 +14,9 @@ import {
   registerOpenedFile,
   updateRegisteredFile,
 } from "@/hooks/useCrossFileIntelligence";
+import { useInlineEdit } from "@/hooks/useInlineEdit";
+import { InlineEditBar } from "./InlineEditBar";
+import { InlineEditDiff } from "./InlineEditDiff";
 
 // Configure the loader to use the local monaco-editor package
 // instead of loading from CDN
@@ -131,6 +134,9 @@ export function MonacoEditor({
     onModeChange: setVimModeLabel,
   });
 
+  // Inline AI Edit (Ctrl+K)
+  const inlineEdit = useInlineEdit(editorInstance);
+
   // Register this file with the cross-file TS intelligence system on mount
   useEffect(() => {
     registerOpenedFile(filePath, value);
@@ -177,10 +183,22 @@ export function MonacoEditor({
         },
       });
 
+      // Register Ctrl+K for Inline AI Edit
+      editor.addAction({
+        id: "vantage.inlineAIEdit",
+        label: "Inline AI Edit",
+        keybindings: [
+          monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyK,
+        ],
+        run: () => {
+          inlineEdit.open();
+        },
+      });
+
       // Focus the editor
       editor.focus();
     },
-    [filePath, setCursorPosition, pinTab]
+    [filePath, setCursorPosition, pinTab, inlineEdit]
   );
 
   const handleChange: OnChange = useCallback(
@@ -191,6 +209,26 @@ export function MonacoEditor({
     },
     [onChange]
   );
+
+  // Global keyboard handler for inline edit accept/reject
+  useEffect(() => {
+    if (!inlineEdit.state.showDiff) return;
+
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        e.stopPropagation();
+        inlineEdit.accept();
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        inlineEdit.reject();
+      }
+    };
+
+    window.addEventListener("keydown", handler, true);
+    return () => window.removeEventListener("keydown", handler, true);
+  }, [inlineEdit]);
 
   return (
     <div className="w-full h-full flex flex-col" data-allow-select="true">
@@ -241,6 +279,29 @@ export function MonacoEditor({
         aria-hidden="true"
         style={{ display: "none" }}
       />
+
+      {/* Inline AI Edit: floating prompt bar */}
+      {inlineEdit.state.isOpen && !inlineEdit.state.showDiff && inlineEdit.state.position && (
+        <InlineEditBar
+          position={inlineEdit.state.position}
+          isLoading={inlineEdit.state.isLoading}
+          onSubmit={inlineEdit.submit}
+          onClose={inlineEdit.close}
+        />
+      )}
+
+      {/* Inline AI Edit: diff preview */}
+      {inlineEdit.state.showDiff && inlineEdit.state.position && inlineEdit.state.suggestedText !== null && (
+        <InlineEditDiff
+          position={inlineEdit.state.position}
+          originalText={inlineEdit.state.originalText}
+          suggestedText={inlineEdit.state.suggestedText}
+          isLoading={inlineEdit.state.isLoading}
+          error={inlineEdit.state.error}
+          onAccept={inlineEdit.accept}
+          onReject={inlineEdit.reject}
+        />
+      )}
     </div>
   );
 }
