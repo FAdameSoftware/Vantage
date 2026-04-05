@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from "react";
-import { MessageSquare, Plus, Search, X, ChevronUp, ChevronDown } from "lucide-react";
+import { MessageSquare, Plus, Search, X, ChevronUp, ChevronDown, GitBranch } from "lucide-react";
 import { useConversationStore } from "@/stores/conversation";
 import { useLayoutStore } from "@/stores/layout";
 import { useClaude } from "@/hooks/useClaude";
@@ -14,6 +14,7 @@ import { PlanModeToggle } from "./PlanModeToggle";
 import { WriterReviewerLauncher } from "@/components/agents/WriterReviewerLauncher";
 import { ActivityTrail } from "./ActivityTrail";
 import { SessionTimeline } from "./SessionTimeline";
+import { ExecutionMap } from "./ExecutionMap";
 
 // ─── Streaming preview (live text accumulation) ─────────────────────────────
 
@@ -210,6 +211,7 @@ export function ChatPanel() {
     Array<{ name: string; description: string; source: string }>
   >([]);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [showMap, setShowMap] = useState(false);
 
   // Load installed skills on mount (currently returns empty — future extension point)
   useEffect(() => {
@@ -348,6 +350,16 @@ export function ChatPanel() {
           <button
             type="button"
             className="p-1 rounded transition-colors hover:bg-[var(--color-surface-0)]"
+            style={{ color: showMap ? "var(--color-blue)" : "var(--color-overlay-1)" }}
+            onClick={() => setShowMap((prev) => !prev)}
+            aria-label="Toggle execution map"
+            title="Toggle execution map"
+          >
+            <GitBranch size={14} />
+          </button>
+          <button
+            type="button"
+            className="p-1 rounded transition-colors hover:bg-[var(--color-surface-0)]"
             style={{ color: searchOpen ? "var(--color-blue)" : "var(--color-overlay-1)" }}
             onClick={() => setSearchOpen((prev) => !prev)}
             aria-label="Search messages (Ctrl+Shift+F)"
@@ -394,78 +406,85 @@ export function ChatPanel() {
       {/* Session timeline (checkpoints) */}
       <SessionTimeline />
 
-      {/* Message list */}
-      <div
-        ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto p-4"
-        onScroll={handleScroll}
-      >
-        {/* Empty state */}
-        {messages.length === 0 && !isStreaming && (
-          <div className="flex flex-col items-center justify-center h-full">
-            <div
-              className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3"
-              style={{ backgroundColor: "var(--color-surface-0)" }}
-            >
-              <MessageSquare
-                size={20}
-                style={{ color: "var(--color-mauve)" }}
-              />
-            </div>
-            <p
-              className="text-xs leading-relaxed max-w-48 text-center"
-              style={{ color: "var(--color-overlay-1)" }}
-            >
-              {isDisconnected
-                ? "Type a message below to start a Claude Code session."
-                : "Ask Claude anything about your codebase."}
-            </p>
-          </div>
-        )}
-
-        {/* Messages */}
-        {messages.map((msg, idx) => (
-          <div key={msg.id} data-message-index={idx}>
-            <MessageBubble
-              message={msg}
-              onEdit={msg.role === "user" ? handleEditMessage : undefined}
-              showRegenerate={msg.id === lastAssistantMsgId && !isStreaming}
-              onRegenerate={msg.id === lastAssistantMsgId ? handleRegenerate : undefined}
-            />
-          </div>
-        ))}
-
-        {/* Thinking indicator (during active thinking) */}
-        {isThinking && thinkingStartedAt !== null && (
-          <ThinkingIndicator startedAt={thinkingStartedAt} />
-        )}
-
-        {/* Streaming preview */}
-        {isStreaming && !isThinking && <StreamingPreview />}
-
-        {/* Cost display */}
-        {totalCost > 0 && !isStreaming && (
+      {/* Execution Map view (toggled via Map button) */}
+      {showMap ? (
+        <ExecutionMap />
+      ) : (
+        <>
+          {/* Message list */}
           <div
-            className="flex justify-center my-2"
+            ref={scrollContainerRef}
+            className="flex-1 overflow-y-auto p-4"
+            onScroll={handleScroll}
           >
-            <span
-              className="text-xs px-2 py-0.5 rounded-full"
-              style={{
-                backgroundColor: "var(--color-surface-0)",
-                color: "var(--color-overlay-0)",
-              }}
-            >
-              Session cost: ${totalCost.toFixed(4)}
-            </span>
+            {/* Empty state */}
+            {messages.length === 0 && !isStreaming && (
+              <div className="flex flex-col items-center justify-center h-full">
+                <div
+                  className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3"
+                  style={{ backgroundColor: "var(--color-surface-0)" }}
+                >
+                  <MessageSquare
+                    size={20}
+                    style={{ color: "var(--color-mauve)" }}
+                  />
+                </div>
+                <p
+                  className="text-xs leading-relaxed max-w-48 text-center"
+                  style={{ color: "var(--color-overlay-1)" }}
+                >
+                  {isDisconnected
+                    ? "Type a message below to start a Claude Code session."
+                    : "Ask Claude anything about your codebase."}
+                </p>
+              </div>
+            )}
+
+            {/* Messages */}
+            {messages.map((msg, idx) => (
+              <div key={msg.id} data-message-index={idx}>
+                <MessageBubble
+                  message={msg}
+                  onEdit={msg.role === "user" ? handleEditMessage : undefined}
+                  showRegenerate={msg.id === lastAssistantMsgId && !isStreaming}
+                  onRegenerate={msg.id === lastAssistantMsgId ? handleRegenerate : undefined}
+                />
+              </div>
+            ))}
+
+            {/* Thinking indicator (during active thinking) */}
+            {isThinking && thinkingStartedAt !== null && (
+              <ThinkingIndicator startedAt={thinkingStartedAt} />
+            )}
+
+            {/* Streaming preview */}
+            {isStreaming && !isThinking && <StreamingPreview />}
+
+            {/* Cost display */}
+            {totalCost > 0 && !isStreaming && (
+              <div
+                className="flex justify-center my-2"
+              >
+                <span
+                  className="text-xs px-2 py-0.5 rounded-full"
+                  style={{
+                    backgroundColor: "var(--color-surface-0)",
+                    color: "var(--color-overlay-0)",
+                  }}
+                >
+                  Session cost: ${totalCost.toFixed(4)}
+                </span>
+              </div>
+            )}
+
+            {/* Scroll anchor */}
+            <div ref={messagesEndRef} />
           </div>
-        )}
 
-        {/* Scroll anchor */}
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* Activity Trail — live sidebar of files Claude touched */}
-      <ActivityTrail />
+          {/* Activity Trail — live sidebar of files Claude touched */}
+          <ActivityTrail />
+        </>
+      )}
 
       {/* Input + Quick Question Overlay */}
       <div className="relative shrink-0">
