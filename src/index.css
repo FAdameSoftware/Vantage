@@ -439,3 +439,49 @@ body {
   outline: 1px solid var(--color-blue);
   outline-offset: -1px;
 }
+
+/* ===== Chat Full Mode (Claude View) ===== */
+/* Phase 5: Wider bubbles, larger text, more vertical spacing in full-width chat */
+
+.chat-full-mode {
+  /* Increase base font size for chat text */
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+/* More vertical spacing between messages in full mode */
+.chat-full-mode > div[data-message-index] {
+  margin-bottom: 8px;
+}
+
+/* Widen assistant message bubbles to fill available space */
+.chat-full-mode .group\/msg > .max-w-\[95\%\] {
+  max-width: 100%;
+}
+
+/* Widen user message bubbles */
+.chat-full-mode .group\/user .max-w-\[85\%\] {
+  max-width: 92%;
+}
+
+/* Tool call cards: use full width in full mode */
+.chat-full-mode .rounded-md.overflow-hidden.my-2.text-xs {
+  font-size: 13px;
+}
+
+/* Code blocks: don't constrain width */
+.chat-full-mode .shiki-container {
+  font-size: 13px;
+}
+
+/* Prose/markdown text slightly larger */
+.chat-full-mode .prose-chat {
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+/* Thinking section text */
+.chat-full-mode .italic.pl-3 {
+  font-size: 13px;
+  line-height: 1.6;
+}

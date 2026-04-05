@@ -426,7 +426,7 @@ const selectConnectionStatus = (s: import("@/stores/conversation").ConversationS
 const selectTotalCost = (s: import("@/stores/conversation").ConversationState) => s.totalCost;
 
 export interface ChatPanelProps {
-  /** "full" = Claude View (centered, max-w-3xl); "sidebar" = IDE View (fill width) */
+  /** "full" = Claude View (centered, max-w-3xl, larger text); "sidebar" = IDE View (fill width) */
   mode?: "full" | "sidebar";
 }
 
@@ -595,21 +595,36 @@ export function ChatPanel({ mode = "sidebar" }: ChatPanelProps) {
     >
       {/* Header */}
       <div
-        className="flex items-center justify-between px-4 min-h-9 shrink-0 min-w-0 gap-1 py-1"
+        className={`flex items-center justify-between shrink-0 min-w-0 gap-1 py-1 ${mode === "full" ? "px-6 min-h-10" : "px-4 min-h-9"}`}
         style={{
           borderBottom: "1px solid var(--color-surface-0)",
         }}
       >
         <div className="flex items-center gap-2 min-w-0 shrink-0">
-          <MessageSquare size={14} className="shrink-0" style={{ color: "var(--color-blue)" }} />
+          {mode === "sidebar" && (
+            <MessageSquare size={14} className="shrink-0" style={{ color: "var(--color-blue)" }} />
+          )}
           <span
-            className="text-xs font-semibold uppercase tracking-wider truncate"
+            className={`font-semibold uppercase tracking-wider truncate ${mode === "full" ? "text-sm" : "text-xs"}`}
             style={{ color: "var(--color-subtext-0)" }}
           >
-            Chat
+            {mode === "full" ? "Claude" : "Chat"}
           </span>
+          {/* In full mode, show model and session info inline with title */}
+          {mode === "full" && modelDisplay && (
+            <span
+              className="text-[11px] px-2 py-0.5 rounded-full"
+              style={{
+                backgroundColor: "var(--color-surface-0)",
+                color: "var(--color-subtext-0)",
+              }}
+              title="Active session model"
+            >
+              {modelDisplay}
+            </span>
+          )}
         </div>
-        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+        <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
           {/* Pinned filter toggle */}
           {pinnedMessageIds.size > 0 && (
             <button
@@ -652,8 +667,8 @@ export function ChatPanel({ mode = "sidebar" }: ChatPanelProps) {
             onNewSession={handleNewSession}
             onResumeSession={handleResumeSession}
           />
-          <ModelSelector />
-          {modelDisplay && (
+          {mode === "sidebar" && <ModelSelector />}
+          {mode === "sidebar" && modelDisplay && (
             <span
               className="text-[10px] px-1.5 py-0.5 rounded"
               style={{
@@ -698,10 +713,10 @@ export function ChatPanel({ mode = "sidebar" }: ChatPanelProps) {
           <div className="flex-1 relative overflow-hidden">
           <div
             ref={scrollContainerRef}
-            className={`h-full overflow-y-auto p-4 ${mode === "full" ? "flex justify-center" : ""}`}
+            className={`h-full overflow-y-auto ${mode === "full" ? "flex justify-center px-6 py-5" : "p-4"}`}
             onScroll={handleScroll}
           >
-          <div className={mode === "full" ? "w-full max-w-3xl" : "w-full"}>
+          <div className={mode === "full" ? "w-full max-w-4xl chat-full-mode" : "w-full"}>
             {/* Empty state */}
             {messages.length === 0 && !isStreaming && (
               <div className="flex flex-col items-center justify-center h-full">
