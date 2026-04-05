@@ -1,10 +1,19 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { invoke } from "@tauri-apps/api/core";
 import { useLayoutStore } from "@/stores/layout";
 import { useEditorStore } from "@/stores/editor";
 import { useSettingsStore } from "@/stores/settings";
 import { useCommandPaletteStore } from "@/stores/commandPalette";
 import type { ThemeName } from "@/stores/settings";
+
+const smoothEase = [0.4, 0, 0.2, 1] as const;
+
+const dropdownVariants = {
+  hidden: { opacity: 0, y: -4, scale: 0.98 },
+  visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.15, ease: smoothEase as unknown as [number, number, number, number] } },
+  exit: { opacity: 0, y: -4, scale: 0.98, transition: { duration: 0.1, ease: smoothEase as unknown as [number, number, number, number] } },
+};
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -582,7 +591,7 @@ function MenuDropdown({
   const top = triggerRect.bottom;
 
   return (
-    <div
+    <motion.div
       ref={menuRef}
       role="menu"
       className="fixed min-w-[220px] py-1 rounded shadow-lg z-[10000]"
@@ -592,6 +601,10 @@ function MenuDropdown({
         backgroundColor: "var(--color-surface-0)",
         border: "1px solid var(--color-surface-1)",
       }}
+      variants={dropdownVariants}
+      initial="hidden"
+      animate="visible"
+      exit="exit"
     >
       {items.map((item, idx) => {
         const isFocused = focusedIndex === idx;
@@ -663,7 +676,7 @@ function MenuDropdown({
           </div>
         );
       })}
-    </div>
+    </motion.div>
   );
 }
 
@@ -797,15 +810,17 @@ export function MenuBar() {
             {menu.label}
           </button>
 
-          {openMenuIndex === idx && (
-            <MenuDropdown
-              items={menu.items}
-              onClose={handleClose}
-              triggerRect={
-                triggerRefs.current[idx]?.getBoundingClientRect() ?? null
-              }
-            />
-          )}
+          <AnimatePresence>
+            {openMenuIndex === idx && (
+              <MenuDropdown
+                items={menu.items}
+                onClose={handleClose}
+                triggerRect={
+                  triggerRefs.current[idx]?.getBoundingClientRect() ?? null
+                }
+              />
+            )}
+          </AnimatePresence>
         </div>
       ))}
     </div>
