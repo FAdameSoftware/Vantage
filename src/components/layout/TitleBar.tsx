@@ -2,13 +2,13 @@ import { useState, useEffect, useCallback } from "react";
 import { Minus, Square, X, Copy } from "lucide-react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
-import { useEditorStore, selectDirtyTabIds } from "@/stores/editor";
+import { useEditorStore } from "@/stores/editor";
 import { useWorkspaceStore } from "@/stores/workspace";
 
 function WindowControls() {
   const [isMaximized, setIsMaximized] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
-  const dirtyTabIds = useEditorStore(selectDirtyTabIds);
+  const hasDirtyTabs = useEditorStore((s) => s.tabs.some((t) => t.isDirty));
 
   useEffect(() => {
     const appWindow = getCurrentWindow();
@@ -74,7 +74,7 @@ function WindowControls() {
   }, []);
 
   const handleClose = () => {
-    if (dirtyTabIds.length > 0) {
+    if (hasDirtyTabs) {
       setShowSaveDialog(true);
     } else {
       getCurrentWindow().close();
@@ -84,7 +84,10 @@ function WindowControls() {
   const buttonBase =
     "flex items-center justify-center w-12 h-full transition-colors";
 
-  const dirtyTabs = useEditorStore((s) => s.tabs.filter((t) => t.isDirty));
+  // Derived in render — only used when dialog is open, so no selector needed
+  const dirtyTabs = showSaveDialog
+    ? useEditorStore.getState().tabs.filter((t) => t.isDirty)
+    : [];
 
   return (
     <>
