@@ -1,5 +1,4 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
 import { invoke } from "@tauri-apps/api/core";
 
 export type ActivityBarItem = "explorer" | "search" | "git" | "agents" | "settings";
@@ -37,10 +36,12 @@ export interface LayoutState {
   setActivePanelTab: (tab: "terminal" | "browser" | "verification") => void;
   setAgentsViewMode: (mode: "kanban" | "tree") => void;
   setSelectedAgentId: (id: string | null) => void;
+
+  /** Reset layout to defaults, preserving projectRootPath (used on workspace switch) */
+  resetToDefaults: () => void;
 }
 
 export const useLayoutStore = create<LayoutState>()(
-  persist(
     (set, get) => ({
       primarySidebarVisible: true,
       secondarySidebarVisible: true,
@@ -84,24 +85,24 @@ export const useLayoutStore = create<LayoutState>()(
       setActivePanelTab: (tab) => set({ activePanelTab: tab }),
       setAgentsViewMode: (mode) => set({ agentsViewMode: mode }),
       setSelectedAgentId: (id) => set({ selectedAgentId: id }),
+
+      resetToDefaults: () => {
+        const currentPath = get().projectRootPath;
+        set({
+          primarySidebarVisible: true,
+          secondarySidebarVisible: true,
+          panelVisible: true,
+          activeActivityBarItem: "explorer",
+          primarySidebarSize: 20,
+          secondarySidebarSize: 25,
+          panelSize: 30,
+          projectRootPath: currentPath, // preserve
+          previewUrl: null,
+          previewActive: false,
+          activePanelTab: "terminal",
+          agentsViewMode: "kanban",
+          selectedAgentId: null,
+        });
+      },
     }),
-    {
-      name: "vantage-layout",
-      partialize: (state) => ({
-        primarySidebarVisible: state.primarySidebarVisible,
-        secondarySidebarVisible: state.secondarySidebarVisible,
-        panelVisible: state.panelVisible,
-        activeActivityBarItem: state.activeActivityBarItem,
-        primarySidebarSize: state.primarySidebarSize,
-        secondarySidebarSize: state.secondarySidebarSize,
-        panelSize: state.panelSize,
-        projectRootPath: state.projectRootPath,
-        previewUrl: state.previewUrl,
-        previewActive: state.previewActive,
-        activePanelTab: state.activePanelTab,
-        agentsViewMode: state.agentsViewMode,
-        selectedAgentId: state.selectedAgentId,
-      }),
-    }
-  )
 );

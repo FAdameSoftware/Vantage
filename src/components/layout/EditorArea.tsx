@@ -1,9 +1,10 @@
 import { useCallback, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { FileCode, FolderOpen } from "lucide-react";
+import { FileCode, FolderOpen, Clock, Pin } from "lucide-react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { useEditorStore, selectActiveTab } from "@/stores/editor";
 import { useLayoutStore } from "@/stores/layout";
+import { useWorkspaceStore } from "@/stores/workspace";
 import { MonacoEditor } from "@/components/editor/MonacoEditor";
 import { DiffViewer } from "@/components/editor/DiffViewer";
 import { EditorTabs } from "@/components/editor/EditorTabs";
@@ -54,21 +55,42 @@ function Breadcrumbs() {
 }
 
 function WelcomeScreen() {
-  const setProjectRootPath = useLayoutStore((s) => s.setProjectRootPath);
+  const openProject = useWorkspaceStore((s) => s.openProject);
+  const recentProjects = useWorkspaceStore((s) => s.recentProjects);
+  const loadRecentProjectsList = useWorkspaceStore((s) => s.loadRecentProjectsList);
+  const isLoading = useWorkspaceStore((s) => s.isLoading);
   const setActiveActivityBarItem = useLayoutStore((s) => s.setActiveActivityBarItem);
+
+  // Load recent projects on mount
+  useEffect(() => {
+    loadRecentProjectsList();
+  }, [loadRecentProjectsList]);
 
   const handleOpenFolder = async () => {
     try {
       const selected = await open({ directory: true, multiple: false });
       if (selected) {
-        setProjectRootPath(selected as string);
-        // Switch to the Explorer panel so the file tree is visible
+        await openProject(selected as string);
         setActiveActivityBarItem("explorer");
       }
     } catch (e) {
       console.error("Failed to open folder:", e);
     }
   };
+
+  const handleOpenRecent = async (projectPath: string) => {
+    try {
+      await openProject(projectPath);
+      setActiveActivityBarItem("explorer");
+    } catch (e) {
+      console.error("Failed to open recent project:", e);
+    }
+  };
+
+  // Separate pinned and unpinned, pinned first
+  const pinnedProjects = recentProjects.filter((p) => p.pinned);
+  const unpinnedProjects = recentProjects.filter((p) => !p.pinned);
+  const sortedProjects = [...pinnedProjects, ...unpinnedProjects];
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center gap-6">
@@ -95,15 +117,67 @@ function WelcomeScreen() {
 
       <button
         onClick={handleOpenFolder}
-        className="flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-medium transition-colors hover:opacity-90"
+        disabled={isLoading}
+        className="flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-medium transition-colors hover:opacity-90 disabled:opacity-50"
         style={{
           backgroundColor: "var(--color-blue)",
           color: "var(--color-crust)",
         }}
       >
         <FolderOpen size={18} />
-        Open Folder
+        {isLoading ? "Opening..." : "Open Folder"}
       </button>
+
+      {/* Recent Projects */}
+      {sortedProjects.length > 0 && (
+        <div className="w-full max-w-md mt-2">
+          <h3
+            className="text-xs font-semibold uppercase tracking-wider mb-2 px-1"
+            style={{ color: "var(--color-subtext-0)" }}
+          >
+            Recent Projects
+          </h3>
+          <div
+            className="rounded-lg overflow-hidden"
+            style={{
+              border: "1px solid var(--color-surface-0)",
+              backgroundColor: "var(--color-mantle)",
+            }}
+          >
+            {sortedProjects.slice(0, 8).map((project) => (
+              <button
+                key={project.path}
+                onClick={() => handleOpenRecent(project.path)}
+                disabled={isLoading}
+                className="w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-[var(--color-surface-0)] disabled:opacity-50"
+                style={{
+                  borderBottom: "1px solid var(--color-surface-0)",
+                }}
+              >
+                {project.pinned ? (
+                  <Pin size={14} style={{ color: "var(--color-yellow)" }} />
+                ) : (
+                  <Clock size={14} style={{ color: "var(--color-overlay-0)" }} />
+                )}
+                <div className="flex-1 min-w-0">
+                  <div
+                    className="text-sm font-medium truncate"
+                    style={{ color: "var(--color-text)" }}
+                  >
+                    {project.name}
+                  </div>
+                  <div
+                    className="text-xs truncate"
+                    style={{ color: "var(--color-overlay-0)" }}
+                  >
+                    {project.path}
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="flex gap-4 mt-4">
         <KeyboardHint keys="Ctrl+Shift+P" label="Command Palette" />

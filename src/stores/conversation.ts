@@ -1,5 +1,4 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
 import type {
   ContentBlock,
   ContentBlockStartBlock,
@@ -10,9 +9,6 @@ import type {
   PermissionRequestPayload,
 } from "@/lib/protocol";
 import { useUsageStore } from "./usage";
-
-/** Maximum number of messages to persist to localStorage */
-const MAX_PERSISTED_MESSAGES = 100;
 
 // ─── Internal streaming accumulator ─────────────────────────────────────────
 
@@ -148,6 +144,9 @@ export interface ConversationState {
   setSession: (session: SessionMetadata) => void;
   allowToolForSession: (toolName: string) => void;
   isToolAllowedForSession: (toolName: string) => boolean;
+
+  /** Reset the conversation store to its default state (used on workspace switch) */
+  resetToDefaults: () => void;
 }
 
 // ─── Helper: generate a simple unique ID ────────────────────────────────────
@@ -281,6 +280,7 @@ const DEFAULT_STATE: Omit<
   | "setSession"
   | "allowToolForSession"
   | "isToolAllowedForSession"
+  | "resetToDefaults"
 > = {
   messages: [],
   isStreaming: false,
@@ -299,7 +299,6 @@ const DEFAULT_STATE: Omit<
 };
 
 export const useConversationStore = create<ConversationState>()(
-  persist(
   (set, get) => ({
   ...DEFAULT_STATE,
 
@@ -578,17 +577,16 @@ export const useConversationStore = create<ConversationState>()(
   isToolAllowedForSession(toolName: string) {
     return get().sessionAllowedTools.has(toolName);
   },
-}),
-  {
-    name: "vantage-conversation",
-    partialize: (state) => ({
-      messages: state.messages.slice(-MAX_PERSISTED_MESSAGES),
-      session: state.session,
-      totalCost: state.totalCost,
-      totalTokens: state.totalTokens,
-    }),
+
+  resetToDefaults() {
+    set({
+      ...DEFAULT_STATE,
+      activeBlocks: new Map(),
+      sessionAllowedTools: new Set(),
+    });
+    useUsageStore.getState().reset();
   },
-));
+}));
 
 // Re-export types that downstream modules will need
 export type { ContentBlock };

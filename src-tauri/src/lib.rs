@@ -12,6 +12,7 @@ mod search;
 mod session_search;
 mod terminal;
 mod theme;
+mod workspace;
 mod worktree;
 
 use claude::process::SpawnOptions;
@@ -604,6 +605,9 @@ pub fn run() {
             install_plugin,
             index_project,
             get_project_index,
+            workspace::read_workspace_file,
+            workspace::write_workspace_file,
+            workspace::list_workspace_files,
         ],
     );
 

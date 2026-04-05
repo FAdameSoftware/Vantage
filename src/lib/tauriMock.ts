@@ -378,6 +378,11 @@ const mockInvokeHandlers: Record<string, MockInvokeHandler> = {
     sessions: [],
   }),
 
+  // ── Workspace I/O ──
+  read_workspace_file: () => null,
+  write_workspace_file: () => null,
+  list_workspace_files: () => [],
+
   // ── Agent checkpoints ──
   restore_checkpoint: () => null,
   delete_checkpoint: () => null,

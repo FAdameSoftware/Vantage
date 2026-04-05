@@ -83,6 +83,9 @@ export interface MergeQueueState {
 
   /** Check whether an agent is already in the queue */
   isAgentInQueue: (agentId: string) => boolean;
+
+  /** Reset the merge queue to its default state (used on workspace switch) */
+  resetToDefaults: () => void;
 }
 
 export const useMergeQueueStore = create<MergeQueueState>()((set, get) => ({
@@ -183,5 +186,12 @@ export const useMergeQueueStore = create<MergeQueueState>()((set, get) => ({
 
   isAgentInQueue(agentId) {
     return get().entries.some((e) => e.agentId === agentId);
+  },
+
+  resetToDefaults() {
+    set({
+      entries: [],
+      defaultGates: [],
+    });
   },
 }));

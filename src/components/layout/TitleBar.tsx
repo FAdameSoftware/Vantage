@@ -3,6 +3,7 @@ import { Minus, Square, X, Copy } from "lucide-react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
 import { useEditorStore, selectDirtyTabIds } from "@/stores/editor";
+import { useWorkspaceStore } from "@/stores/workspace";
 
 function WindowControls() {
   const [isMaximized, setIsMaximized] = useState(false);
@@ -53,10 +54,22 @@ function WindowControls() {
         console.error(`Failed to save ${tab.path}:`, err);
       }
     }
+    // Save workspace state before closing
+    try {
+      await useWorkspaceStore.getState().saveCurrentWorkspace();
+    } catch (err) {
+      console.error("Failed to save workspace on close:", err);
+    }
     getCurrentWindow().close();
   }, []);
 
-  const discardAndClose = useCallback(() => {
+  const discardAndClose = useCallback(async () => {
+    // Save workspace state (tab positions, layout, etc.) even when discarding file changes
+    try {
+      await useWorkspaceStore.getState().saveCurrentWorkspace();
+    } catch (err) {
+      console.error("Failed to save workspace on close:", err);
+    }
     getCurrentWindow().close();
   }, []);
 
@@ -174,7 +187,18 @@ function WindowControls() {
   );
 }
 
+function extractProjectName(projectPath: string | null): string | null {
+  if (!projectPath) return null;
+  const normalized = projectPath.replace(/\\/g, "/").replace(/\/+$/, "");
+  const parts = normalized.split("/");
+  return parts[parts.length - 1] || null;
+}
+
 export function TitleBar() {
+  const currentProjectPath = useWorkspaceStore((s) => s.currentProjectPath);
+  const name = extractProjectName(currentProjectPath);
+  const titleText = name ? `${name} - Vantage` : "Vantage";
+
   return (
     <div
       className="flex items-center h-8 shrink-0 select-none"
@@ -192,7 +216,7 @@ export function TitleBar() {
           style={{ color: "var(--color-subtext-0)" }}
           data-tauri-drag-region
         >
-          Vantage
+          {titleText}
         </span>
       </div>
 

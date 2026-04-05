@@ -264,6 +264,9 @@ export interface AgentsState {
   /** Get all top-level agents (no parent) */
   getRootAgents: () => Agent[];
 
+  /** Reset the agents store to its default state (used on workspace switch) */
+  resetToDefaults: () => void;
+
   /** Set checkpoint metadata for an agent */
   setCheckpoint: (
     agentId: string,
@@ -654,5 +657,20 @@ export const useAgentsStore = create<AgentsState>()((set, get) => ({
     return get()
       .getAgentsList()
       .filter((a) => a.parentId === null);
+  },
+
+  resetToDefaults() {
+    set({
+      agents: new Map(),
+      columnOrder: {
+        backlog: [],
+        in_progress: [],
+        review: [],
+        done: [],
+      },
+    });
+    // Also clear agent conversations
+    useAgentConversationsStore.getState().conversations.clear();
+    useAgentConversationsStore.setState({ conversations: new Map() });
   },
 }));

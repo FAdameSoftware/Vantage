@@ -62,6 +62,9 @@ export interface VerificationState {
 
   /** Total number of tracked agents */
   getTotalCount: () => number;
+
+  /** Reset the verification store to its default state (used on workspace switch) */
+  resetToDefaults: () => void;
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────
@@ -164,5 +167,12 @@ export const useVerificationStore = create<VerificationState>()((set, get) => ({
 
   getTotalCount() {
     return get().agents.size;
+  },
+
+  resetToDefaults() {
+    set({
+      agents: new Map(),
+      isRunningAll: false,
+    });
   },
 }));

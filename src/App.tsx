@@ -12,6 +12,7 @@ import { PopoutEditor } from "@/components/editor/PopoutEditor";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 import { DevPanel } from "@/components/dev/DevPanel";
 import { useSettingsStore } from "@/stores/settings";
+import { useWorkspaceStore } from "@/stores/workspace";
 import type { ThemeName } from "@/stores/settings";
 
 /** Map theme name to the HTML class that activates it */
@@ -47,6 +48,25 @@ function App() {
     root.classList.remove("dark", "theme-light", "theme-high-contrast");
     root.classList.add(getThemeClass(theme));
   }, [theme]);
+
+  // Start workspace auto-save subscriptions
+  useEffect(() => {
+    const cleanup = useWorkspaceStore.getState().startAutoSave();
+    return cleanup;
+  }, []);
+
+  // Save workspace state before the browser tab/window unloads
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      const { currentProjectPath, saveCurrentWorkspace } = useWorkspaceStore.getState();
+      if (currentProjectPath) {
+        // Fire-and-forget — browser may not wait for async
+        saveCurrentWorkspace();
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, []);
 
   // If this is a popout window, render only the floating editor
   if (isPopoutWindow()) {

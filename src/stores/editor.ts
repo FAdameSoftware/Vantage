@@ -113,6 +113,9 @@ export interface EditorState {
   rejectDiff: (tabId: string) => void;
   /** Check if a tab has a pending diff */
   hasPendingDiff: (tabId: string) => boolean;
+
+  /** Reset the editor store to its default state (used on workspace switch) */
+  resetToDefaults: () => void;
 }
 
 // ── Fine-grained selectors ────────────────────────────────────────────
@@ -423,5 +426,17 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
 
   hasPendingDiff: (tabId) => {
     return get().pendingDiffs.has(tabId);
+  },
+
+  resetToDefaults: () => {
+    set({
+      tabs: [],
+      activeTabId: null,
+      cursorPosition: { line: 1, column: 1 },
+      vimModeLabel: "NORMAL",
+      markdownPreviewTabs: new Set<string>(),
+      popoutTabs: new Set<string>(),
+      pendingDiffs: new Map<string, PendingDiff>(),
+    });
   },
 }));
