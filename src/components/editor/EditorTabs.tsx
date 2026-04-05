@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { X, FileCode, Eye, EyeOff, ExternalLink, Columns2, Rows2 } from "lucide-react";
+import { X, FileCode, Eye, EyeOff, ExternalLink, Columns2, Rows2, Copy, Folder } from "lucide-react";
 import {
   DndContext,
   PointerSensor,
@@ -15,6 +15,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useEditorStore, type EditorTab } from "@/stores/editor";
+import { useLayoutStore } from "@/stores/layout";
 import { useFloatingWindow } from "@/hooks/useFloatingWindow";
 
 // ── Unsaved changes confirmation dialog ────────────────────────────
@@ -135,6 +136,10 @@ interface ContextMenuProps {
   onCloseOthers: (tabId: string) => void;
   onCloseToTheRight: (tabId: string) => void;
   onCloseAll: () => void;
+  onCopyPath: (tabId: string) => void;
+  onCopyRelativePath: (tabId: string) => void;
+  onRevealInExplorer: (tabId: string) => void;
+  onOpenContainingFolder: (tabId: string) => void;
 }
 
 function TabContextMenu({
@@ -146,6 +151,10 @@ function TabContextMenu({
   onCloseTab,
   onCloseOthers,
   onCloseToTheRight,
+  onCopyPath,
+  onCopyRelativePath,
+  onRevealInExplorer,
+  onOpenContainingFolder,
   onCloseAll,
 }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
@@ -187,6 +196,39 @@ function TabContextMenu({
       icon: <Rows2 size={12} />,
       action: () => {
         if (state.tabId) onSplitDown(state.tabId);
+        onClose();
+      },
+    },
+    { separator: true as const },
+    {
+      label: "Copy Path",
+      icon: <Copy size={12} />,
+      action: () => {
+        if (state.tabId) onCopyPath(state.tabId);
+        onClose();
+      },
+    },
+    {
+      label: "Copy Relative Path",
+      icon: <Copy size={12} />,
+      action: () => {
+        if (state.tabId) onCopyRelativePath(state.tabId);
+        onClose();
+      },
+    },
+    {
+      label: "Reveal in Explorer",
+      icon: <Folder size={12} />,
+      action: () => {
+        if (state.tabId) onRevealInExplorer(state.tabId);
+        onClose();
+      },
+    },
+    {
+      label: "Open Containing Folder",
+      icon: <Folder size={12} />,
+      action: () => {
+        if (state.tabId) onOpenContainingFolder(state.tabId);
         onClose();
       },
     },
@@ -496,6 +538,72 @@ export function EditorTabs() {
     popOut(tabId);
   };
 
+  const projectRootPath = useLayoutStore((s) => s.projectRootPath);
+  const setActiveActivityBarItem = useLayoutStore((s) => s.setActiveActivityBarItem);
+
+  const handleCopyPath = useCallback(
+    async (tabId: string) => {
+      const tab = tabs.find((t) => t.id === tabId);
+      if (!tab) return;
+      try {
+        await navigator.clipboard.writeText(tab.path);
+      } catch {
+        // Clipboard API unavailable — ignore
+      }
+    },
+    [tabs],
+  );
+
+  const handleCopyRelativePath = useCallback(
+    async (tabId: string) => {
+      const tab = tabs.find((t) => t.id === tabId);
+      if (!tab) return;
+      let rel = tab.path;
+      if (projectRootPath) {
+        const root = projectRootPath.replace(/\\/g, "/");
+        const norm = tab.path.replace(/\\/g, "/");
+        if (norm.startsWith(root)) {
+          rel = norm.slice(root.length).replace(/^\//, "");
+        }
+      }
+      try {
+        await navigator.clipboard.writeText(rel);
+      } catch {
+        // ignore
+      }
+    },
+    [tabs, projectRootPath],
+  );
+
+  const handleRevealInExplorer = useCallback(
+    (tabId: string) => {
+      const tab = tabs.find((t) => t.id === tabId);
+      if (!tab) return;
+      // Switch to file explorer sidebar and dispatch event so it can highlight the file
+      setActiveActivityBarItem("explorer");
+      window.dispatchEvent(
+        new CustomEvent("vantage:reveal-in-explorer", { detail: { path: tab.path } }),
+      );
+    },
+    [tabs, setActiveActivityBarItem],
+  );
+
+  const handleOpenContainingFolder = useCallback(
+    async (tabId: string) => {
+      const tab = tabs.find((t) => t.id === tabId);
+      if (!tab) return;
+      const segments = tab.path.split("/");
+      const dir = segments.slice(0, -1).join("/");
+      try {
+        const { invoke } = await import("@tauri-apps/api/core");
+        await invoke("open_in_file_manager", { path: dir });
+      } catch {
+        // Tauri command may not exist in mock — ignore
+      }
+    },
+    [tabs],
+  );
+
   return (
     <>
       <div
@@ -559,6 +667,10 @@ export function EditorTabs() {
         onCloseOthers={closeOtherTabs}
         onCloseToTheRight={closeTabsToTheRight}
         onCloseAll={closeAllTabs}
+        onCopyPath={handleCopyPath}
+        onCopyRelativePath={handleCopyRelativePath}
+        onRevealInExplorer={handleRevealInExplorer}
+        onOpenContainingFolder={handleOpenContainingFolder}
       />
 
       {/* Unsaved changes confirmation dialog */}

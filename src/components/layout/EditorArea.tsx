@@ -14,6 +14,7 @@ import { UsageDashboard } from "@/components/analytics/UsageDashboard";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 import { FileIcon } from "@/components/files/FileIcon";
 import { useCrossFileIntelligence } from "@/hooks/useCrossFileIntelligence";
+import { addRecentFile } from "@/hooks/useRecentFiles";
 
 interface SiblingEntry {
   name: string;
@@ -291,6 +292,13 @@ function WelcomeScreen() {
   const isLoading = useWorkspaceStore((s) => s.isLoading);
   const setActiveActivityBarItem = useLayoutStore((s) => s.setActiveActivityBarItem);
 
+  // Recent files (localStorage)
+  const [recentFiles, setRecentFiles] = useState<import("@/hooks/useRecentFiles").RecentFile[]>([]);
+  useEffect(() => {
+    const { getRecentFiles } = require("@/hooks/useRecentFiles");
+    setRecentFiles(getRecentFiles().slice(0, 8));
+  }, []);
+
   // Track which project card is hovered for showing remove button
   const [hoveredPath, setHoveredPath] = useState<string | null>(null);
 
@@ -347,6 +355,19 @@ function WelcomeScreen() {
       setActiveActivityBarItem("explorer");
     } catch (e) {
       console.error("Failed to open recent project:", e);
+    }
+  };
+
+  const openFile = useEditorStore((s) => s.openFile);
+  const handleOpenRecentFile = async (filePath: string, fileName: string, _language: string) => {
+    try {
+      const result = await invoke<{ path: string; content: string; language: string }>(
+        "read_file",
+        { path: filePath },
+      );
+      openFile(result.path, fileName, result.language, result.content);
+    } catch (e) {
+      console.error("Failed to open recent file:", e);
     }
   };
 
@@ -528,10 +549,61 @@ function WelcomeScreen() {
         </div>
       )}
 
+      {/* Recent Files */}
+      {recentFiles.length > 0 && (
+        <div className="w-full max-w-md">
+          <h3
+            className="text-xs font-semibold uppercase tracking-wider mb-2 px-1"
+            style={{ color: "var(--color-subtext-0)" }}
+          >
+            Recent Files
+          </h3>
+          <div
+            className="rounded-lg overflow-hidden"
+            style={{
+              border: "1px solid var(--color-surface-0)",
+              backgroundColor: "var(--color-mantle)",
+            }}
+          >
+            {recentFiles.map((file) => (
+              <button
+                key={file.path}
+                className="w-full flex items-center gap-3 px-3 py-2 text-left transition-colors hover:bg-[var(--color-surface-0)]"
+                style={{ borderBottom: "1px solid var(--color-surface-0)" }}
+                onClick={() => handleOpenRecentFile(file.path, file.name, file.language)}
+              >
+                <FileCode size={14} style={{ color: "var(--color-blue)", flexShrink: 0 }} />
+                <div className="flex-1 min-w-0">
+                  <div
+                    className="text-sm truncate"
+                    style={{ color: "var(--color-text)" }}
+                  >
+                    {file.name}
+                  </div>
+                  <div
+                    className="text-xs truncate"
+                    style={{ color: "var(--color-overlay-0)" }}
+                  >
+                    {file.path}
+                  </div>
+                </div>
+                <span
+                  className="text-[10px] flex items-center gap-0.5 shrink-0"
+                  style={{ color: "var(--color-overlay-0)" }}
+                >
+                  <Clock size={9} />
+                  {formatRelativeTime(file.lastOpenedAt)}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="flex gap-4 mt-4">
         <KeyboardHint keys="Ctrl+Shift+P" label="Command Palette" />
         <KeyboardHint keys="Ctrl+P" label="Quick Open" />
-        <KeyboardHint keys="Ctrl+`" label="Terminal" />
+        <KeyboardHint keys="Ctrl+R" label="Recent Files" />
       </div>
     </div>
   );
@@ -559,8 +631,11 @@ export function EditorArea() {
   // Enable cross-file TypeScript intelligence (registers project files with Monaco TS worker)
   useCrossFileIntelligence();
 
+
   const updateContent = useEditorStore((s) => s.updateContent);
   const markSaved = useEditorStore((s) => s.markSaved);
+  const autoSave = useSettingsStore((s) => s.autoSave);
+  const autoSaveDelay = useSettingsStore((s) => s.autoSaveDelay);
   const reloadTab = useEditorStore((s) => s.reloadTab);
   const markdownPreviewTabs = useEditorStore((s) => s.markdownPreviewTabs);
   const pendingDiffs = useEditorStore((s) => s.pendingDiffs);
@@ -570,6 +645,55 @@ export function EditorArea() {
   const splitDirection = useEditorStore((s) => s.splitDirection);
   const secondaryActiveTabId = useEditorStore((s) => s.secondaryActiveTabId);
   const tabs = useEditorStore((s) => s.tabs);
+
+  // ── Track recent files ────────────────────────────────────────────
+  useEffect(() => {
+    if (!activeTab || activeTab.path.startsWith("__vantage://")) return;
+    addRecentFile({
+      path: activeTab.path,
+      name: activeTab.name,
+      language: activeTab.language,
+    });
+  }, [activeTab?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Auto-save (afterDelay) ────────────────────────────────────────
+  useEffect(() => {
+    if (autoSave !== "afterDelay") return;
+    if (!activeTab?.isDirty) return;
+
+    const id = setTimeout(async () => {
+      // Re-read from store to ensure we have the latest content
+      const tab = useEditorStore.getState().getActiveTab();
+      if (!tab || !tab.isDirty) return;
+      try {
+        await invoke("write_file", { path: tab.path, content: tab.content });
+        markSaved(tab.id, tab.content);
+      } catch (e) {
+        console.warn("Auto-save failed:", e);
+      }
+    }, autoSaveDelay);
+
+    return () => clearTimeout(id);
+  }, [activeTab?.content, autoSave, autoSaveDelay, markSaved]);
+
+  // ── Auto-save (onFocusChange) ─────────────────────────────────────
+  useEffect(() => {
+    if (autoSave !== "onFocusChange") return;
+
+    const handleBlur = async () => {
+      const tab = useEditorStore.getState().getActiveTab();
+      if (!tab || !tab.isDirty) return;
+      try {
+        await invoke("write_file", { path: tab.path, content: tab.content });
+        markSaved(tab.id, tab.content);
+      } catch (e) {
+        console.warn("Auto-save on focus change failed:", e);
+      }
+    };
+
+    window.addEventListener("blur", handleBlur);
+    return () => window.removeEventListener("blur", handleBlur);
+  }, [autoSave, markSaved]);
 
   // ── Markdown sync-scroll state ────────────────────────────────────
   const [mdScrollFraction, setMdScrollFraction] = useState(0);

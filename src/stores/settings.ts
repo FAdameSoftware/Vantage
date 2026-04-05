@@ -38,6 +38,16 @@ export interface SettingsState {
   renderWhitespace: "none" | "boundary" | "selection" | "trailing" | "all";
   /** Model to use for new Claude sessions */
   selectedModel: string;
+  /** Auto-save mode: off, save after delay, or save on focus change */
+  autoSave: "off" | "afterDelay" | "onFocusChange";
+  /** Delay in ms before auto-saving when autoSave is "afterDelay" */
+  autoSaveDelay: number;
+  /** Whether bracket pair colorization is enabled */
+  bracketPairColorization: boolean;
+  /** Whether scrolling past the last line is allowed */
+  scrollBeyondLastLine: boolean;
+  /** Smooth caret animation for cursor movement */
+  cursorSmoothCaretAnimation: "off" | "explicit" | "on";
   /** Custom keybinding overrides: keybinding ID -> shortcut string (e.g., "Ctrl+Shift+B") */
   keybindingOverrides: Record<string, { key: string; ctrl?: boolean; shift?: boolean; alt?: boolean }>;
   setTheme: (theme: ThemeName) => void;
@@ -63,6 +73,11 @@ export interface SettingsState {
   setFontLigatures: (value: boolean) => void;
   setRenderWhitespace: (value: "none" | "boundary" | "selection" | "trailing" | "all") => void;
   setSelectedModel: (model: string) => void;
+  setAutoSave: (mode: "off" | "afterDelay" | "onFocusChange") => void;
+  setAutoSaveDelay: (ms: number) => void;
+  setBracketPairColorization: (value: boolean) => void;
+  setScrollBeyondLastLine: (value: boolean) => void;
+  setCursorSmoothCaretAnimation: (value: "off" | "explicit" | "on") => void;
   setKeybindingOverride: (id: string, binding: { key: string; ctrl?: boolean; shift?: boolean; alt?: boolean }) => void;
   removeKeybindingOverride: (id: string) => void;
   resetAllKeybindings: () => void;
@@ -94,6 +109,11 @@ export const useSettingsStore = create<SettingsState>()(
       fontLigatures: true,
       renderWhitespace: "selection" as const,
       selectedModel: "claude-sonnet-4-6",
+      autoSave: "off" as const,
+      autoSaveDelay: 1000,
+      bracketPairColorization: true,
+      scrollBeyondLastLine: true,
+      cursorSmoothCaretAnimation: "off" as const,
       keybindingOverrides: {},
       setTheme: (theme) => set({ theme }),
       setFontSizeEditor: (size) => set({ fontSizeEditor: Math.max(8, Math.min(32, size)) }),
@@ -118,6 +138,11 @@ export const useSettingsStore = create<SettingsState>()(
       setFontLigatures: (value) => set({ fontLigatures: value }),
       setRenderWhitespace: (value) => set({ renderWhitespace: value }),
       setSelectedModel: (model) => set({ selectedModel: model }),
+      setAutoSave: (mode) => set({ autoSave: mode }),
+      setAutoSaveDelay: (ms) => set({ autoSaveDelay: Math.max(100, Math.min(10000, ms)) }),
+      setBracketPairColorization: (value) => set({ bracketPairColorization: value }),
+      setScrollBeyondLastLine: (value) => set({ scrollBeyondLastLine: value }),
+      setCursorSmoothCaretAnimation: (value) => set({ cursorSmoothCaretAnimation: value }),
       setKeybindingOverride: (id, binding) =>
         set((state) => ({
           keybindingOverrides: { ...state.keybindingOverrides, [id]: binding },
@@ -156,6 +181,11 @@ export const useSettingsStore = create<SettingsState>()(
         fontLigatures: state.fontLigatures,
         renderWhitespace: state.renderWhitespace,
         selectedModel: state.selectedModel,
+        autoSave: state.autoSave,
+        autoSaveDelay: state.autoSaveDelay,
+        bracketPairColorization: state.bracketPairColorization,
+        scrollBeyondLastLine: state.scrollBeyondLastLine,
+        cursorSmoothCaretAnimation: state.cursorSmoothCaretAnimation,
         keybindingOverrides: state.keybindingOverrides,
       }),
     }

@@ -46,6 +46,8 @@ export function StatusBar() {
   const insertSpaces = useSettingsStore((s) => s.insertSpaces);
   const setTabSize = useSettingsStore((s) => s.setTabSize);
   const setInsertSpaces = useSettingsStore((s) => s.setInsertSpaces);
+  const autoSave = useSettingsStore((s) => s.autoSave);
+  const setAutoSave = useSettingsStore((s) => s.setAutoSave);
   const { branch, isGitRepo } = useGitStatus(projectRootPath);
 
   // Git diff stat: +insertions -deletions shown next to branch
@@ -441,6 +443,23 @@ export function StatusBar() {
                 />
               )}
             </div>
+          )}
+
+          {/* Auto-save indicator -> click cycles through modes */}
+          {autoSave !== "off" && (
+            <button
+              className="hover:text-[var(--color-text)] transition-colors"
+              style={{ color: "var(--color-green)" }}
+              onClick={() =>
+                setAutoSave(
+                  autoSave === "afterDelay" ? "onFocusChange" : "off",
+                )
+              }
+              title={`Auto Save: ${autoSave === "afterDelay" ? "After Delay" : "On Focus Change"}. Click to cycle.`}
+              aria-label={`Auto save mode: ${autoSave}. Click to cycle.`}
+            >
+              Auto
+            </button>
           )}
 
           {/* Word Wrap toggle */}

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { getRecentFiles } from "@/hooks/useRecentFiles";
 import {
   CommandDialog,
   Command,
@@ -218,6 +219,53 @@ function FilesView({ files, rootPath, onSelect }: FilesViewProps) {
   );
 }
 
+interface RecentFilesViewProps {
+  searchText: string;
+  rootPath: string | null;
+  onSelect: (file: { path: string; name: string; language: string }) => void;
+}
+
+function RecentFilesView({ searchText, rootPath, onSelect }: RecentFilesViewProps) {
+  const query = searchText.startsWith("@")
+    ? searchText.slice(1).trimStart().toLowerCase()
+    : searchText.toLowerCase();
+
+  const recentFiles = useMemo(() => getRecentFiles(), []);
+  const filtered = query
+    ? recentFiles.filter(
+        (f) =>
+          f.name.toLowerCase().includes(query) ||
+          f.path.toLowerCase().includes(query),
+      )
+    : recentFiles;
+
+  if (filtered.length === 0) {
+    return (
+      <CommandGroup heading="Recent Files">
+        <CommandItem value="no-recent-files" disabled>
+          <FileCode className="size-4 shrink-0 text-muted-foreground" />
+          <span>No recently opened files</span>
+        </CommandItem>
+      </CommandGroup>
+    );
+  }
+
+  return (
+    <CommandGroup heading="Recent Files">
+      {filtered.map((file) => (
+        <CommandItem
+          key={file.path}
+          value={file.path}
+          onSelect={() => onSelect(file)}
+        >
+          {getFileIcon(file.path.split(".").pop() ?? null)}
+          <span className="truncate">{getRelativePath(file.path, rootPath)}</span>
+        </CommandItem>
+      ))}
+    </CommandGroup>
+  );
+}
+
 interface GoToLineViewProps {
   searchText: string;
   onSelect: (lineNumber: number) => void;
@@ -272,12 +320,51 @@ export function CommandPalette() {
   const setCursorStyle = useSettingsStore((s) => s.setCursorStyle);
   const renderWhitespace = useSettingsStore((s) => s.renderWhitespace);
   const setRenderWhitespace = useSettingsStore((s) => s.setRenderWhitespace);
+  const bracketPairColorization = useSettingsStore((s) => s.bracketPairColorization);
+  const setBracketPairColorization = useSettingsStore((s) => s.setBracketPairColorization);
+  const scrollBeyondLastLine = useSettingsStore((s) => s.scrollBeyondLastLine);
+  const setScrollBeyondLastLine = useSettingsStore((s) => s.setScrollBeyondLastLine);
+  const cursorSmoothCaretAnimation = useSettingsStore((s) => s.cursorSmoothCaretAnimation);
+  const setCursorSmoothCaretAnimation = useSettingsStore((s) => s.setCursorSmoothCaretAnimation);
+  const autoSave = useSettingsStore((s) => s.autoSave);
+  const setAutoSave = useSettingsStore((s) => s.setAutoSave);
 
   const cycleTheme = useCallback(() => {
     const currentIndex = THEME_CYCLE.indexOf(currentTheme);
     const nextIndex = (currentIndex + 1) % THEME_CYCLE.length;
     setTheme(THEME_CYCLE[nextIndex]);
   }, [currentTheme, setTheme]);
+
+  // Ctrl+R → open recent files palette
+  const openPalette = useCommandPaletteStore((s) => s.open);
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.ctrlKey && !e.shiftKey && !e.altKey && e.key === "r") {
+        e.preventDefault();
+        openPalette("recent");
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [openPalette]);
+
+  // Handle selecting a recent file
+  const handleRecentFileSelect = useCallback(
+    async (file: { path: string; name: string; language: string }) => {
+      try {
+        const result = await invoke<{ path: string; content: string; language: string }>(
+          "read_file",
+          { path: file.path },
+        );
+        openFile(result.path, file.name, result.language, result.content);
+      } catch (e) {
+        console.error("Failed to open recent file:", e);
+      } finally {
+        close();
+      }
+    },
+    [openFile, close],
+  );
 
   const [fileList, setFileList] = useState<FlatFile[]>([]);
   const [isLoadingFiles, setIsLoadingFiles] = useState(false);
@@ -760,6 +847,70 @@ export function CommandPalette() {
         }
       },
     },
+    {
+      id: "open-recent-file",
+      label: "Open Recent File",
+      shortcut: "Ctrl+R",
+      icon: <FileCode className="size-4 shrink-0 text-muted-foreground" />,
+      category: "File",
+      action: () => openPalette("recent"),
+    },
+    {
+      id: "toggle-bracket-pair-colorization",
+      label: `Bracket Pair Colorization: ${bracketPairColorization ? "Disable" : "Enable"}`,
+      icon: <FileCode className="size-4 shrink-0 text-muted-foreground" />,
+      category: "Editor",
+      action: () => setBracketPairColorization(!bracketPairColorization),
+    },
+    {
+      id: "toggle-scroll-beyond-last-line",
+      label: `Scroll Beyond Last Line: ${scrollBeyondLastLine ? "Disable" : "Enable"}`,
+      icon: <FileCode className="size-4 shrink-0 text-muted-foreground" />,
+      category: "Editor",
+      action: () => setScrollBeyondLastLine(!scrollBeyondLastLine),
+    },
+    {
+      id: "cursor-smooth-caret-off",
+      label: `Smooth Cursor Animation: Off${cursorSmoothCaretAnimation === "off" ? " (active)" : ""}`,
+      icon: <FileCode className="size-4 shrink-0 text-muted-foreground" />,
+      category: "Editor",
+      action: () => setCursorSmoothCaretAnimation("off"),
+    },
+    {
+      id: "cursor-smooth-caret-explicit",
+      label: `Smooth Cursor Animation: Explicit${cursorSmoothCaretAnimation === "explicit" ? " (active)" : ""}`,
+      icon: <FileCode className="size-4 shrink-0 text-muted-foreground" />,
+      category: "Editor",
+      action: () => setCursorSmoothCaretAnimation("explicit"),
+    },
+    {
+      id: "cursor-smooth-caret-on",
+      label: `Smooth Cursor Animation: On${cursorSmoothCaretAnimation === "on" ? " (active)" : ""}`,
+      icon: <FileCode className="size-4 shrink-0 text-muted-foreground" />,
+      category: "Editor",
+      action: () => setCursorSmoothCaretAnimation("on"),
+    },
+    {
+      id: "auto-save-off",
+      label: `Auto Save: Off${autoSave === "off" ? " (active)" : ""}`,
+      icon: <FileCode className="size-4 shrink-0 text-muted-foreground" />,
+      category: "Editor",
+      action: () => setAutoSave("off"),
+    },
+    {
+      id: "auto-save-after-delay",
+      label: `Auto Save: After Delay${autoSave === "afterDelay" ? " (active)" : ""}`,
+      icon: <FileCode className="size-4 shrink-0 text-muted-foreground" />,
+      category: "Editor",
+      action: () => setAutoSave("afterDelay"),
+    },
+    {
+      id: "auto-save-on-focus-change",
+      label: `Auto Save: On Focus Change${autoSave === "onFocusChange" ? " (active)" : ""}`,
+      icon: <FileCode className="size-4 shrink-0 text-muted-foreground" />,
+      category: "Editor",
+      action: () => setAutoSave("onFocusChange"),
+    },
   ];
 
   // Fetch files when mode switches to "files" and palette opens
@@ -838,6 +989,8 @@ export function CommandPalette() {
       ? "Type a command..."
       : mode === "goto"
       ? "Type a line number (e.g. :42)..."
+      : mode === "recent"
+      ? "Search recent files..."
       : "Search files by name...";
 
   return (
@@ -847,7 +1000,7 @@ export function CommandPalette() {
         if (!open) close();
       }}
     >
-      <Command shouldFilter={mode === "files"}>
+      <Command shouldFilter={mode === "files" || mode === "recent"}>
         <CommandInput
           placeholder={placeholder}
           value={searchText}
@@ -878,6 +1031,14 @@ export function CommandPalette() {
             <GoToLineView
               searchText={searchText}
               onSelect={handleGoToLine}
+            />
+          )}
+
+          {mode === "recent" && (
+            <RecentFilesView
+              searchText={searchText}
+              rootPath={projectRootPath}
+              onSelect={handleRecentFileSelect}
             />
           )}
         </CommandList>

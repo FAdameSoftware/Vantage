@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-export type PaletteMode = "commands" | "files" | "goto";
+export type PaletteMode = "commands" | "files" | "goto" | "recent";
 
 export interface CommandPaletteState {
   isOpen: boolean;
@@ -19,7 +19,7 @@ export const useCommandPaletteStore = create<CommandPaletteState>()((set) => ({
   searchText: "",
 
   open: (mode = "commands") =>
-    set({ isOpen: true, mode, searchText: mode === "commands" ? ">" : "" }),
+    set({ isOpen: true, mode, searchText: mode === "commands" ? ">" : mode === "recent" ? "@" : "" }),
 
   close: () => set({ isOpen: false, searchText: "" }),
 
@@ -31,6 +31,8 @@ export const useCommandPaletteStore = create<CommandPaletteState>()((set) => ({
       set({ searchText: text, mode: "commands" });
     } else if (text.startsWith(":")) {
       set({ searchText: text, mode: "goto" });
+    } else if (text.startsWith("@")) {
+      set({ searchText: text, mode: "recent" });
     } else {
       set({ searchText: text, mode: "files" });
     }

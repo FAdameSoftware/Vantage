@@ -127,6 +127,9 @@ export function MonacoEditor({
   const stickyScroll = useSettingsStore((s) => s.stickyScroll);
   const fontLigatures = useSettingsStore((s) => s.fontLigatures);
   const renderWhitespace = useSettingsStore((s) => s.renderWhitespace);
+  const bracketPairColorization = useSettingsStore((s) => s.bracketPairColorization);
+  const scrollBeyondLastLine = useSettingsStore((s) => s.scrollBeyondLastLine);
+  const cursorSmoothCaretAnimation = useSettingsStore((s) => s.cursorSmoothCaretAnimation);
   const monacoTheme = getMonacoTheme(themeName);
 
   const setCursorPosition = useEditorStore((s) => s.setCursorPosition);
@@ -279,14 +282,14 @@ export function MonacoEditor({
             lineNumbers: lineNumbers ? "on" : "off",
             readOnly,
             automaticLayout: true,
-            scrollBeyondLastLine: false,
             smoothScrolling: true,
             cursorBlinking,
-            cursorSmoothCaretAnimation: cursorBlinking === "smooth" ? "on" : "off",
+            cursorSmoothCaretAnimation,
             cursorStyle,
             renderLineHighlight: "line",
             renderWhitespace,
-            bracketPairColorization: { enabled: true },
+            scrollBeyondLastLine,
+            bracketPairColorization: { enabled: bracketPairColorization },
             guides: {
               bracketPairs: true,
               indentation: true,
