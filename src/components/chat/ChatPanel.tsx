@@ -593,27 +593,27 @@ export function ChatPanel({ mode = "sidebar" }: ChatPanelProps) {
       className="flex flex-col h-full overflow-hidden"
       style={{ backgroundColor: "var(--color-mantle)" }}
     >
-      {/* Header */}
+      {/* Header — clean single row */}
       <div
-        className={`flex items-center justify-between shrink-0 min-w-0 gap-1 py-1 ${mode === "full" ? "px-6 min-h-10" : "px-4 min-h-9"}`}
+        className={`flex items-center shrink-0 min-w-0 gap-2 ${mode === "full" ? "px-5 h-10" : "px-3 h-9"}`}
         style={{
           borderBottom: "1px solid var(--color-surface-0)",
         }}
       >
+        {/* Left: title + model badge */}
         <div className="flex items-center gap-2 min-w-0 shrink-0">
           {mode === "sidebar" && (
-            <MessageSquare size={14} className="shrink-0" style={{ color: "var(--color-blue)" }} />
+            <MessageSquare size={13} className="shrink-0" style={{ color: "var(--color-blue)" }} />
           )}
           <span
-            className={`font-semibold uppercase tracking-wider truncate ${mode === "full" ? "text-sm" : "text-xs"}`}
+            className="text-[11px] font-semibold uppercase tracking-wider"
             style={{ color: "var(--color-subtext-0)" }}
           >
             {mode === "full" ? "Claude" : "Chat"}
           </span>
-          {/* In full mode, show model and session info inline with title */}
-          {mode === "full" && modelDisplay && (
+          {modelDisplay && (
             <span
-              className="text-[11px] px-2 py-0.5 rounded-full"
+              className="text-[10px] px-1.5 py-0.5 rounded-full"
               style={{
                 backgroundColor: "var(--color-surface-0)",
                 color: "var(--color-subtext-0)",
@@ -624,42 +624,55 @@ export function ChatPanel({ mode = "sidebar" }: ChatPanelProps) {
             </span>
           )}
         </div>
-        <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
-          {/* Pinned filter toggle */}
+
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* Right: icon-only action buttons grouped tightly */}
+        <div className="flex items-center gap-0.5 shrink-0">
+          {/* Primary actions group */}
+          <PlanModeToggle />
+          {mode === "sidebar" && <ModelSelector />}
+
+          {/* Divider */}
+          <div className="w-px h-3.5 mx-1" style={{ backgroundColor: "var(--color-surface-1)" }} />
+
+          {/* Secondary icon-only actions */}
           {pinnedMessageIds.size > 0 && (
             <button
               type="button"
-              className="p-1 rounded transition-colors hover:bg-[var(--color-surface-0)]"
+              className="p-1 rounded hover:bg-[var(--color-surface-0)]"
               style={{ color: showPinnedOnly ? "var(--color-yellow)" : "var(--color-overlay-1)" }}
               onClick={() => setShowPinnedOnly((prev) => !prev)}
-              aria-label={showPinnedOnly ? "Show all messages" : "Show pinned only"}
-              title={showPinnedOnly ? "Show all messages" : `Show pinned (${pinnedMessageIds.size})`}
+              title={showPinnedOnly ? "Show all messages" : `Pinned (${pinnedMessageIds.size})`}
             >
-              <Pin size={14} />
+              <Pin size={13} />
             </button>
           )}
-          <ExportMenu />
           <button
             type="button"
-            className="p-1 rounded transition-colors hover:bg-[var(--color-surface-0)]"
-            style={{ color: showMap ? "var(--color-blue)" : "var(--color-overlay-1)" }}
-            onClick={() => setShowMap((prev) => !prev)}
-            aria-label="Toggle execution map"
-            title="Toggle execution map"
-          >
-            <GitBranch size={14} />
-          </button>
-          <button
-            type="button"
-            className="p-1 rounded transition-colors hover:bg-[var(--color-surface-0)]"
+            className="p-1 rounded hover:bg-[var(--color-surface-0)]"
             style={{ color: searchOpen ? "var(--color-blue)" : "var(--color-overlay-1)" }}
             onClick={() => setSearchOpen((prev) => !prev)}
-            aria-label="Search messages (Ctrl+Shift+F)"
-            title="Search messages (Ctrl+Shift+F)"
+            title="Search (Ctrl+Shift+F)"
           >
-            <Search size={14} />
+            <Search size={13} />
           </button>
-          <PlanModeToggle />
+          <button
+            type="button"
+            className="p-1 rounded hover:bg-[var(--color-surface-0)]"
+            style={{ color: showMap ? "var(--color-blue)" : "var(--color-overlay-1)" }}
+            onClick={() => setShowMap((prev) => !prev)}
+            title="Execution map"
+          >
+            <GitBranch size={13} />
+          </button>
+          <ExportMenu />
+
+          {/* Divider */}
+          <div className="w-px h-3.5 mx-1" style={{ backgroundColor: "var(--color-surface-1)" }} />
+
+          {/* Session actions */}
           <WriterReviewerLauncher />
           <CompactDialog onSend={handleSend} />
           <SessionSelector
@@ -667,29 +680,15 @@ export function ChatPanel({ mode = "sidebar" }: ChatPanelProps) {
             onNewSession={handleNewSession}
             onResumeSession={handleResumeSession}
           />
-          {mode === "sidebar" && <ModelSelector />}
-          {mode === "sidebar" && modelDisplay && (
-            <span
-              className="text-[10px] px-1.5 py-0.5 rounded"
-              style={{
-                backgroundColor: "var(--color-surface-0)",
-                color: "var(--color-subtext-0)",
-              }}
-              title="Active session model"
-            >
-              {modelDisplay}
-            </span>
-          )}
           {isConnected && (
             <button
               type="button"
-              className="p-1 rounded transition-colors hover:bg-[var(--color-surface-0)]"
+              className="p-1 rounded hover:bg-[var(--color-surface-0)]"
               style={{ color: "var(--color-overlay-1)" }}
               onClick={handleNewSession}
-              aria-label="New session"
               title="New Session"
             >
-              <Plus size={14} />
+              <Plus size={13} />
             </button>
           )}
         </div>
@@ -713,7 +712,7 @@ export function ChatPanel({ mode = "sidebar" }: ChatPanelProps) {
           <div className="flex-1 relative overflow-hidden">
           <div
             ref={scrollContainerRef}
-            className={`h-full overflow-y-auto ${mode === "full" ? "flex justify-center px-6 py-5" : "p-4"}`}
+            className={`h-full overflow-y-auto scrollbar-thin ${mode === "full" ? "flex justify-center px-6 py-5" : "p-4"}`}
             onScroll={handleScroll}
           >
           <div className={mode === "full" ? "w-full max-w-4xl chat-full-mode" : "w-full"}>
