@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useImperativeHandle, forwardRef } from "react";
 import { Send, Square, Brain } from "lucide-react";
 import { SlashAutocomplete } from "./SlashAutocomplete";
 import { MentionAutocomplete } from "./MentionAutocomplete";
@@ -28,17 +28,39 @@ interface ChatInputProps {
   installedSkills?: Array<{ name: string; description: string; source: string }>;
 }
 
-export function ChatInput({
+export interface ChatInputHandle {
+  setEditText: (text: string) => void;
+}
+
+export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function ChatInput({
   onSend,
   onStop,
   isStreaming,
   disabled,
   connectionStatus,
   installedSkills,
-}: ChatInputProps) {
+}, ref) {
   const [text, setText] = useState("");
   const [ultrathink, setUltrathink] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Expose setEditText for parent to load edited text into input
+  useImperativeHandle(ref, () => ({
+    setEditText: (editText: string) => {
+      setText(editText);
+      // Focus and move cursor to end after a tick
+      setTimeout(() => {
+        const el = textareaRef.current;
+        if (el) {
+          el.focus();
+          el.selectionStart = editText.length;
+          el.selectionEnd = editText.length;
+          el.style.height = "auto";
+          el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
+        }
+      }, 0);
+    },
+  }), []);
 
   // Slash autocomplete state
   const [showSlash, setShowSlash] = useState(false);
@@ -401,4 +423,4 @@ export function ChatInput({
       </p>
     </div>
   );
-}
+});

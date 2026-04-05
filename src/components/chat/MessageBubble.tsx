@@ -1,7 +1,7 @@
 import { useState, useCallback, memo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { User, Brain, Copy, Check } from "lucide-react";
+import { User, Brain, Copy, Check, Pencil, RefreshCw } from "lucide-react";
 import type { ConversationMessage } from "@/stores/conversation";
 import { CodeBlock } from "./CodeBlock";
 import { ToolCallCard } from "./ToolCallCard";
@@ -41,10 +41,32 @@ function MarkdownCode({ children, className }: CodeProps) {
 
 // ─── User message bubble ────────────────────────────────────────────────────
 
-function UserBubble({ message }: { message: ConversationMessage }) {
+function UserBubble({
+  message,
+  onEdit,
+}: {
+  message: ConversationMessage;
+  onEdit?: (text: string) => void;
+}) {
   return (
-    <div className="flex justify-end mb-3">
+    <div className="flex justify-end mb-3 group/user">
       <div className="flex items-start gap-2 max-w-[85%]">
+        {/* Edit button — appears on hover */}
+        {onEdit && (
+          <button
+            type="button"
+            onClick={() => onEdit(message.text)}
+            className="p-1 rounded opacity-0 group-hover/user:opacity-100 transition-opacity self-center"
+            style={{
+              backgroundColor: "var(--color-surface-0)",
+              color: "var(--color-overlay-1)",
+            }}
+            aria-label="Edit message"
+            title="Edit and re-send"
+          >
+            <Pencil size={11} />
+          </button>
+        )}
         <div
           className="rounded-lg px-3 py-2 text-xs whitespace-pre-wrap break-words"
           style={{
@@ -67,7 +89,15 @@ function UserBubble({ message }: { message: ConversationMessage }) {
 
 // ─── Assistant message bubble ───────────────────────────────────────────────
 
-function AssistantBubble({ message }: { message: ConversationMessage }) {
+function AssistantBubble({
+  message,
+  showRegenerate,
+  onRegenerate,
+}: {
+  message: ConversationMessage;
+  showRegenerate?: boolean;
+  onRegenerate?: () => void;
+}) {
   const [thinkingExpanded, setThinkingExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -252,14 +282,27 @@ function AssistantBubble({ message }: { message: ConversationMessage }) {
         )}
 
         {/* Metadata footer */}
-        {totalTokens !== null && (
-          <div
-            className="flex items-center gap-2 mt-1 text-xs"
-            style={{ color: "var(--color-overlay-0)" }}
-          >
+        <div
+          className="flex items-center gap-2 mt-1 text-xs"
+          style={{ color: "var(--color-overlay-0)" }}
+        >
+          {totalTokens !== null && (
             <span>{totalTokens.toLocaleString()} tokens</span>
-          </div>
-        )}
+          )}
+          {showRegenerate && onRegenerate && (
+            <button
+              type="button"
+              onClick={onRegenerate}
+              className="flex items-center gap-1 px-1.5 py-0.5 rounded transition-colors hover:bg-[var(--color-surface-0)]"
+              style={{ color: "var(--color-overlay-1)" }}
+              aria-label="Regenerate response"
+              title="Regenerate response"
+            >
+              <RefreshCw size={11} />
+              <span className="text-[10px]">Regenerate</span>
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -269,15 +312,32 @@ function AssistantBubble({ message }: { message: ConversationMessage }) {
 
 interface MessageBubbleProps {
   message: ConversationMessage;
+  /** Callback when user clicks "Edit" on a user message */
+  onEdit?: (text: string) => void;
+  /** Whether to show the "Regenerate" button (only on last assistant message) */
+  showRegenerate?: boolean;
+  /** Callback when user clicks "Regenerate" on an assistant message */
+  onRegenerate?: () => void;
 }
 
-export const MessageBubble = memo(function MessageBubble({ message }: MessageBubbleProps) {
+export const MessageBubble = memo(function MessageBubble({
+  message,
+  onEdit,
+  showRegenerate,
+  onRegenerate,
+}: MessageBubbleProps) {
   if (message.role === "user") {
-    return <UserBubble message={message} />;
+    return <UserBubble message={message} onEdit={onEdit} />;
   }
 
   if (message.role === "assistant") {
-    return <AssistantBubble message={message} />;
+    return (
+      <AssistantBubble
+        message={message}
+        showRegenerate={showRegenerate}
+        onRegenerate={onRegenerate}
+      />
+    );
   }
 
   // System or result messages rendered as a subtle divider

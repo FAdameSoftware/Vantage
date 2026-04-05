@@ -1,10 +1,10 @@
 import { useEffect, useRef, useCallback, useState } from "react";
-import { MessageSquare, Plus } from "lucide-react";
+import { MessageSquare, Plus, Search, X, ChevronUp, ChevronDown } from "lucide-react";
 import { useConversationStore } from "@/stores/conversation";
 import { useLayoutStore } from "@/stores/layout";
 import { useClaude } from "@/hooks/useClaude";
 import { MessageBubble } from "./MessageBubble";
-import { ChatInput } from "./ChatInput";
+import { ChatInput, type ChatInputHandle } from "./ChatInput";
 import { ThinkingIndicator } from "./ThinkingIndicator";
 import { SessionSelector } from "./SessionSelector";
 import { QuickQuestionOverlay } from "./QuickQuestionOverlay";
@@ -51,6 +51,134 @@ function stripModelDate(model: string): string {
   return model.replace(/-\d{8}$/, "");
 }
 
+// ─── Conversation search bar ────────────────────────────────────────────────
+
+interface ChatSearchBarProps {
+  onClose: () => void;
+}
+
+function ChatSearchBar({ onClose }: ChatSearchBarProps) {
+  const messages = useConversationStore(selectMessages);
+  const [query, setQuery] = useState("");
+  const [matchIndices, setMatchIndices] = useState<number[]>([]);
+  const [currentMatch, setCurrentMatch] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    if (!query.trim()) {
+      setMatchIndices([]);
+      setCurrentMatch(0);
+      return;
+    }
+    const lowerQuery = query.toLowerCase();
+    const indices: number[] = [];
+    messages.forEach((msg, i) => {
+      if (msg.text.toLowerCase().includes(lowerQuery)) {
+        indices.push(i);
+      }
+    });
+    setMatchIndices(indices);
+    setCurrentMatch(0);
+    // Scroll to first match
+    if (indices.length > 0) {
+      scrollToMessage(indices[0]);
+    }
+  }, [query, messages]);
+
+  const scrollToMessage = (idx: number) => {
+    const el = document.querySelector(`[data-message-index="${idx}"]`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  };
+
+  const goNext = () => {
+    if (matchIndices.length === 0) return;
+    const next = (currentMatch + 1) % matchIndices.length;
+    setCurrentMatch(next);
+    scrollToMessage(matchIndices[next]);
+  };
+
+  const goPrev = () => {
+    if (matchIndices.length === 0) return;
+    const prev = (currentMatch - 1 + matchIndices.length) % matchIndices.length;
+    setCurrentMatch(prev);
+    scrollToMessage(matchIndices[prev]);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Escape") {
+      onClose();
+    } else if (e.key === "Enter" && e.shiftKey) {
+      goPrev();
+    } else if (e.key === "Enter") {
+      goNext();
+    }
+  };
+
+  return (
+    <div
+      className="flex items-center gap-1.5 px-3 h-8 shrink-0"
+      style={{
+        backgroundColor: "var(--color-surface-0)",
+        borderBottom: "1px solid var(--color-surface-1)",
+      }}
+    >
+      <Search size={12} style={{ color: "var(--color-overlay-1)" }} />
+      <input
+        ref={inputRef}
+        type="text"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        onKeyDown={handleKeyDown}
+        placeholder="Search messages..."
+        className="flex-1 bg-transparent text-xs outline-none placeholder:text-[var(--color-overlay-0)]"
+        style={{ color: "var(--color-text)" }}
+      />
+      {query && (
+        <span className="text-[10px]" style={{ color: "var(--color-overlay-1)" }}>
+          {matchIndices.length > 0
+            ? `${currentMatch + 1}/${matchIndices.length}`
+            : "0 results"}
+        </span>
+      )}
+      <button
+        type="button"
+        onClick={goPrev}
+        disabled={matchIndices.length === 0}
+        className="p-0.5 rounded hover:bg-[var(--color-surface-1)] disabled:opacity-30"
+        style={{ color: "var(--color-overlay-1)" }}
+        aria-label="Previous match"
+      >
+        <ChevronUp size={12} />
+      </button>
+      <button
+        type="button"
+        onClick={goNext}
+        disabled={matchIndices.length === 0}
+        className="p-0.5 rounded hover:bg-[var(--color-surface-1)] disabled:opacity-30"
+        style={{ color: "var(--color-overlay-1)" }}
+        aria-label="Next match"
+      >
+        <ChevronDown size={12} />
+      </button>
+      <button
+        type="button"
+        onClick={onClose}
+        className="p-0.5 rounded hover:bg-[var(--color-surface-1)]"
+        style={{ color: "var(--color-overlay-1)" }}
+        aria-label="Close search"
+      >
+        <X size={12} />
+      </button>
+    </div>
+  );
+}
+
 // ─── ChatPanel ──────────────────────────────────────────────────────────────
 
 // Fine-grained selectors to minimize re-renders during streaming.
@@ -79,6 +207,7 @@ export function ChatPanel() {
   const [installedSkills, setInstalledSkills] = useState<
     Array<{ name: string; description: string; source: string }>
   >([]);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   // Load installed skills on mount (currently returns empty — future extension point)
   useEffect(() => {
@@ -88,6 +217,20 @@ export function ChatPanel() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const autoScrollRef = useRef(true);
+  const chatInputRef = useRef<ChatInputHandle | null>(null);
+
+  // ── Keyboard shortcut: Ctrl+Shift+F for search ──
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && e.key === "F") {
+        e.preventDefault();
+        setSearchOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   // ── Auto-scroll to bottom on new messages / streaming ──
 
@@ -140,6 +283,26 @@ export function ChatPanel() {
     [sendMessage, session?.cwd],
   );
 
+  // ── Edit a previous user message: load into input for re-submission ──
+
+  const handleEditMessage = useCallback(
+    (messageText: string) => {
+      chatInputRef.current?.setEditText(messageText);
+    },
+    [],
+  );
+
+  // ── Regenerate: re-send the last user message ──
+
+  const handleRegenerate = useCallback(() => {
+    // Find the last user message
+    const lastUserMsg = [...messages].reverse().find((m) => m.role === "user");
+    if (!lastUserMsg) return;
+    autoScrollRef.current = true;
+    const cwd = session?.cwd ?? useLayoutStore.getState().projectRootPath ?? ".";
+    sendMessage(lastUserMsg.text, cwd);
+  }, [messages, sendMessage, session?.cwd]);
+
   // ── Stop streaming ──
 
   const handleStop = useCallback(() => {
@@ -152,6 +315,11 @@ export function ChatPanel() {
     connectionStatus === "disconnected" || connectionStatus === "stopped";
 
   const modelDisplay = session?.model ? stripModelDate(session.model) : null;
+
+  // Determine the last assistant message ID (for the regenerate button)
+  const lastAssistantMsgId = messages.length > 0 && messages[messages.length - 1].role === "assistant"
+    ? messages[messages.length - 1].id
+    : null;
 
   return (
     <div
@@ -175,6 +343,16 @@ export function ChatPanel() {
           </span>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className="p-1 rounded transition-colors hover:bg-[var(--color-surface-0)]"
+            style={{ color: searchOpen ? "var(--color-blue)" : "var(--color-overlay-1)" }}
+            onClick={() => setSearchOpen((prev) => !prev)}
+            aria-label="Search messages (Ctrl+Shift+F)"
+            title="Search messages (Ctrl+Shift+F)"
+          >
+            <Search size={14} />
+          </button>
           <PlanModeToggle />
           <WriterReviewerLauncher />
           <CompactDialog onSend={handleSend} />
@@ -208,6 +386,9 @@ export function ChatPanel() {
         </div>
       </div>
 
+      {/* Search bar */}
+      {searchOpen && <ChatSearchBar onClose={() => setSearchOpen(false)} />}
+
       {/* Message list */}
       <div
         ref={scrollContainerRef}
@@ -238,8 +419,15 @@ export function ChatPanel() {
         )}
 
         {/* Messages */}
-        {messages.map((msg) => (
-          <MessageBubble key={msg.id} message={msg} />
+        {messages.map((msg, idx) => (
+          <div key={msg.id} data-message-index={idx}>
+            <MessageBubble
+              message={msg}
+              onEdit={msg.role === "user" ? handleEditMessage : undefined}
+              showRegenerate={msg.id === lastAssistantMsgId && !isStreaming}
+              onRegenerate={msg.id === lastAssistantMsgId ? handleRegenerate : undefined}
+            />
+          </div>
         ))}
 
         {/* Thinking indicator (during active thinking) */}
@@ -275,6 +463,7 @@ export function ChatPanel() {
       <div className="relative shrink-0">
         <QuickQuestionOverlay />
         <ChatInput
+          ref={chatInputRef}
           onSend={handleSend}
           onStop={handleStop}
           isStreaming={isStreaming}
