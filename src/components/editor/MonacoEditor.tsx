@@ -15,6 +15,42 @@ import { useVimMode } from "@/hooks/useVimMode";
 // instead of loading from CDN
 loader.config({ monaco });
 
+// ── TypeScript / JavaScript language intelligence ───────────────────────────
+// Monaco 0.55+ moved the TS/JS language API from `monaco.languages.typescript`
+// to a top-level `typescript` export. We access it via the star-import as
+// `monaco.typescript`. The TS worker provides autocomplete, hover info, and
+// red-underline diagnostics for .ts/.tsx/.js/.jsx files automatically, but we
+// set explicit compiler options so the experience is predictable.
+const tsApi = monaco.typescript;
+tsApi.typescriptDefaults.setDiagnosticsOptions({
+  noSemanticValidation: false,
+  noSyntaxValidation: false,
+});
+tsApi.typescriptDefaults.setCompilerOptions({
+  target: tsApi.ScriptTarget.ESNext,
+  module: tsApi.ModuleKind.ESNext,
+  allowNonTsExtensions: true,
+  moduleResolution: tsApi.ModuleResolutionKind.NodeJs,
+  jsx: tsApi.JsxEmit.ReactJSX,
+  strict: true,
+  allowJs: true,
+  esModuleInterop: true,
+});
+// Apply the same settings for JavaScript files
+tsApi.javascriptDefaults.setDiagnosticsOptions({
+  noSemanticValidation: false,
+  noSyntaxValidation: false,
+});
+tsApi.javascriptDefaults.setCompilerOptions({
+  target: tsApi.ScriptTarget.ESNext,
+  module: tsApi.ModuleKind.ESNext,
+  allowNonTsExtensions: true,
+  moduleResolution: tsApi.ModuleResolutionKind.NodeJs,
+  jsx: tsApi.JsxEmit.ReactJSX,
+  allowJs: true,
+  checkJs: true,
+});
+
 // Register all themes once at module level
 let themesRegistered = false;
 function ensureThemeRegistered() {
