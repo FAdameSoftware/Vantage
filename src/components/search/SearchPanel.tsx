@@ -9,6 +9,9 @@ import {
   Regex,
   Filter,
   Loader2,
+  Replace,
+  ReplaceAll,
+  ArrowDownUp,
 } from "lucide-react";
 import { useLayoutStore } from "@/stores/layout";
 import { useEditorStore } from "@/stores/editor";
@@ -60,10 +63,12 @@ function HighlightedLine({
   text,
   start,
   length,
+  replaceText,
 }: {
   text: string;
   start: number;
   length: number;
+  replaceText?: string;
 }) {
   const before = text.slice(0, start);
   const match = text.slice(start, start + length);
@@ -78,10 +83,24 @@ function HighlightedLine({
           color: "var(--color-yellow)",
           borderRadius: "2px",
           padding: "0 1px",
+          textDecoration:
+            replaceText !== undefined ? "line-through" : undefined,
         }}
       >
         {match}
       </mark>
+      {replaceText !== undefined && (
+        <mark
+          style={{
+            backgroundColor: "rgba(var(--color-green-rgb, 166, 218, 149), 0.3)",
+            color: "var(--color-green)",
+            borderRadius: "2px",
+            padding: "0 1px",
+          }}
+        >
+          {replaceText}
+        </mark>
+      )}
       {after}
     </span>
   );
@@ -91,12 +110,16 @@ function HighlightedLine({
 
 export function SearchPanel() {
   const [query, setQuery] = useState("");
+  const [replaceText, setReplaceText] = useState("");
   const [isRegex, setIsRegex] = useState(false);
   const [caseSensitive, setCaseSensitive] = useState(false);
   const [globFilter, setGlobFilter] = useState("");
   const [showGlobFilter, setShowGlobFilter] = useState(false);
+  const [showReplace, setShowReplace] = useState(false);
   const [results, setResults] = useState<SearchResult | null>(null);
   const [loading, setLoading] = useState(false);
+  const [replacing, setReplacing] = useState(false);
+  const [replaceConfirm, setReplaceConfirm] = useState(false);
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -214,6 +237,35 @@ export function SearchPanel() {
     []
   );
 
+  const handleReplaceAll = useCallback(async () => {
+    if (!projectRootPath || query.length < 2) return;
+    setReplacing(true);
+    try {
+      const result = await invoke<{ replacements: number; files_modified: number }>(
+        "replace_in_files",
+        {
+          root: projectRootPath,
+          search: query,
+          replace: replaceText,
+          isRegex,
+          caseSensitive,
+          globFilter: globFilter || null,
+        }
+      );
+      // Re-run the search to update results after replacement
+      await executeSearch(query);
+      // Show a brief status message via console (toast would be ideal but keeping it simple)
+      console.info(
+        `Replaced ${result.replacements} occurrence(s) in ${result.files_modified} file(s)`
+      );
+    } catch (e) {
+      console.error("Replace all failed:", e);
+    } finally {
+      setReplacing(false);
+      setReplaceConfirm(false);
+    }
+  }, [projectRootPath, query, replaceText, isRegex, caseSensitive, globFilter, executeSearch]);
+
   const totalFiles = results?.files.length ?? 0;
   const totalMatches = results?.total_matches ?? 0;
 
@@ -226,6 +278,15 @@ export function SearchPanel() {
       >
         {/* Main search row */}
         <div className="flex items-center gap-1">
+          {/* Search/Replace mode toggle */}
+          <ToggleButton
+            active={showReplace}
+            onClick={() => setShowReplace((v) => !v)}
+            title="Toggle Search & Replace"
+          >
+            <ArrowDownUp size={14} />
+          </ToggleButton>
+
           <div
             className="flex items-center flex-1 gap-1 px-2 h-7 rounded"
             style={{
@@ -281,6 +342,75 @@ export function SearchPanel() {
           </ToggleButton>
         </div>
 
+        {/* Replace input row (conditionally shown) */}
+        {showReplace && (
+          <div className="flex items-center gap-1">
+            {/* Spacer to align with search input (same width as the toggle button) */}
+            <div className="w-6 shrink-0" />
+
+            <div
+              className="flex items-center flex-1 gap-1 px-2 h-7 rounded"
+              style={{
+                backgroundColor: "var(--color-base)",
+                border: "1px solid var(--color-surface-1)",
+              }}
+            >
+              <Replace
+                size={13}
+                style={{ color: "var(--color-overlay-1)", flexShrink: 0 }}
+              />
+              <input
+                type="text"
+                value={replaceText}
+                onChange={(e) => setReplaceText(e.target.value)}
+                placeholder="Replace"
+                className="flex-1 bg-transparent text-xs outline-none"
+                style={{ color: "var(--color-text)" }}
+                spellCheck={false}
+              />
+            </div>
+
+            {/* Replace All button */}
+            {!replaceConfirm ? (
+              <button
+                type="button"
+                onClick={() => setReplaceConfirm(true)}
+                disabled={
+                  !query || query.length < 2 || !projectRootPath || replacing
+                }
+                title="Replace All"
+                className="flex items-center justify-center w-6 h-6 rounded shrink-0 transition-colors disabled:opacity-30"
+                style={{
+                  color: "var(--color-overlay-1)",
+                  backgroundColor: "transparent",
+                }}
+              >
+                <ReplaceAll size={14} />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleReplaceAll}
+                disabled={replacing}
+                title="Confirm Replace All"
+                className="flex items-center justify-center h-6 px-1.5 rounded shrink-0 text-[10px] font-medium transition-colors"
+                style={{
+                  color: "var(--color-base)",
+                  backgroundColor: replacing
+                    ? "var(--color-overlay-0)"
+                    : "var(--color-red)",
+                }}
+              >
+                {replacing ? (
+                  <Loader2 size={12} className="animate-spin" />
+                ) : (
+                  "OK"
+                )}
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Glob filter row (conditionally shown) */}
         {showGlobFilter && (
           <div
@@ -328,6 +458,7 @@ export function SearchPanel() {
               onToggle={() => toggleFileExpanded(fileResult.file_path)}
               onMatchClick={handleMatchClick}
               rootPath={projectRootPath ?? ""}
+              replaceText={showReplace && replaceText !== "" ? replaceText : undefined}
             />
           ))}
         </div>
@@ -375,12 +506,14 @@ function FileResultGroup({
   onToggle,
   onMatchClick,
   rootPath,
+  replaceText,
 }: {
   fileResult: SearchFileResult;
   isExpanded: boolean;
   onToggle: () => void;
   onMatchClick: (filePath: string, lineNumber: number) => void;
   rootPath: string;
+  replaceText?: string;
 }) {
   const fileName = getFileName(fileResult.file_path);
   const relDir = getRelativeDir(fileResult.file_path, rootPath);
@@ -475,6 +608,7 @@ function FileResultGroup({
                 text={match.line_text}
                 start={match.column_start}
                 length={match.match_length}
+                replaceText={replaceText}
               />
             </span>
           </div>

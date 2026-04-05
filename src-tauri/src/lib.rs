@@ -341,6 +341,26 @@ fn search_project(
     )
 }
 
+#[tauri::command]
+#[specta::specta]
+fn replace_in_files(
+    root: String,
+    search: String,
+    replace: String,
+    is_regex: bool,
+    case_sensitive: bool,
+    glob_filter: Option<String>,
+) -> Result<search::ReplaceResult, String> {
+    search::replace_in_files(
+        &root,
+        &search,
+        &replace,
+        is_regex,
+        case_sensitive,
+        glob_filter.as_deref(),
+    )
+}
+
 // ── Session Search Commands ────────────────────────────────────────
 
 #[tauri::command]
@@ -635,6 +655,7 @@ pub fn run() {
             get_agent_worktree_path,
             get_agent_branch_name,
             search_project,
+            replace_in_files,
             read_mcp_config,
             write_mcp_config,
             search_sessions,

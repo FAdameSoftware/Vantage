@@ -302,6 +302,16 @@ export function CommandPalette() {
       },
     },
     {
+      id: "toggle-format-on-save",
+      label: `Format on Save: ${useSettingsStore.getState().formatOnSave ? "Disable" : "Enable"}`,
+      icon: <FileCode className="size-4 shrink-0 text-muted-foreground" />,
+      category: "Editor",
+      action: () => {
+        const settings = useSettingsStore.getState();
+        settings.setFormatOnSave(!settings.formatOnSave);
+      },
+    },
+    {
       id: "theme-dark",
       label: "Color Theme: Dark (Catppuccin Mocha)",
       icon: <Settings className="size-4 shrink-0 text-muted-foreground" />,

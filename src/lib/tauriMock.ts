@@ -257,6 +257,7 @@ const mockInvokeHandlers: Record<string, MockInvokeHandler> = {
 
   // ── Search ──
   search_project: () => ({ files: [], total_matches: 0 }),
+  replace_in_files: () => ({ replacements: 0, files_modified: 0 }),
 
   // ── Theme ──
   read_theme_file: () => null,
