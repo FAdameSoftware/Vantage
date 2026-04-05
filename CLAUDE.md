@@ -49,7 +49,17 @@ src-tauri/              # Rust backend
     merge_queue.rs      # Quality gates, merge, rebase
     checkpoint.rs       # Git tag checkpoints
     analytics.rs        # Usage analytics aggregation
+    claude_settings.rs  # Read/write ~/.claude/settings.json
 ```
+
+## Documentation
+
+- Design spec: `docs/superpowers/specs/2026-04-04-vantage-design.md`
+- Sprint plans: `docs/superpowers/plans/`
+- Testing strategy: `docs/testing/testing-strategy.md`
+- Workspace design: `docs/specs/workspace-model-design.md`
+- Audit reports: `External-Teams/Audit-Team/`
+- Research: `research/` (10 documents, 480KB+)
 
 ## Commands
 
@@ -57,10 +67,86 @@ src-tauri/              # Rust backend
 npm run dev           # Vite dev server only (no Tauri)
 npm run tauri dev     # Full Tauri dev mode (needs cargo on PATH)
 npm run build         # Vite production build
-npx vitest run        # Run frontend tests (337 tests)
+npx vitest run        # Run frontend tests (355 tests, 22 files)
 npx playwright test   # Run E2E tests (needs Vite server running)
 npm run lint:security # Semgrep security scan (TypeScript + React rules)
 cd src-tauri && cargo test  # Run Rust backend tests (76 tests)
+```
+
+## Features
+
+### Editor
+- Monaco Editor with Catppuccin Mocha/Latte/High Contrast themes
+- Cross-file TypeScript intelligence (addExtraLib for project files)
+- Inline AI edit (Ctrl+K — select code, type prompt, get diff)
+- Editor split groups (Split Right / Split Down)
+- Markdown preview (split view for .md files)
+- Interactive breadcrumbs (clickable segments, sibling file dropdown)
+- Minimap with click navigation, bracket pair colorization
+- Vim mode toggle, format on save (Prettier)
+- Diff viewer with accept/reject for Claude's edits
+
+### Chat / Claude Integration
+- Claude Code CLI via stream-json protocol
+- @-mentions (@file, @selection, @terminal, @git, @folder)
+- Image/screenshot paste (clipboard + drag-and-drop)
+- 26+ slash commands with local handlers
+- /btw quick question overlay (zero-context-cost)
+- Inline AI edit (Ctrl+K)
+- Ultrathink toggle, effort level selector, plan mode
+- Targeted /compact with preservation input
+- Permission dialog with risk-level color coding
+- Session timeline with visual checkpoints
+- Activity trail (files Claude touched)
+- Token attribution per message (expandable cost breakdown)
+- Conversation search, message editing, response regeneration
+- Session management (resume, search, fork)
+
+### Terminal
+- xterm.js with WebGL renderer + ConPTY
+- Multiple tabs with shell picker (PowerShell, Git Bash, CMD)
+- Terminal split view
+- Ctrl+F find bar
+- Command blocks (group output by command, copy/re-run)
+- AI command suggestions on error
+
+### Multi-Agent
+- Kanban board (Backlog/In Progress/Review/Done) with drag-and-drop
+- Agent hierarchy (coordinator/specialist/verifier roles)
+- Agent tree view with status propagation
+- Git worktree isolation per agent
+- Merge queue with quality gates
+- Verification dashboard
+- Writer/Reviewer one-click workflow
+- File conflict detection with ownership indicators
+
+### Project Management
+- Workspace model (per-project state persistence)
+- File explorer with lazy-loading, context menus, git status
+- Project-wide search with regex + replace in files
+- Git integration (branch, status, log, blame, stage/commit/push/pull)
+- Source Control panel
+- Codebase indexing (language distribution, dependencies)
+
+### Settings & Configuration
+- Searchable preferences editor
+- Keybindings viewer/editor with custom overrides
+- Hooks editor (CRUD for Claude Code hooks)
+- CLAUDE.md editor with live preview
+- MCP server management
+- Plugin discovery + store browser
+- Spec Viewer (BMAD document sharding)
+
+### UI
+- Catppuccin Mocha (dark), Latte (light), High Contrast themes
+- Custom Windows title bar with window controls
+- Zen mode (Ctrl+Shift+Z — distraction-free editing)
+- Workspace metadata sidebar (git, ports, cost, agents)
+- Command palette (Ctrl+Shift+P commands, Ctrl+P files, Ctrl+G goto)
+- Notification center with history
+- Clickable status bar (every item has an action)
+- Coding buddy widget (Inkwell the turtle)
+- Usage dashboard with charts
 ```
 
 ## Key Patterns
