@@ -115,7 +115,6 @@ fn validate_git_file_path(path: &str) -> Result<(), String> {
 
 /// Validate a branch name for git commands.
 /// Allows alphanumeric, `.`, `_`, `-`, `/`.
-#[allow(dead_code)]
 fn validate_branch_name(name: &str) -> Result<(), String> {
     if name.is_empty() {
         return Err("Branch name must not be empty".to_string());
@@ -287,21 +286,29 @@ pub fn get_status(cwd: &str) -> Result<Vec<GitFileStatus>, String> {
         let worktree_status = line.chars().nth(1).unwrap_or(' ');
         let file_path = line[3..].to_string().replace('\\', "/");
 
-        // Determine the display status and staged flag
-        let (status, is_staged) = match (index_status, worktree_status) {
-            ('?', '?') => ("?".to_string(), false),                  // Untracked
-            ('!', '!') => ("!".to_string(), false),                  // Ignored
-            (idx, ' ') if idx != ' ' => (idx.to_string(), true),     // Staged only
-            (' ', wt) if wt != ' ' => (wt.to_string(), false),      // Unstaged only
-            (idx, _wt) if idx != ' ' => (idx.to_string(), true),    // Both (show staged)
-            _ => continue,
-        };
-
-        results.push(GitFileStatus {
-            path: file_path,
-            status,
-            is_staged,
-        });
+        // Emit separate entries for staged and unstaged changes.
+        // A file can appear in both sections when it has changes in
+        // the index AND the working tree.
+        match (index_status, worktree_status) {
+            ('?', '?') => {
+                // Untracked
+                results.push(GitFileStatus { path: file_path, status: "?".to_string(), is_staged: false });
+            }
+            ('!', '!') => {
+                // Ignored
+                results.push(GitFileStatus { path: file_path, status: "!".to_string(), is_staged: false });
+            }
+            (idx, wt) => {
+                // Staged change in index
+                if idx != ' ' && idx != '?' && idx != '!' {
+                    results.push(GitFileStatus { path: file_path.clone(), status: idx.to_string(), is_staged: true });
+                }
+                // Unstaged change in working tree
+                if wt != ' ' && wt != '?' && wt != '!' {
+                    results.push(GitFileStatus { path: file_path, status: wt.to_string(), is_staged: false });
+                }
+            }
+        }
     }
 
     Ok(results)
@@ -739,6 +746,180 @@ mod tests {
     fn unix_to_iso8601_known_date() {
         // 2024-01-01T00:00:00Z = 1704067200
         assert_eq!(unix_to_iso8601(1704067200), "2024-01-01T00:00:00Z");
+    }
+}
+
+// ── Git Write Operations ──────────────────────────────────────────
+
+/// Validate a commit message. Must be non-empty and not contain
+/// characters that could be used for shell injection.
+fn validate_commit_message(msg: &str) -> Result<(), String> {
+    if msg.trim().is_empty() {
+        return Err("Commit message must not be empty".to_string());
+    }
+    if msg.len() > 10_000 {
+        return Err("Commit message is too long (max 10000 characters)".to_string());
+    }
+    // Reject shell metacharacters that could enable injection
+    let forbidden = ['`', '$'];
+    for &ch in &forbidden {
+        if msg.contains(ch) {
+            return Err(format!(
+                "Commit message contains forbidden character '{}'",
+                ch.escape_default()
+            ));
+        }
+    }
+    Ok(())
+}
+
+/// Stage files: `git add <paths>`.
+/// Each path is validated against shell injection.
+pub fn git_stage(cwd: &str, paths: Vec<String>) -> Result<String, String> {
+    if paths.is_empty() {
+        return Err("No paths provided to stage".to_string());
+    }
+    for p in &paths {
+        validate_git_file_path(p)?;
+    }
+
+    let mut cmd = Command::new("git");
+    cmd.arg("add").args(&paths).current_dir(cwd);
+
+    let output = run_git_with_timeout(&mut cmd)?;
+
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        Err(format!("git add failed: {}", stderr.trim()))
+    }
+}
+
+/// Unstage files: `git restore --staged <paths>`.
+pub fn git_unstage(cwd: &str, paths: Vec<String>) -> Result<String, String> {
+    if paths.is_empty() {
+        return Err("No paths provided to unstage".to_string());
+    }
+    for p in &paths {
+        validate_git_file_path(p)?;
+    }
+
+    let mut cmd = Command::new("git");
+    cmd.arg("restore")
+        .arg("--staged")
+        .args(&paths)
+        .current_dir(cwd);
+
+    let output = run_git_with_timeout(&mut cmd)?;
+
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        Err(format!("git restore --staged failed: {}", stderr.trim()))
+    }
+}
+
+/// Commit staged changes: `git commit -m <message>`.
+pub fn git_commit(cwd: &str, message: &str) -> Result<String, String> {
+    validate_commit_message(message)?;
+
+    let mut cmd = Command::new("git");
+    cmd.args(["commit", "-m", message]).current_dir(cwd);
+
+    let output = run_git_with_timeout(&mut cmd)?;
+
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        Err(format!("git commit failed: {}", stderr.trim()))
+    }
+}
+
+/// Push to remote: `git push`.
+pub fn git_push(cwd: &str) -> Result<String, String> {
+    let mut cmd = Command::new("git");
+    cmd.arg("push").current_dir(cwd);
+
+    let output = run_git_with_timeout(&mut cmd)?;
+
+    if output.status.success() {
+        // git push often writes to stderr even on success
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let combined = format!("{}{}", stdout.trim(), stderr.trim());
+        Ok(combined)
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        Err(format!("git push failed: {}", stderr.trim()))
+    }
+}
+
+/// Pull from remote: `git pull`.
+pub fn git_pull(cwd: &str) -> Result<String, String> {
+    let mut cmd = Command::new("git");
+    cmd.arg("pull").current_dir(cwd);
+
+    let output = run_git_with_timeout(&mut cmd)?;
+
+    if output.status.success() {
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let combined = format!("{}{}", stdout.trim(), stderr.trim());
+        Ok(combined)
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        Err(format!("git pull failed: {}", stderr.trim()))
+    }
+}
+
+/// Create and checkout a new branch: `git checkout -b <name>`.
+pub fn git_create_branch(cwd: &str, name: &str) -> Result<String, String> {
+    validate_branch_name(name)?;
+
+    let mut cmd = Command::new("git");
+    cmd.args(["checkout", "-b", name]).current_dir(cwd);
+
+    let output = run_git_with_timeout(&mut cmd)?;
+
+    if output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        Ok(stderr.trim().to_string())
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        Err(format!("git checkout -b failed: {}", stderr.trim()))
+    }
+}
+
+/// Get the working-tree diff (unstaged changes only): `git diff`.
+pub fn git_diff_working(cwd: &str) -> Result<String, String> {
+    let mut cmd = Command::new("git");
+    cmd.args(["diff", "--no-color"]).current_dir(cwd);
+
+    let output = run_git_with_timeout(&mut cmd)?;
+
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        Err(format!("git diff failed: {}", stderr.trim()))
+    }
+}
+
+/// Get the staged diff: `git diff --staged`.
+pub fn git_diff_staged(cwd: &str) -> Result<String, String> {
+    let mut cmd = Command::new("git");
+    cmd.args(["diff", "--staged", "--no-color"]).current_dir(cwd);
+
+    let output = run_git_with_timeout(&mut cmd)?;
+
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        Err(format!("git diff --staged failed: {}", stderr.trim()))
     }
 }
 

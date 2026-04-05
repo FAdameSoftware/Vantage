@@ -83,6 +83,12 @@ fn delete_dir(path: String) -> Result<(), String> {
     operations::delete_dir(&path)
 }
 
+#[tauri::command]
+#[specta::specta]
+fn format_file(path: String) -> Result<String, String> {
+    operations::format_file(&path)
+}
+
 // ── File Watcher Commands ───────────────────────────────────────────
 
 #[tauri::command]
@@ -374,6 +380,56 @@ fn git_diff_commit(cwd: String, hash: String) -> Result<String, String> {
     git::git_diff_commit(&cwd, &hash)
 }
 
+#[tauri::command]
+#[specta::specta]
+fn git_diff_working(cwd: String) -> Result<String, String> {
+    git::git_diff_working(&cwd)
+}
+
+// ── Git Write Commands ────────────────────────────────────────────
+
+#[tauri::command]
+#[specta::specta]
+fn git_stage(cwd: String, paths: Vec<String>) -> Result<String, String> {
+    git::git_stage(&cwd, paths)
+}
+
+#[tauri::command]
+#[specta::specta]
+fn git_unstage(cwd: String, paths: Vec<String>) -> Result<String, String> {
+    git::git_unstage(&cwd, paths)
+}
+
+#[tauri::command]
+#[specta::specta]
+fn git_commit(cwd: String, message: String) -> Result<String, String> {
+    git::git_commit(&cwd, &message)
+}
+
+#[tauri::command]
+#[specta::specta]
+fn git_push(cwd: String) -> Result<String, String> {
+    git::git_push(&cwd)
+}
+
+#[tauri::command]
+#[specta::specta]
+fn git_pull(cwd: String) -> Result<String, String> {
+    git::git_pull(&cwd)
+}
+
+#[tauri::command]
+#[specta::specta]
+fn git_create_branch(cwd: String, name: String) -> Result<String, String> {
+    git::git_create_branch(&cwd, &name)
+}
+
+#[tauri::command]
+#[specta::specta]
+fn git_diff_staged(cwd: String) -> Result<String, String> {
+    git::git_diff_staged(&cwd)
+}
+
 // ── MCP Config Commands ───────────────────────────────────────────
 
 #[tauri::command]
@@ -553,6 +609,7 @@ pub fn run() {
             rename_path,
             delete_file,
             delete_dir,
+            format_file,
             start_file_watcher,
             stop_file_watcher,
             list_shells,
@@ -585,6 +642,14 @@ pub fn run() {
             git_log,
             git_blame,
             git_diff_commit,
+            git_diff_working,
+            git_diff_staged,
+            git_stage,
+            git_unstage,
+            git_commit,
+            git_push,
+            git_pull,
+            git_create_branch,
             get_pr_list,
             get_analytics,
             read_theme_file,

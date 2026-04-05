@@ -220,6 +220,8 @@ const mockInvokeHandlers: Record<string, MockInvokeHandler> = {
   delete_file: () => null,
   delete_dir: () => null,
   rename_path: () => null,
+  format_file: (args) =>
+    (args?.path as string) ? "// formatted content\n" : "// formatted content\n",
 
   // ── Git operations ──
   get_git_branch: () => ({ branch: "main", is_detached: false }),
@@ -227,7 +229,16 @@ const mockInvokeHandlers: Record<string, MockInvokeHandler> = {
   git_log: () => [],
   git_blame: () => [],
   git_diff_commit: () => "",
+  git_diff_working: () =>
+    "diff --git a/src/App.tsx b/src/App.tsx\nindex abc1234..def5678 100644\n--- a/src/App.tsx\n+++ b/src/App.tsx\n@@ -1,3 +1,4 @@\n import React from 'react';\n+import { NewFeature } from './NewFeature';\n \n function App() {\n",
+  git_diff_staged: () => "",
   git_show_file: () => "",
+  git_stage: () => "",
+  git_unstage: () => "",
+  git_commit: () => "1 file changed, 1 insertion(+)",
+  git_push: () => "Everything up-to-date",
+  git_pull: () => "Already up to date.",
+  git_create_branch: () => "Switched to a new branch 'feature/new'",
   get_worktree_changes: () => [],
   rebase_branch: () => true,
 
