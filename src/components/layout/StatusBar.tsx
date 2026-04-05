@@ -286,7 +286,7 @@ export function StatusBar() {
         </div>
       )}
       <div
-        className="flex items-center justify-between h-6 px-2 text-xs shrink-0 select-none"
+        className="flex items-center justify-between h-[22px] px-2.5 text-[11px] shrink-0 select-none"
         style={{
           backgroundColor: "var(--color-crust)",
           color: "var(--color-subtext-0)",
@@ -407,7 +407,7 @@ export function StatusBar() {
         </div>
 
         {/* Right side - file/session scoped */}
-        <div className="flex items-center gap-3 min-w-0 overflow-hidden">
+        <div className="flex items-center gap-2.5 min-w-0 overflow-hidden">
           {/* Vim mode indicator */}
           {vimMode && (
             <span
@@ -439,6 +439,11 @@ export function StatusBar() {
               </span>
             )}
           </button>
+
+          {/* Divider */}
+          {activeTab && windowWidth >= 800 && (
+            <div className="w-px h-2.5" style={{ backgroundColor: "var(--color-surface-1)" }} />
+          )}
 
           {/* EOL (line ending) — hidden below 800px */}
           {activeTab && windowWidth >= 800 && (
@@ -519,6 +524,9 @@ export function StatusBar() {
             </button>
           )}
 
+          {/* Divider */}
+          <div className="w-px h-2.5" style={{ backgroundColor: "var(--color-surface-1)" }} />
+
           {/* Language -> click opens language selector */}
           <div ref={languageSelectorRef} className="relative shrink-0">
             <button
@@ -535,6 +543,9 @@ export function StatusBar() {
               />
             )}
           </div>
+
+          {/* Divider */}
+          <div className="w-px h-2.5" style={{ backgroundColor: "var(--color-surface-1)" }} />
 
           {/* Claude session status -> click opens chat panel */}
           <button
@@ -597,12 +608,12 @@ export function StatusBar() {
           {/* Model -> click opens model selector dropdown */}
           <div ref={modelSelectorRef} className="relative shrink-0">
             <button
-              className="hover:text-[var(--color-text)] transition-colors truncate max-w-[180px]"
+              className="hover:text-[var(--color-text)] transition-colors truncate max-w-[140px] text-[10px]"
               style={{ color: "var(--color-overlay-1)" }}
               onClick={handleModelClick}
               title="Select Model"
             >
-              {session?.model ?? lastSessionModel ?? "claude-opus-4-6"}
+              {(session?.model ?? lastSessionModel ?? "claude-opus-4-6").replace(/-\d{8}$/, "").replace("claude-", "")}
             </button>
             {showModelSelector && (
               <ModelSelectorDropdown
