@@ -1,20 +1,18 @@
 import { useCallback, useEffect, useState, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { FileCode, FolderOpen, Clock, ChevronRight, Star, X, GitBranch } from "lucide-react";
-import { open } from "@tauri-apps/plugin-dialog";
+import { FileCode, ChevronRight } from "lucide-react";
 import { useEditorStore, selectActiveTab } from "@/stores/editor";
-import { useLayoutStore } from "@/stores/layout";
-import { useWorkspaceStore } from "@/stores/workspace";
 import { useSettingsStore } from "@/stores/settings";
 import { MonacoEditor } from "@/components/editor/MonacoEditor";
 import { DiffViewer } from "@/components/editor/DiffViewer";
 import { EditorTabs } from "@/components/editor/EditorTabs";
 import { MarkdownPreview } from "@/components/editor/MarkdownPreview";
 import { UsageDashboard } from "@/components/analytics/UsageDashboard";
+import { WelcomeTab } from "@/components/editor/WelcomeTab";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 import { FileIcon } from "@/components/files/FileIcon";
 import { useCrossFileIntelligence } from "@/hooks/useCrossFileIntelligence";
-import { addRecentFile, getRecentFiles, type RecentFile } from "@/hooks/useRecentFiles";
+import { addRecentFile } from "@/hooks/useRecentFiles";
 
 interface SiblingEntry {
   name: string;
@@ -246,390 +244,23 @@ function Breadcrumbs() {
   );
 }
 
-/** Format a relative time string from an ISO 8601 timestamp. */
-function formatRelativeTime(isoTimestamp: string): string {
-  const date = new Date(isoTimestamp);
-  const now = Date.now();
-  const diffMs = now - date.getTime();
-  if (diffMs < 0) return "just now";
-  const diffSec = Math.floor(diffMs / 1000);
-  if (diffSec < 60) return "just now";
-  const diffMin = Math.floor(diffSec / 60);
-  if (diffMin < 60) return `${diffMin}m ago`;
-  const diffHour = Math.floor(diffMin / 60);
-  if (diffHour < 24) return `${diffHour}h ago`;
-  const diffDay = Math.floor(diffHour / 24);
-  if (diffDay < 7) return `${diffDay}d ago`;
-  if (diffDay < 30) return `${Math.floor(diffDay / 7)}w ago`;
-  return date.toLocaleDateString();
-}
+/** The special tab path for the welcome screen */
+export const WELCOME_TAB_PATH = "__vantage://welcome";
 
-/** Extract a color from the project name for the project icon. */
-function projectIconColor(name: string): string {
-  const colors = [
-    "var(--color-blue)",
-    "var(--color-mauve)",
-    "var(--color-green)",
-    "var(--color-peach)",
-    "var(--color-red)",
-    "var(--color-teal)",
-    "var(--color-yellow)",
-    "var(--color-pink)",
-  ];
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+/** Open the welcome tab if no other tabs are currently open. */
+export function openWelcomeTab() {
+  const state = useEditorStore.getState();
+  // Don't open a duplicate welcome tab
+  if (state.tabs.some((t) => t.path === WELCOME_TAB_PATH)) {
+    state.setActiveTab(WELCOME_TAB_PATH.replace(/\\/g, "/").replace(/^[A-Z]:\//, (m) => m[0].toLowerCase() + m.slice(1)));
+    return;
   }
-  return colors[Math.abs(hash) % colors.length];
-}
-
-function WelcomeScreen() {
-  const openProject = useWorkspaceStore((s) => s.openProject);
-  const recentProjects = useWorkspaceStore((s) => s.recentProjects);
-  const loadRecentProjectsList = useWorkspaceStore((s) => s.loadRecentProjectsList);
-  const togglePinProject = useWorkspaceStore((s) => s.togglePinProject);
-  const removeRecentProject = useWorkspaceStore((s) => s.removeRecentProject);
-  const isLoading = useWorkspaceStore((s) => s.isLoading);
-  const setActiveActivityBarItem = useLayoutStore((s) => s.setActiveActivityBarItem);
-
-  // Recent files (localStorage)
-  const [recentFiles, setRecentFiles] = useState<RecentFile[]>([]);
-  useEffect(() => {
-    setRecentFiles(getRecentFiles().slice(0, 8));
-  }, []);
-
-  // Track which project card is hovered for showing remove button
-  const [hoveredPath, setHoveredPath] = useState<string | null>(null);
-
-  // Track git branch per project (lazy-loaded)
-  const [projectBranches, setProjectBranches] = useState<Map<string, string>>(new Map());
-
-  // Load recent projects on mount
-  useEffect(() => {
-    loadRecentProjectsList();
-  }, [loadRecentProjectsList]);
-
-  // Fetch git branch for each recent project
-  useEffect(() => {
-    if (recentProjects.length === 0) return;
-    let cancelled = false;
-    const fetchBranches = async () => {
-      const branchMap = new Map<string, string>();
-      for (const project of recentProjects.slice(0, 8)) {
-        try {
-          const info = await invoke<{ branch: string | null; is_detached: boolean }>(
-            "get_git_branch",
-            { cwd: project.path },
-          );
-          if (!cancelled && info.branch) {
-            branchMap.set(project.path, info.branch);
-          }
-        } catch {
-          // Not a git repo or path doesn't exist — skip
-        }
-      }
-      if (!cancelled) {
-        setProjectBranches(branchMap);
-      }
-    };
-    fetchBranches();
-    return () => { cancelled = true; };
-  }, [recentProjects]);
-
-  const handleOpenFolder = async () => {
-    try {
-      const selected = await open({ directory: true, multiple: false });
-      if (selected) {
-        await openProject(selected as string);
-        setActiveActivityBarItem("explorer");
-      }
-    } catch (e) {
-      console.error("Failed to open folder:", e);
-    }
-  };
-
-  const handleOpenRecent = async (projectPath: string) => {
-    try {
-      await openProject(projectPath);
-      setActiveActivityBarItem("explorer");
-    } catch (e) {
-      console.error("Failed to open recent project:", e);
-    }
-  };
-
-  const openFile = useEditorStore((s) => s.openFile);
-  const handleOpenRecentFile = async (filePath: string, fileName: string, _language: string) => {
-    try {
-      const result = await invoke<{ path: string; content: string; language: string }>(
-        "read_file",
-        { path: filePath },
-      );
-      openFile(result.path, fileName, result.language, result.content);
-    } catch (e) {
-      console.error("Failed to open recent file:", e);
-    }
-  };
-
-  const handleTogglePin = (e: React.MouseEvent, projectPath: string) => {
-    e.stopPropagation();
-    togglePinProject(projectPath);
-  };
-
-  const handleRemove = (e: React.MouseEvent, projectPath: string) => {
-    e.stopPropagation();
-    removeRecentProject(projectPath);
-  };
-
-  // Separate pinned and unpinned, pinned first
-  const pinnedProjects = recentProjects.filter((p) => p.pinned);
-  const unpinnedProjects = recentProjects.filter((p) => !p.pinned);
-  const sortedProjects = [...pinnedProjects, ...unpinnedProjects];
-
-  return (
-    <div className="flex-1 flex flex-col items-center justify-center gap-6">
-      <div
-        className="w-20 h-20 rounded-2xl flex items-center justify-center"
-        style={{ backgroundColor: "var(--color-surface-0)" }}
-      >
-        <FileCode size={40} style={{ color: "var(--color-blue)" }} />
-      </div>
-      <div className="text-center">
-        <h2
-          className="text-xl font-semibold mb-2"
-          style={{ color: "var(--color-text)" }}
-        >
-          Welcome to Vantage
-        </h2>
-        <p
-          className="text-sm max-w-md leading-relaxed"
-          style={{ color: "var(--color-overlay-1)" }}
-        >
-          Your AI-native IDE for Claude Code.
-        </p>
-      </div>
-
-      <button
-        onClick={handleOpenFolder}
-        disabled={isLoading}
-        className="flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-medium transition-colors hover:opacity-90 disabled:opacity-50"
-        style={{
-          backgroundColor: "var(--color-blue)",
-          color: "var(--color-crust)",
-        }}
-      >
-        <FolderOpen size={18} />
-        {isLoading ? "Opening..." : "Open Folder"}
-      </button>
-
-      {/* Recent Projects */}
-      {sortedProjects.length > 0 && (
-        <div className="w-full max-w-md mt-2">
-          <h3
-            className="text-xs font-semibold uppercase tracking-wider mb-2 px-1"
-            style={{ color: "var(--color-subtext-0)" }}
-          >
-            Recent Projects
-          </h3>
-          <div
-            className="rounded-lg overflow-hidden"
-            style={{
-              border: "1px solid var(--color-surface-0)",
-              backgroundColor: "var(--color-mantle)",
-            }}
-          >
-            {sortedProjects.slice(0, 8).map((project) => {
-              const firstLetter = (project.name[0] ?? "?").toUpperCase();
-              const iconColor = projectIconColor(project.name);
-              const branchName = projectBranches.get(project.path);
-              const isHovered = hoveredPath === project.path;
-
-              return (
-                <div
-                  key={project.path}
-                  className="relative flex items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-[var(--color-surface-0)] cursor-pointer group"
-                  style={{
-                    borderBottom: "1px solid var(--color-surface-0)",
-                    opacity: isLoading ? 0.5 : 1,
-                  }}
-                  onClick={() => !isLoading && handleOpenRecent(project.path)}
-                  onMouseEnter={() => setHoveredPath(project.path)}
-                  onMouseLeave={() => setHoveredPath(null)}
-                >
-                  {/* Project icon: folder with first letter */}
-                  <div
-                    className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 relative"
-                    style={{ backgroundColor: `color-mix(in srgb, ${iconColor} 20%, transparent)` }}
-                  >
-                    <FolderOpen size={14} style={{ color: iconColor, position: "absolute", top: 3, left: 3, opacity: 0.5 }} />
-                    <span
-                      className="text-sm font-bold"
-                      style={{ color: iconColor }}
-                    >
-                      {firstLetter}
-                    </span>
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <span
-                        className="text-sm font-medium truncate"
-                        style={{ color: "var(--color-text)" }}
-                      >
-                        {project.name}
-                      </span>
-                      {project.pinned && (
-                        <Star
-                          size={10}
-                          fill="var(--color-yellow)"
-                          style={{ color: "var(--color-yellow)", flexShrink: 0 }}
-                        />
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span
-                        className="text-xs truncate"
-                        style={{ color: "var(--color-overlay-0)" }}
-                      >
-                        {project.path}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3 mt-0.5">
-                      {/* Relative time */}
-                      <span
-                        className="text-[10px] flex items-center gap-0.5"
-                        style={{ color: "var(--color-overlay-0)" }}
-                      >
-                        <Clock size={9} />
-                        {formatRelativeTime(project.lastOpenedAt)}
-                      </span>
-                      {/* Git branch */}
-                      {branchName && (
-                        <span
-                          className="text-[10px] flex items-center gap-0.5"
-                          style={{ color: "var(--color-overlay-0)" }}
-                        >
-                          <GitBranch size={9} />
-                          {branchName}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Action buttons: pin/unpin and remove — visible on hover */}
-                  <div
-                    className="flex items-center gap-0.5 shrink-0 transition-opacity"
-                    style={{ opacity: isHovered ? 1 : 0 }}
-                  >
-                    <button
-                      onClick={(e) => handleTogglePin(e, project.path)}
-                      className="p-1 rounded hover:bg-[var(--color-surface-1)] transition-colors"
-                      title={project.pinned ? "Unpin project" : "Pin project"}
-                      aria-label={project.pinned ? "Unpin project" : "Pin project"}
-                    >
-                      <Star
-                        size={12}
-                        fill={project.pinned ? "var(--color-yellow)" : "none"}
-                        style={{ color: project.pinned ? "var(--color-yellow)" : "var(--color-overlay-1)" }}
-                      />
-                    </button>
-                    <button
-                      onClick={(e) => handleRemove(e, project.path)}
-                      className="p-1 rounded hover:bg-[var(--color-surface-1)] transition-colors"
-                      title="Remove from recents"
-                      aria-label="Remove from recents"
-                    >
-                      <X size={12} style={{ color: "var(--color-overlay-1)" }} />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Recent Files */}
-      {recentFiles.length > 0 && (
-        <div className="w-full max-w-md">
-          <h3
-            className="text-xs font-semibold uppercase tracking-wider mb-2 px-1"
-            style={{ color: "var(--color-subtext-0)" }}
-          >
-            Recent Files
-          </h3>
-          <div
-            className="rounded-lg overflow-hidden"
-            style={{
-              border: "1px solid var(--color-surface-0)",
-              backgroundColor: "var(--color-mantle)",
-            }}
-          >
-            {recentFiles.map((file) => (
-              <button
-                key={file.path}
-                className="w-full flex items-center gap-3 px-3 py-2 text-left transition-colors hover:bg-[var(--color-surface-0)]"
-                style={{ borderBottom: "1px solid var(--color-surface-0)" }}
-                onClick={() => handleOpenRecentFile(file.path, file.name, file.language)}
-              >
-                <FileCode size={14} style={{ color: "var(--color-blue)", flexShrink: 0 }} />
-                <div className="flex-1 min-w-0">
-                  <div
-                    className="text-sm truncate"
-                    style={{ color: "var(--color-text)" }}
-                  >
-                    {file.name}
-                  </div>
-                  <div
-                    className="text-xs truncate"
-                    style={{ color: "var(--color-overlay-0)" }}
-                  >
-                    {file.path}
-                  </div>
-                </div>
-                <span
-                  className="text-[10px] flex items-center gap-0.5 shrink-0"
-                  style={{ color: "var(--color-overlay-0)" }}
-                >
-                  <Clock size={9} />
-                  {formatRelativeTime(file.lastOpenedAt)}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div className="flex gap-4 mt-4">
-        <KeyboardHint keys="Ctrl+Shift+P" label="Command Palette" />
-        <KeyboardHint keys="Ctrl+P" label="Quick Open" />
-        <KeyboardHint keys="Ctrl+R" label="Recent Files" />
-      </div>
-    </div>
-  );
-}
-
-function KeyboardHint({ keys, label }: { keys: string; label: string }) {
-  return (
-    <div className="flex items-center gap-1.5 text-xs">
-      <kbd
-        className="px-1.5 py-0.5 rounded text-xs font-mono"
-        style={{
-          backgroundColor: "var(--color-surface-0)",
-          color: "var(--color-subtext-1)",
-          border: "1px solid var(--color-surface-1)",
-        }}
-      >
-        {keys}
-      </kbd>
-      <span style={{ color: "var(--color-overlay-1)" }}>{label}</span>
-    </div>
-  );
+  state.openFile(WELCOME_TAB_PATH, "Welcome", "plaintext", "", false);
 }
 
 export function EditorArea() {
   // Enable cross-file TypeScript intelligence (registers project files with Monaco TS worker)
   useCrossFileIntelligence();
-
 
   const updateContent = useEditorStore((s) => s.updateContent);
   const markSaved = useEditorStore((s) => s.markSaved);
@@ -644,6 +275,18 @@ export function EditorArea() {
   const splitDirection = useEditorStore((s) => s.splitDirection);
   const secondaryActiveTabId = useEditorStore((s) => s.secondaryActiveTabId);
   const tabs = useEditorStore((s) => s.tabs);
+  const openFile = useEditorStore((s) => s.openFile);
+
+  // ── Auto-open welcome tab on startup if no tabs exist ─────────────
+  const hasInitRef = useRef(false);
+  useEffect(() => {
+    if (hasInitRef.current) return;
+    hasInitRef.current = true;
+    // Only auto-open welcome if there are zero tabs (fresh start, not restoring workspace)
+    if (tabs.length === 0) {
+      openFile(WELCOME_TAB_PATH, "Welcome", "plaintext", "", false);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Track recent files ────────────────────────────────────────────
   useEffect(() => {
@@ -825,9 +468,10 @@ export function EditorArea() {
       {/* Editor content */}
       {activeTab ? (
         isSpecialTab ? (
-          /* Special built-in tabs (analytics, etc.) */
+          /* Special built-in tabs (analytics, welcome, etc.) */
           <div className="flex-1 overflow-hidden">
             {activeTab.path === "__vantage://analytics" && <UsageDashboard />}
+            {activeTab.path === WELCOME_TAB_PATH && <WelcomeTab />}
           </div>
         ) : activeDiff ? (
           /* Diff viewer — replaces the normal editor when a pending diff exists */
@@ -919,7 +563,18 @@ export function EditorArea() {
           </div>
         )
       ) : (
-        <WelcomeScreen />
+        /* Minimal empty state when no tabs are open */
+        <div className="flex-1 flex items-center justify-center">
+          <div className="flex flex-col items-center gap-2" style={{ opacity: 0.1 }}>
+            <FileCode size={64} style={{ color: "var(--color-text)" }} />
+          </div>
+          <p
+            className="absolute text-xs"
+            style={{ color: "var(--color-overlay-0)" }}
+          >
+            No open editors
+          </p>
+        </div>
       )}
     </div>
   );

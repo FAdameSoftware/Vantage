@@ -540,6 +540,20 @@ export function CommandPalette() {
       },
     },
     {
+      id: "open-welcome",
+      label: "Welcome",
+      icon: <FileCode className="size-4 shrink-0 text-muted-foreground" />,
+      category: "Help",
+      action: () => {
+        useEditorStore.getState().openFile(
+          "__vantage://welcome",
+          "Welcome",
+          "plaintext",
+          "",
+        );
+      },
+    },
+    {
       id: "customize-theme",
       label: "Customize Theme (Edit theme.json)",
       icon: <Palette className="size-4 shrink-0 text-muted-foreground" />,
