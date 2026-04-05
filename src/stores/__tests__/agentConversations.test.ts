@@ -63,12 +63,12 @@ describe("agentConversationsStore", () => {
 
   it("updateConversation creates default state for unknown agent then applies update", () => {
     useAgentConversationsStore.getState().updateConversation("new-agent", () => ({
-      connectionStatus: "connected" as const,
+      connectionStatus: "ready" as const,
     }));
 
     const conv = useAgentConversationsStore.getState().conversations.get("new-agent");
     expect(conv).toBeDefined();
-    expect(conv!.connectionStatus).toBe("connected");
+    expect(conv!.connectionStatus).toBe("ready");
     expect(conv!.messages).toEqual([]);
   });
 

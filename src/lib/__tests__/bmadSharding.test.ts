@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest";
 import { shardDocument } from "../bmadSharding";
-import type { ShardedDocument } from "../bmadSharding";
 
 describe("bmadSharding", () => {
   describe("shardDocument", () => {
