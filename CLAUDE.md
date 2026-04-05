@@ -88,7 +88,8 @@ cd src-tauri && cargo test  # Run Rust backend tests (76 tests)
 
 ### Chat / Claude Integration
 - Claude Code CLI via stream-json protocol
-- @-mentions (@file, @selection, @terminal, @git, @folder)
+- @-mentions (@file, @selection, @terminal, @git, @folder) with file picker
+- @file mention opens searchable file browser with fuzzy filtering
 - Image/screenshot paste (clipboard + drag-and-drop)
 - 26+ slash commands with local handlers
 - /btw quick question overlay (zero-context-cost)
@@ -96,11 +97,17 @@ cd src-tauri && cargo test  # Run Rust backend tests (76 tests)
 - Ultrathink toggle, effort level selector, plan mode
 - Targeted /compact with preservation input
 - Permission dialog with risk-level color coding
+- Session info badge (ID, duration, cost, model — click to expand details)
 - Session timeline with visual checkpoints
 - Activity trail (files Claude touched)
 - Token attribution per message (expandable cost breakdown)
 - Conversation search, message editing, response regeneration
 - Session management (resume, search, fork)
+- Chat input history (arrow up/down to cycle previous messages)
+- Typing indicator (animated dots while Claude is processing)
+- Pin important messages (highlight, filter pinned via header button)
+- Export as Markdown, JSON (reimportable), or styled HTML
+- Export menu in chat header for quick access
 
 ### Terminal
 - xterm.js with WebGL renderer + ConPTY
