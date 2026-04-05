@@ -28,7 +28,10 @@ function setPendingPermission(
 describe("PermissionDialog", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    useConversationStore.setState({ pendingPermission: null });
+    useConversationStore.setState({
+      pendingPermission: null,
+      sessionAllowedTools: new Set(),
+    });
   });
 
   it("renders nothing when no pending permission", () => {
@@ -113,13 +116,17 @@ describe("PermissionDialog", () => {
     expect(mockRespondPermission).toHaveBeenCalledWith(false);
   });
 
-  it("calls respondPermission(true) when Allow for Session is clicked", async () => {
+  it("calls respondPermission(true) when Allow for Session is clicked and tracks the tool", async () => {
     const user = userEvent.setup();
     setPendingPermission("Bash", { command: "echo hello" });
     render(<PermissionDialog />);
 
     await user.click(screen.getByText("Allow for Session"));
     expect(mockRespondPermission).toHaveBeenCalledWith(true);
+    // Verify the tool is now tracked in sessionAllowedTools
+    expect(
+      useConversationStore.getState().sessionAllowedTools.has("Bash"),
+    ).toBe(true);
   });
 
   // ── Risk level classification ─────────────────────────────────────────

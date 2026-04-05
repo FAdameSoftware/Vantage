@@ -331,7 +331,17 @@ function Kbd({ children }: { children: React.ReactNode }) {
 
 export function PermissionDialog() {
   const pendingPermission = useConversationStore((s) => s.pendingPermission);
+  const allowToolForSession = useConversationStore((s) => s.allowToolForSession);
+  const isToolAllowedForSession = useConversationStore((s) => s.isToolAllowedForSession);
   const { respondPermission } = useClaude();
+
+  // Auto-approve tools that have been allowed for the session
+  useEffect(() => {
+    if (!pendingPermission) return;
+    if (isToolAllowedForSession(pendingPermission.toolName)) {
+      void respondPermission(true);
+    }
+  }, [pendingPermission, isToolAllowedForSession, respondPermission]);
 
   const handleAllow = useCallback(() => {
     void respondPermission(true);
@@ -342,9 +352,11 @@ export function PermissionDialog() {
   }, [respondPermission]);
 
   const handleAllowSession = useCallback(() => {
-    // Session-level tracking is future work; for now behaves the same as allow
+    if (pendingPermission) {
+      allowToolForSession(pendingPermission.toolName);
+    }
     void respondPermission(true);
-  }, [respondPermission]);
+  }, [respondPermission, pendingPermission, allowToolForSession]);
 
   // Keyboard shortcuts (capture phase so they fire before anything else)
   useEffect(() => {
@@ -372,6 +384,10 @@ export function PermissionDialog() {
   }, [pendingPermission, handleAllow, handleDeny, handleAllowSession]);
 
   if (!pendingPermission) return null;
+
+  // Don't show dialog if this tool was already allowed for the session
+  // (the useEffect above will auto-approve it)
+  if (isToolAllowedForSession(pendingPermission.toolName)) return null;
 
   const { toolName, toolInput } = pendingPermission;
   const risk = getRiskLevel(toolName, toolInput);

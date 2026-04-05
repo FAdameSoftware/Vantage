@@ -8,6 +8,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import { invoke } from "@tauri-apps/api/core";
 import { searchPluginRegistry, type RegistryPlugin } from "@/lib/pluginRegistry";
 import { toast } from "sonner";
 
@@ -25,12 +26,25 @@ interface PluginStoreProps {
 function StorePluginCard({
   plugin,
   isInstalled,
+  onInstalled,
 }: {
   plugin: RegistryPlugin;
   isInstalled: boolean;
+  onInstalled: () => void;
 }) {
-  const handleInstall = () => {
-    toast.info(`Run in terminal: claude plugins add ${plugin.name}`);
+  const [installing, setInstalling] = useState(false);
+
+  const handleInstall = async () => {
+    setInstalling(true);
+    try {
+      await invoke<string>("install_plugin", { name: plugin.name });
+      toast.success(`Installed ${plugin.name}`);
+      onInstalled();
+    } catch (err) {
+      toast.error(`Failed to install ${plugin.name}: ${String(err)}`);
+    } finally {
+      setInstalling(false);
+    }
   };
 
   return (
@@ -123,16 +137,21 @@ function StorePluginCard({
 
         {!isInstalled && (
           <button
-            onClick={handleInstall}
-            className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] transition-opacity hover:opacity-80 shrink-0"
+            onClick={() => void handleInstall()}
+            disabled={installing}
+            className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] transition-opacity hover:opacity-80 shrink-0 disabled:opacity-50"
             style={{
               backgroundColor: "var(--color-blue)",
               color: "var(--color-base)",
             }}
             title={`Install ${plugin.name}`}
           >
-            <Download size={9} />
-            Install
+            {installing ? (
+              <Loader2 size={9} className="animate-spin" />
+            ) : (
+              <Download size={9} />
+            )}
+            {installing ? "Installing..." : "Install"}
           </button>
         )}
       </div>
@@ -150,6 +169,17 @@ export function PluginStore({ installedPluginNames, onBack }: PluginStoreProps) 
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
+  const [localInstalledNames, setLocalInstalledNames] = useState(installedPluginNames);
+
+  // Refresh installed list from backend after an install
+  const refreshInstalledNames = useCallback(async () => {
+    try {
+      const list = await invoke<{ name: string }[]>("list_installed_plugins");
+      setLocalInstalledNames(list.map((p) => p.name));
+    } catch {
+      // Keep current list on error
+    }
+  }, []);
 
   // Debounce search query by 300 ms
   useEffect(() => {
@@ -294,7 +324,8 @@ export function PluginStore({ installedPluginNames, onBack }: PluginStoreProps) 
               <StorePluginCard
                 key={plugin.name}
                 plugin={plugin}
-                isInstalled={installedPluginNames.includes(plugin.name)}
+                isInstalled={localInstalledNames.includes(plugin.name)}
+                onInstalled={() => void refreshInstalledNames()}
               />
             ))}
           </div>

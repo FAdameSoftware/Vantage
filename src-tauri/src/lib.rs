@@ -418,6 +418,12 @@ fn toggle_plugin(plugin_name: String, enabled: bool) -> Result<(), String> {
     plugins::toggle_plugin(&plugin_name, enabled)
 }
 
+#[tauri::command]
+#[specta::specta]
+fn install_plugin(name: String) -> Result<String, String> {
+    plugins::install_plugin(&name)
+}
+
 // ── Indexer Commands ──────────────────────────────────────────────
 
 #[tauri::command]
@@ -585,6 +591,7 @@ pub fn run() {
             list_installed_skills,
             get_plugin_config,
             toggle_plugin,
+            install_plugin,
             index_project,
             get_project_index,
         ],

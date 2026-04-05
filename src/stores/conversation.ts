@@ -129,6 +129,9 @@ export interface ConversationState {
     toolInput: Record<string, unknown>;
   } | null;
 
+  // Session-level auto-approved tools (cleared when session ends)
+  sessionAllowedTools: Set<string>;
+
   // ── Actions ──
   addUserMessage: (text: string) => void;
   handleSystemInit: (msg: SystemInitMessage) => void;
@@ -139,6 +142,8 @@ export interface ConversationState {
   setConnectionStatus: (status: ConnectionStatus, error?: string) => void;
   clearConversation: () => void;
   setSession: (session: SessionMetadata) => void;
+  allowToolForSession: (toolName: string) => void;
+  isToolAllowedForSession: (toolName: string) => boolean;
 }
 
 // ─── Helper: generate a simple unique ID ────────────────────────────────────
@@ -247,6 +252,8 @@ const DEFAULT_STATE: Omit<
   | "setConnectionStatus"
   | "clearConversation"
   | "setSession"
+  | "allowToolForSession"
+  | "isToolAllowedForSession"
 > = {
   messages: [],
   isStreaming: false,
@@ -261,6 +268,7 @@ const DEFAULT_STATE: Omit<
   connectionStatus: "disconnected",
   connectionError: null,
   pendingPermission: null,
+  sessionAllowedTools: new Set(),
 };
 
 export const useConversationStore = create<ConversationState>()((set, get) => ({
@@ -472,12 +480,25 @@ export const useConversationStore = create<ConversationState>()((set, get) => ({
     set({
       ...DEFAULT_STATE,
       activeBlocks: new Map(),
+      sessionAllowedTools: new Set(),
     });
     useUsageStore.getState().reset();
   },
 
   setSession(session: SessionMetadata) {
     set({ session });
+  },
+
+  allowToolForSession(toolName: string) {
+    set((state) => {
+      const next = new Set(state.sessionAllowedTools);
+      next.add(toolName);
+      return { sessionAllowedTools: next };
+    });
+  },
+
+  isToolAllowedForSession(toolName: string) {
+    return get().sessionAllowedTools.has(toolName);
   },
 }));
 

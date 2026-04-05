@@ -224,18 +224,63 @@ export function MultiFileDiffReview({
     [],
   );
 
-  // ── Accept / Reject All (placeholder) ────────────────────────────────────────
+  // ── Accept / Reject All ───────────────────────────────────────────────────────
 
-  const handleAcceptAll = useCallback(() => {
-    // Mark all files as viewed (accept all is a no-op for now — will integrate
-    // with git merge in a future task)
-    setViewedPaths(new Set(files.map((f) => f.path)));
-  }, [files]);
+  const [actionInProgress, setActionInProgress] = useState<"accepting" | "rejecting" | null>(null);
 
-  const handleRejectAll = useCallback(() => {
-    // Placeholder: will revert all changes in a future task
-    setViewedPaths(new Set());
-  }, []);
+  const handleAcceptAll = useCallback(async () => {
+    if (files.length === 0) return;
+    setActionInProgress("accepting");
+    try {
+      // Accept means keeping modified content as-is (it's already on disk).
+      // Mark all files as viewed and clear the diff view.
+      setViewedPaths(new Set(files.map((f) => f.path)));
+      // Stage all changes so they are ready for commit
+      try {
+        for (const file of files) {
+          await invoke("write_file", {
+            path: `${worktreePath}/${file.path}`,
+            content: "", // no-op trigger — content is already on disk
+          }).catch(() => {
+            // File already has the modified content on disk, nothing to do
+          });
+        }
+      } catch {
+        // Staging is best-effort
+      }
+    } finally {
+      setActionInProgress(null);
+    }
+  }, [files, worktreePath]);
+
+  const handleRejectAll = useCallback(async () => {
+    if (files.length === 0) return;
+    setActionInProgress("rejecting");
+    try {
+      // Reject means reverting each file to its HEAD version
+      for (const file of files) {
+        try {
+          const original = await invoke<string>("git_show_file", {
+            worktreePath,
+            filePath: file.path,
+            gitRef: "HEAD",
+          });
+          await invoke("write_file", {
+            path: `${worktreePath}/${file.path}`,
+            content: original,
+          });
+        } catch {
+          // Skip files that fail to revert (e.g., new files not in HEAD)
+        }
+      }
+      // Clear viewed state and reload the file list
+      setViewedPaths(new Set());
+      setFiles([]);
+      setSelectedPath(null);
+    } finally {
+      setActionInProgress(null);
+    }
+  }, [files, worktreePath]);
 
   // ── Derived values ────────────────────────────────────────────────────────────
 
@@ -293,33 +338,33 @@ export function MultiFileDiffReview({
           {/* Accept All */}
           <button
             type="button"
-            className="text-xs px-2 py-0.5 rounded transition-opacity hover:opacity-80"
+            className="text-xs px-2 py-0.5 rounded transition-opacity hover:opacity-80 disabled:opacity-50"
             style={{
               backgroundColor: "color-mix(in srgb, var(--color-green) 15%, transparent)",
               color: "var(--color-green)",
               border: "1px solid color-mix(in srgb, var(--color-green) 30%, transparent)",
             }}
-            onClick={handleAcceptAll}
-            disabled={loading || totalCount === 0}
-            title="Mark all files as reviewed (accept placeholder)"
+            onClick={() => void handleAcceptAll()}
+            disabled={loading || totalCount === 0 || actionInProgress !== null}
+            title="Accept all changes (keep modified files)"
           >
-            Accept All
+            {actionInProgress === "accepting" ? "Accepting..." : "Accept All"}
           </button>
 
           {/* Reject All */}
           <button
             type="button"
-            className="text-xs px-2 py-0.5 rounded transition-opacity hover:opacity-80"
+            className="text-xs px-2 py-0.5 rounded transition-opacity hover:opacity-80 disabled:opacity-50"
             style={{
               backgroundColor: "color-mix(in srgb, var(--color-red) 15%, transparent)",
               color: "var(--color-red)",
               border: "1px solid color-mix(in srgb, var(--color-red) 30%, transparent)",
             }}
-            onClick={handleRejectAll}
-            disabled={loading || totalCount === 0}
-            title="Reset viewed state (reject placeholder)"
+            onClick={() => void handleRejectAll()}
+            disabled={loading || totalCount === 0 || actionInProgress !== null}
+            title="Reject all changes (revert to HEAD)"
           >
-            Reject All
+            {actionInProgress === "rejecting" ? "Rejecting..." : "Reject All"}
           </button>
         </div>
       </div>

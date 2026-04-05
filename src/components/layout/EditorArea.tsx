@@ -142,9 +142,8 @@ export function EditorArea() {
   const activeTab = tabs.find((t) => t.id === activeTabId) ?? null;
 
   // If the active tab has a pending diff, show the diff viewer instead of the editor.
-  // TODO: setPendingDiff is triggered from useClaude hook when a Claude Edit/Write
-  //       tool call completes — the hook captures before/after content and calls
-  //       setPendingDiff(tabId, originalContent, modifiedContent, description).
+  // setPendingDiff is wired in useClaude hook — it captures before/after content
+  // when Claude's Edit/Write tool calls complete.
   const activeDiff = activeTab ? pendingDiffs.get(activeTab.id) : undefined;
 
   const isSpecialTab = activeTab?.path.startsWith("__vantage://") ?? false;

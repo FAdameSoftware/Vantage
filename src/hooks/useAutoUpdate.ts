@@ -1,6 +1,4 @@
 import { useEffect, useState, useCallback } from "react";
-import { check, type Update } from "@tauri-apps/plugin-updater";
-import { relaunch } from "@tauri-apps/plugin-process";
 import { toast } from "sonner";
 
 export interface UpdateInfo {
@@ -12,6 +10,9 @@ export interface UpdateInfo {
  * Checks for application updates on mount (after a 5-second delay).
  * If an update is available, shows a toast notification with an "Install" button.
  * The install action downloads the update and relaunches the app.
+ *
+ * Gracefully handles the case where the updater plugin is not registered
+ * (e.g., during development or when the plugin is commented out in lib.rs).
  */
 export function useAutoUpdate() {
   const [updateAvailable, setUpdateAvailable] = useState<UpdateInfo | null>(null);
@@ -20,14 +21,17 @@ export function useAutoUpdate() {
   const installUpdate = useCallback(async () => {
     setDownloading(true);
     try {
-      const update: Update | null = await check();
+      const { check } = await import("@tauri-apps/plugin-updater");
+      const update = await check();
       if (update) {
         await update.downloadAndInstall();
+        const { relaunch } = await import("@tauri-apps/plugin-process");
         await relaunch();
       }
     } catch (err) {
       console.error("Update install failed:", err);
       toast.error("Update failed. Please try again later.");
+    } finally {
       setDownloading(false);
     }
   }, []);
@@ -35,7 +39,8 @@ export function useAutoUpdate() {
   useEffect(() => {
     const timer = setTimeout(async () => {
       try {
-        const update: Update | null = await check();
+        const { check } = await import("@tauri-apps/plugin-updater");
+        const update = await check();
         if (update) {
           const info: UpdateInfo = {
             version: update.version,
@@ -55,7 +60,8 @@ export function useAutoUpdate() {
           });
         }
       } catch {
-        // Silent failure -- update check is non-critical
+        // Silent failure — updater plugin may not be registered, or
+        // update check is non-critical. This is expected during development.
       }
     }, 5000);
 

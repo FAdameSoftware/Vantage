@@ -97,8 +97,6 @@ export interface EditorState {
 
   // ── Diff Viewer ────────────────────────────────────────────────────
   // Triggered by Claude's Edit/Write tool calls (wired in useClaude hook).
-  // TODO: wire setPendingDiff from useClaude when a tool result with name
-  //       "Edit" or "Write" resolves — capture before/after content there.
 
   /** Pending diffs waiting for user accept/reject, keyed by tabId */
   pendingDiffs: Map<string, PendingDiff>;

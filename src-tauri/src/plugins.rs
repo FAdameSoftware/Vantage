@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
+use std::process::Command;
 
 // ── Types ──────────────────────────────────────────────────────────
 
@@ -411,4 +412,26 @@ pub fn toggle_plugin(plugin_name: &str, enabled: bool) -> Result<(), String> {
     fs::write(&path, json).map_err(|e| format!("Failed to write settings.json: {}", e))?;
 
     Ok(())
+}
+
+/// Install a plugin by running `claude plugins add <name>`.
+/// Returns the stdout output on success, or an error with stderr.
+pub fn install_plugin(name: &str) -> Result<String, String> {
+    // Validate the name to prevent command injection
+    if name.is_empty() || name.contains(|c: char| c.is_whitespace() || c == ';' || c == '|' || c == '&') {
+        return Err(format!("Invalid plugin name: {}", name));
+    }
+
+    let output = Command::new("claude")
+        .args(["plugins", "add", name])
+        .output()
+        .map_err(|e| format!("Failed to run claude: {}", e))?;
+
+    if output.status.success() {
+        let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+        Ok(stdout)
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+        Err(format!("Plugin install failed: {}", stderr.trim()))
+    }
 }

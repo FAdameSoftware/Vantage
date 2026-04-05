@@ -213,9 +213,7 @@ const mockInvokeHandlers: Record<string, MockInvokeHandler> = {
   get_theme_file_path: () => "~/.vantage/theme.json",
 
   // ── Claude session management ──
-  start_claude_session: () => "mock-session-" + Date.now(),
   claude_start_session: () => "mock-session-" + Date.now(),
-  send_claude_message: () => null,
   claude_send_message: () => null,
   claude_respond_permission: () => null,
   claude_interrupt_session: () => null,
@@ -305,6 +303,12 @@ const mockInvokeHandlers: Record<string, MockInvokeHandler> = {
     agents: [],
   }),
   toggle_plugin: () => null,
+  install_plugin: () => "Plugin installed successfully (mock)",
+
+  // ── Worktree helpers ──
+  get_agent_worktree_path: () => "/mock/.vantage-worktrees/mock-agent-12345678",
+  get_agent_branch_name: () => "vantage/mock-agent-12345678",
+  create_worktree: () => ({ path: "/mock/.vantage-worktrees/mock-agent-12345678", branch: "vantage/mock-agent-12345678" }),
 
   // ── Indexer ──
   index_project: () => ({

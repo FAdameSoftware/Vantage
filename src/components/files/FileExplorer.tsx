@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useState, useRef, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { FolderOpen, RefreshCw } from "lucide-react";
 import { useFileTree } from "@/hooks/useFileTree";
@@ -16,6 +16,116 @@ import {
 } from "@/components/ui/context-menu";
 import type { FileNode } from "@/hooks/useFileTree";
 
+// ── Inline dialog types ──────────────────────────────────────────────
+
+type InlineDialogMode =
+  | { type: "prompt"; title: string; defaultValue: string; onSubmit: (value: string) => void }
+  | { type: "confirm"; title: string; onConfirm: () => void }
+  | null;
+
+/** A small themed dialog for prompt/confirm, replacing browser built-ins. */
+function InlineDialog({
+  dialog,
+  onClose,
+}: {
+  dialog: NonNullable<InlineDialogMode>;
+  onClose: () => void;
+}) {
+  const [value, setValue] = useState(dialog.type === "prompt" ? dialog.defaultValue : "");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+    inputRef.current?.select();
+  }, []);
+
+  const handleSubmit = () => {
+    if (dialog.type === "prompt") {
+      const trimmed = value.trim();
+      if (trimmed) {
+        dialog.onSubmit(trimmed);
+      }
+    } else {
+      dialog.onConfirm();
+    }
+    onClose();
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleSubmit();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      onClose();
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+      onClick={onClose}
+    >
+      <div
+        className="w-80 rounded-lg p-4 flex flex-col gap-3"
+        style={{
+          backgroundColor: "var(--color-mantle)",
+          border: "1px solid var(--color-surface-1)",
+          boxShadow: "0 16px 48px rgba(0,0,0,0.5)",
+        }}
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={handleKeyDown}
+      >
+        <span className="text-xs font-semibold" style={{ color: "var(--color-text)" }}>
+          {dialog.title}
+        </span>
+
+        {dialog.type === "prompt" && (
+          <input
+            ref={inputRef}
+            type="text"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            className="w-full rounded px-2 py-1 text-xs outline-none"
+            style={{
+              backgroundColor: "var(--color-surface-0)",
+              color: "var(--color-text)",
+              border: "1px solid var(--color-surface-1)",
+            }}
+          />
+        )}
+
+        <div className="flex items-center justify-end gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-2.5 py-1 text-xs rounded transition-opacity hover:opacity-80"
+            style={{
+              backgroundColor: "var(--color-surface-0)",
+              color: "var(--color-subtext-0)",
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            ref={dialog.type === "confirm" ? inputRef as React.RefObject<HTMLButtonElement> : undefined}
+            type="button"
+            onClick={handleSubmit}
+            className="px-2.5 py-1 text-xs rounded transition-opacity hover:opacity-80"
+            style={{
+              backgroundColor: dialog.type === "confirm" ? "var(--color-red)" : "var(--color-blue)",
+              color: "var(--color-base)",
+            }}
+          >
+            {dialog.type === "confirm" ? "Delete" : "OK"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function FileExplorer() {
   const {
     tree,
@@ -32,6 +142,7 @@ export function FileExplorer() {
   const { fileStatuses } = useGitStatus(rootPath);
 
   const [contextNode, setContextNode] = useState<FileNode | null>(null);
+  const [inlineDialog, setInlineDialog] = useState<InlineDialogMode>(null);
 
   const handleFileClick = useCallback(
     async (node: FileNode) => {
@@ -85,72 +196,86 @@ export function FileExplorer() {
     []
   );
 
-  const handleNewFile = useCallback(async () => {
+  const handleNewFile = useCallback(() => {
     if (!contextNode) return;
     const parentPath = contextNode.is_dir
       ? contextNode.path
       : contextNode.path.replace(/\/[^/]+$/, "");
-    const name = prompt("Enter file name:");
-    if (!name) return;
-
-    try {
-      await invoke("create_file", { path: `${parentPath}/${name}` });
-      refresh();
-    } catch (e) {
-      console.error("Failed to create file:", e);
-    }
+    setInlineDialog({
+      type: "prompt",
+      title: "Enter file name",
+      defaultValue: "",
+      onSubmit: async (name: string) => {
+        try {
+          await invoke("create_file", { path: `${parentPath}/${name}` });
+          refresh();
+        } catch (e) {
+          console.error("Failed to create file:", e);
+        }
+      },
+    });
   }, [contextNode, refresh]);
 
-  const handleNewFolder = useCallback(async () => {
+  const handleNewFolder = useCallback(() => {
     if (!contextNode) return;
     const parentPath = contextNode.is_dir
       ? contextNode.path
       : contextNode.path.replace(/\/[^/]+$/, "");
-    const name = prompt("Enter folder name:");
-    if (!name) return;
-
-    try {
-      await invoke("create_dir", { path: `${parentPath}/${name}` });
-      refresh();
-    } catch (e) {
-      console.error("Failed to create folder:", e);
-    }
+    setInlineDialog({
+      type: "prompt",
+      title: "Enter folder name",
+      defaultValue: "",
+      onSubmit: async (name: string) => {
+        try {
+          await invoke("create_dir", { path: `${parentPath}/${name}` });
+          refresh();
+        } catch (e) {
+          console.error("Failed to create folder:", e);
+        }
+      },
+    });
   }, [contextNode, refresh]);
 
-  const handleRename = useCallback(async () => {
+  const handleRename = useCallback(() => {
     if (!contextNode) return;
-    const newName = prompt("Enter new name:", contextNode.name);
-    if (!newName || newName === contextNode.name) return;
-
     const parentPath = contextNode.path.replace(/\/[^/]+$/, "");
-    try {
-      await invoke("rename_path", {
-        oldPath: contextNode.path,
-        newPath: `${parentPath}/${newName}`,
-      });
-      refresh();
-    } catch (e) {
-      console.error("Failed to rename:", e);
-    }
+    setInlineDialog({
+      type: "prompt",
+      title: "Enter new name",
+      defaultValue: contextNode.name,
+      onSubmit: async (newName: string) => {
+        if (newName === contextNode.name) return;
+        try {
+          await invoke("rename_path", {
+            oldPath: contextNode.path,
+            newPath: `${parentPath}/${newName}`,
+          });
+          refresh();
+        } catch (e) {
+          console.error("Failed to rename:", e);
+        }
+      },
+    });
   }, [contextNode, refresh]);
 
-  const handleDelete = useCallback(async () => {
+  const handleDelete = useCallback(() => {
     if (!contextNode) return;
-    const confirmed = confirm(
-      `Are you sure you want to delete "${contextNode.name}"?`
-    );
-    if (!confirmed) return;
-
-    try {
-      if (contextNode.is_dir) {
-        await invoke("delete_dir", { path: contextNode.path });
-      } else {
-        await invoke("delete_file", { path: contextNode.path });
-      }
-      refresh();
-    } catch (e) {
-      console.error("Failed to delete:", e);
-    }
+    setInlineDialog({
+      type: "confirm",
+      title: `Delete "${contextNode.name}"?`,
+      onConfirm: async () => {
+        try {
+          if (contextNode.is_dir) {
+            await invoke("delete_dir", { path: contextNode.path });
+          } else {
+            await invoke("delete_file", { path: contextNode.path });
+          }
+          refresh();
+        } catch (e) {
+          console.error("Failed to delete:", e);
+        }
+      },
+    });
   }, [contextNode, refresh]);
 
   const handleCopyPath = useCallback(() => {
@@ -194,11 +319,15 @@ export function FileExplorer() {
         setRootPath(selected as string);
       }
     } catch {
-      // Fallback: prompt for a path string
-      const path = prompt("Enter folder path:");
-      if (path) {
-        setRootPath(path.replace(/\\/g, "/"));
-      }
+      // Fallback: inline prompt for a path string
+      setInlineDialog({
+        type: "prompt",
+        title: "Enter folder path",
+        defaultValue: "",
+        onSubmit: (path: string) => {
+          setRootPath(path.replace(/\\/g, "/"));
+        },
+      });
     }
   }, [setRootPath]);
 
@@ -349,6 +478,14 @@ export function FileExplorer() {
           </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
+
+      {/* Inline dialog for prompt/confirm (replaces browser built-ins) */}
+      {inlineDialog && (
+        <InlineDialog
+          dialog={inlineDialog}
+          onClose={() => setInlineDialog(null)}
+        />
+      )}
     </div>
   );
 }

@@ -142,8 +142,8 @@ describe("Mock IPC edge cases", () => {
   });
 
   it("multiple invocations of the same command are independent", async () => {
-    const result1 = await mockInvoke("start_claude_session");
-    const result2 = await mockInvoke("start_claude_session");
+    const result1 = await mockInvoke("claude_start_session");
+    const result2 = await mockInvoke("claude_start_session");
 
     expect(typeof result1).toBe("string");
     expect(typeof result2).toBe("string");

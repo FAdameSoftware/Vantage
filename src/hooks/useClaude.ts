@@ -9,8 +9,11 @@ import {
 import { useSettingsStore } from "@/stores/settings";
 import { useAgentsStore } from "@/stores/agents";
 import { useAgentConversationsStore } from "@/stores/agentConversations";
+import { useEditorStore } from "@/stores/editor";
+import { useLayoutStore } from "@/stores/layout";
 import type {
   ClaudeOutputMessage,
+  ClaudeEventPayload,
   PermissionRequestPayload,
   ClaudeStatusPayload,
   StreamEventMessage,
@@ -237,6 +240,52 @@ function extractFromAssistantMsg(msg: AssistantMessage) {
   };
 }
 
+// ─── Helper: capture pending diffs for Edit/Write tool calls ───────────────
+
+function capturePendingDiffs(assistantMsg: AssistantMessage) {
+  const editorStore = useEditorStore.getState();
+  for (const block of assistantMsg.message.content) {
+    if (block.type !== "tool_use") continue;
+    const toolName = block.name;
+    if (toolName !== "Edit" && toolName !== "Write") continue;
+
+    const input = block.input as Record<string, unknown>;
+    const filePath = (input.file_path ?? input.path ?? "") as string;
+    if (!filePath) continue;
+
+    // Normalize path to match editor tab IDs
+    let normalizedPath = filePath.replace(/\\/g, "/");
+    if (/^[A-Z]:\//.test(normalizedPath)) {
+      normalizedPath = normalizedPath[0].toLowerCase() + normalizedPath.slice(1);
+    }
+
+    // Snapshot the current content as "before" from the editor store
+    const tab = editorStore.tabs.find((t) => t.id === normalizedPath);
+    const beforeContent = tab?.content ?? tab?.savedContent ?? "";
+
+    // Read the file after the tool has executed to get "after" content.
+    // We use invoke("read_file") with a small delay to let the write complete.
+    setTimeout(async () => {
+      try {
+        const result = await invoke<{ content: string }>("read_file", {
+          path: filePath,
+        });
+        const afterContent = result.content;
+        if (afterContent !== beforeContent) {
+          useEditorStore.getState().setPendingDiff(
+            normalizedPath,
+            beforeContent,
+            afterContent,
+            `Claude ${toolName}: ${filePath.split("/").pop() ?? filePath}`,
+          );
+        }
+      } catch {
+        // File read failed — skip diff capture
+      }
+    }, 500);
+  }
+}
+
 // ─── Tauri event bridge ─────────────────────────────────────────────────────
 
 export function useClaude() {
@@ -265,10 +314,12 @@ export function useClaude() {
 
     async function setupListeners() {
       // claude_message — the main message bus
-      const unlistenMessage = await listen<ClaudeOutputMessage>(
+      // Rust emits ClaudeEventPayload { session_id, message } — unwrap the envelope
+      const unlistenMessage = await listen<ClaudeEventPayload>(
         "claude_message",
         (event) => {
-          const msg = event.payload;
+          const payload = event.payload;
+          const msg = payload.message as ClaudeOutputMessage;
 
           switch (msg.type) {
             case "system": {
@@ -366,6 +417,8 @@ export function useClaude() {
               if (!routed) {
                 handleAssistantMessage(assistantMsg);
               }
+              // Capture before/after diffs for Edit/Write tool calls
+              capturePendingDiffs(assistantMsg);
               break;
             }
 
@@ -510,9 +563,10 @@ export function useClaude() {
       setConnectionStatus("starting");
       try {
         const settings = useSettingsStore.getState();
-        const id = await invoke<string>("start_claude_session", {
+        const id = await invoke<string>("claude_start_session", {
           cwd,
-          resumeSessionId: resumeSessionId ?? null,
+          sessionId: resumeSessionId ?? null,
+          resume: !!resumeSessionId,
           effortLevel: settings.effortLevel,
           planMode: settings.planMode,
           fromPr: fromPr ?? null,
@@ -539,13 +593,15 @@ export function useClaude() {
         const sessionCwd =
           cwd ??
           useConversationStore.getState().session?.cwd ??
-          "C:/CursorProjects/Vantage";
+          useLayoutStore.getState().projectRootPath ??
+          ".";
         setConnectionStatus("starting");
         try {
           const settings = useSettingsStore.getState();
-          const id = await invoke<string>("start_claude_session", {
+          const id = await invoke<string>("claude_start_session", {
             cwd: sessionCwd,
-            resumeSessionId: null,
+            sessionId: null,
+            resume: false,
             effortLevel: settings.effortLevel,
             planMode: settings.planMode,
             fromPr: null,
@@ -565,9 +621,9 @@ export function useClaude() {
       // Optimistically add the user message to the store
       addUserMessage(content);
       try {
-        await invoke("send_claude_message", {
+        await invoke("claude_send_message", {
           sessionId: sessionIdRef.current,
-          message: content,
+          content,
         });
       } catch (err) {
         setConnectionStatus("error", String(err));
@@ -632,11 +688,41 @@ export function useClaude() {
 
   const startAgentSession = useCallback(async (agentId: string, cwd: string) => {
     const agentsStore = useAgentsStore.getState();
+    const agent = agentsStore.agents.get(agentId);
+    if (!agent) return;
+
     agentsStore.updateAgentStatus(agentId, "working");
 
     try {
+      // Resolve worktree: use existing one or create a new one
+      let worktreeCwd = agent.worktreePath;
+
+      if (!worktreeCwd) {
+        // Generate worktree path and branch name via Rust helpers
+        const worktreePath = await invoke<string>("get_agent_worktree_path", {
+          repoPath: cwd,
+          agentName: agent.name,
+          agentId: agent.id,
+        });
+        const branchName = await invoke<string>("get_agent_branch_name", {
+          agentName: agent.name,
+          agentId: agent.id,
+        });
+
+        // Create the worktree
+        await invoke<{ path: string; branch: string }>("create_worktree", {
+          repoPath: cwd,
+          branchName,
+          worktreePath,
+        });
+
+        // Link worktree to agent in the store
+        agentsStore.linkWorktree(agentId, worktreePath, branchName);
+        worktreeCwd = worktreePath;
+      }
+
       const sessionId = await invoke<string>("claude_start_session", {
-        cwd,
+        cwd: worktreeCwd,
         sessionId: null,
         resume: false,
         effortLevel: useSettingsStore.getState().effortLevel,

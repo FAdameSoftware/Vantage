@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import { MessageSquare, Plus } from "lucide-react";
 import { useConversationStore } from "@/stores/conversation";
+import { useLayoutStore } from "@/stores/layout";
 import { useClaude } from "@/hooks/useClaude";
 import { MessageBubble } from "./MessageBubble";
 import { ChatInput } from "./ChatInput";
@@ -106,7 +107,7 @@ export function ChatPanel() {
   const handleResumeSession = useCallback(
     (sessionId: string) => {
       void stopSession();
-      const cwd = session?.cwd ?? "C:/CursorProjects/Vantage";
+      const cwd = session?.cwd ?? useLayoutStore.getState().projectRootPath ?? ".";
       void startSession(cwd, sessionId);
     },
     [stopSession, startSession, session?.cwd],
@@ -121,7 +122,7 @@ export function ChatPanel() {
         useQuickQuestionStore.getState().ask(content.slice(5));
       }
       autoScrollRef.current = true;
-      const cwd = session?.cwd ?? "C:/CursorProjects/Vantage";
+      const cwd = session?.cwd ?? useLayoutStore.getState().projectRootPath ?? ".";
       sendMessage(content, cwd);
     },
     [sendMessage, session?.cwd],
