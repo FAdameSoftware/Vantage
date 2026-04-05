@@ -9,6 +9,7 @@ import { AgentTreeView } from "@/components/agents/AgentTreeView";
 import { GitLogPanel } from "@/components/git/GitLogPanel";
 import { SourceControlPanel } from "@/components/git/SourceControlPanel";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
+import { WorkspaceMetadata } from "./WorkspaceMetadata";
 
 const panelConfig: Record<
   ActivityBarItem,
@@ -163,7 +164,15 @@ export function PrimarySidebar() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden flex flex-col">
+        {/* Workspace metadata strip — shown above file explorer */}
+        {activeItem === "explorer" && (
+          <ErrorBoundary>
+            <WorkspaceMetadata />
+          </ErrorBoundary>
+        )}
+
+        <div className="flex-1 overflow-hidden">
         {activeItem === "explorer" ? (
           <ErrorBoundary>
             <FileExplorer />
@@ -188,6 +197,7 @@ export function PrimarySidebar() {
             </p>
           </div>
         )}
+        </div>
       </div>
     </div>
   );
