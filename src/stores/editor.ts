@@ -46,6 +46,8 @@ export interface EditorState {
   cursorPosition: CursorPosition;
   /** Current vim mode label (only meaningful when vim mode is enabled) */
   vimModeLabel: string;
+  /** Number of lines covered by the current selection (0 = no multi-line selection) */
+  selectionLineCount: number;
 
   // ── Split Editor ───────────────────────────────────────────────────
   /** Direction of the editor split ("none" = no split) */
@@ -77,6 +79,8 @@ export interface EditorState {
   setCursorPosition: (position: CursorPosition) => void;
   /** Update the vim mode label (NORMAL / INSERT / VISUAL / etc.) */
   setVimModeLabel: (label: string) => void;
+  /** Update the selected line count (0 means no notable selection) */
+  setSelectionLineCount: (count: number) => void;
   /** Reload a tab's content from disk (external change) */
   reloadTab: (id: string, content: string) => void;
   /** Get the currently active tab, or null */
@@ -190,6 +194,9 @@ export const selectActiveTabId = (s: EditorState): string | null => s.activeTabI
 /** Select cursor position only. */
 export const selectCursorPosition = (s: EditorState) => s.cursorPosition;
 
+/** Select the selected line count only. */
+export const selectSelectionLineCount = (s: EditorState) => s.selectionLineCount;
+
 /** Normalize a file path to use as a tab ID (forward slashes, lowercase drive letter) */
 function normalizeTabId(path: string): string {
   let normalized = path.replace(/\\/g, "/");
@@ -205,6 +212,7 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
   activeTabId: null,
   cursorPosition: { line: 1, column: 1 },
   vimModeLabel: "NORMAL",
+  selectionLineCount: 0,
   splitDirection: "none",
   secondaryActiveTabId: null,
   markdownPreviewTabs: new Set<string>(),
@@ -333,6 +341,10 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
 
   setVimModeLabel: (label) => {
     set({ vimModeLabel: label });
+  },
+
+  setSelectionLineCount: (count) => {
+    set({ selectionLineCount: count });
   },
 
   reloadTab: (id, content) => {
@@ -550,6 +562,7 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
       activeTabId: null,
       cursorPosition: { line: 1, column: 1 },
       vimModeLabel: "NORMAL",
+      selectionLineCount: 0,
       splitDirection: "none",
       secondaryActiveTabId: null,
       markdownPreviewTabs: new Set<string>(),

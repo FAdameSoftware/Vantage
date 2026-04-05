@@ -6,6 +6,7 @@ import {
   X,
   Maximize2,
   Columns2,
+  Trash2,
 } from "lucide-react";
 import { useLayoutStore } from "@/stores/layout";
 import { TerminalInstance } from "./TerminalInstance";
@@ -40,6 +41,8 @@ export function TerminalPanel() {
   const [renamingTabId, setRenamingTabId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const renameInputRef = useRef<HTMLInputElement>(null);
+  /** Map of terminal tab ID -> clear function registered by TerminalInstance */
+  const clearFnsRef = useRef<Map<string, () => void>>(new Map());
 
   const createTerminal = useCallback(
     (shell: ShellInfo, cwd?: string) => {
@@ -89,6 +92,8 @@ export function TerminalPanel() {
       if (splitTabId === id) {
         setSplitTabId(null);
       }
+      // Clean up the stored clear function
+      clearFnsRef.current.delete(id);
       setTabs((prev) => {
         const newTabs = prev.filter((t) => t.id !== id);
         if (activeTabId === id && newTabs.length > 0) {
@@ -135,6 +140,17 @@ export function TerminalPanel() {
       createTerminal(shells[0]);
     }
   }, [shells, createTerminal]);
+
+  /** Register a clear function for a terminal tab (called by TerminalInstance on mount) */
+  const handleRegisterClear = useCallback((tabId: string, clearFn: () => void) => {
+    clearFnsRef.current.set(tabId, clearFn);
+  }, []);
+
+  /** Clear the active terminal's buffer */
+  const handleClearTerminal = useCallback(() => {
+    if (!activeTabId) return;
+    clearFnsRef.current.get(activeTabId)?.();
+  }, [activeTabId]);
 
   /** Split: create a new terminal and show it side-by-side with the active one */
   const handleSplitTerminal = useCallback(() => {
@@ -297,6 +313,16 @@ export function TerminalPanel() {
         <div className="flex items-center gap-0.5">
           <button
             className="flex items-center justify-center w-6 h-6 rounded hover:bg-[var(--color-surface-1)] transition-colors"
+            style={{ color: "var(--color-overlay-1)" }}
+            onClick={handleClearTerminal}
+            aria-label="Clear Terminal"
+            title="Clear Terminal"
+            disabled={!activeTabId}
+          >
+            <Trash2 size={12} />
+          </button>
+          <button
+            className="flex items-center justify-center w-6 h-6 rounded hover:bg-[var(--color-surface-1)] transition-colors"
             style={{
               color: splitTabId ? "var(--color-blue)" : "var(--color-overlay-1)",
             }}
@@ -354,6 +380,7 @@ export function TerminalPanel() {
                   shellArgs={tab.shellArgs}
                   cwd={tab.cwd}
                   isVisible={tab.id === activeTabId}
+                  onRegisterClear={(fn) => handleRegisterClear(tab.id, fn)}
                 />
               ))}
             </div>
@@ -369,6 +396,7 @@ export function TerminalPanel() {
                   shellArgs={tab.shellArgs}
                   cwd={tab.cwd}
                   isVisible={tab.id === splitTabId}
+                  onRegisterClear={(fn) => handleRegisterClear(tab.id, fn)}
                 />
               ))}
             </div>
@@ -382,6 +410,7 @@ export function TerminalPanel() {
               shellArgs={tab.shellArgs}
               cwd={tab.cwd}
               isVisible={tab.id === activeTabId}
+              onRegisterClear={(fn) => handleRegisterClear(tab.id, fn)}
             />
           ))
         )}

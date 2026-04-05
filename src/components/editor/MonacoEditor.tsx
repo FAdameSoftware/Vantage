@@ -133,6 +133,7 @@ export function MonacoEditor({
   const monacoTheme = getMonacoTheme(themeName);
 
   const setCursorPosition = useEditorStore((s) => s.setCursorPosition);
+  const setSelectionLineCount = useEditorStore((s) => s.setSelectionLineCount);
   const pinTab = useEditorStore((s) => s.pinTab);
   const setVimModeLabel = useEditorStore((s) => s.setVimModeLabel);
 
@@ -165,6 +166,18 @@ export function MonacoEditor({
           line: e.position.lineNumber,
           column: e.position.column,
         });
+      });
+
+      // Listen for selection changes to report selected line count
+      editor.onDidChangeCursorSelection((e) => {
+        const selection = e.selection;
+        if (selection.isEmpty()) {
+          setSelectionLineCount(0);
+        } else {
+          setSelectionLineCount(
+            selection.endLineNumber - selection.startLineNumber + 1
+          );
+        }
       });
 
       // Pin preview tab on first edit and update cross-file registration
@@ -205,6 +218,19 @@ export function MonacoEditor({
         },
       });
 
+      // Register Ctrl+. for Quick Fix
+      editor.addAction({
+        id: "vantage.quickFix",
+        label: "Quick Fix",
+        keybindings: [
+          monaco.KeyMod.CtrlCmd | monaco.KeyCode.Period,
+        ],
+        run: (ed) => {
+          const action = ed.getAction("editor.action.quickFix");
+          if (action) action.run();
+        },
+      });
+
       // Register Ctrl+Shift+O for Go to Symbol (document outline)
       editor.addAction({
         id: "vantage.goToSymbol",
@@ -222,7 +248,7 @@ export function MonacoEditor({
       // Focus the editor
       editor.focus();
     },
-    [filePath, setCursorPosition, pinTab, inlineEdit]
+    [filePath, setCursorPosition, setSelectionLineCount, pinTab, inlineEdit]
   );
 
   const handleChange: OnChange = useCallback(
@@ -286,7 +312,9 @@ export function MonacoEditor({
             cursorBlinking,
             cursorSmoothCaretAnimation,
             cursorStyle,
-            renderLineHighlight: "line",
+            renderLineHighlight: "all",
+            colorDecorators: true,
+            linkedEditing: true,
             renderWhitespace,
             scrollBeyondLastLine,
             bracketPairColorization: { enabled: bracketPairColorization },

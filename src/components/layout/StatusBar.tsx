@@ -12,7 +12,7 @@ import {
   Bell,
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
-import { useEditorStore, selectActiveTab, selectCursorPosition } from "@/stores/editor";
+import { useEditorStore, selectActiveTab, selectCursorPosition, selectSelectionLineCount } from "@/stores/editor";
 import { useConversationStore } from "@/stores/conversation";
 import { useLayoutStore } from "@/stores/layout";
 import { useSettingsStore } from "@/stores/settings";
@@ -27,6 +27,7 @@ import * as monaco from "monaco-editor";
 
 export function StatusBar() {
   const cursorPosition = useEditorStore(selectCursorPosition);
+  const selectionLineCount = useEditorStore(selectSelectionLineCount);
   const vimModeLabel = useEditorStore((s) => s.vimModeLabel);
   const activeTab = useEditorStore(selectActiveTab);
 
@@ -397,6 +398,15 @@ export function StatusBar() {
             title="Go to Line (Ctrl+G)"
           >
             Ln {cursorPosition.line}, Col {cursorPosition.column}
+            {selectionLineCount > 1 && (
+              <span
+                className="ml-1"
+                aria-label={`${selectionLineCount} lines selected`}
+                title={`${selectionLineCount} lines selected`}
+              >
+                ({selectionLineCount} lines selected)
+              </span>
+            )}
           </button>
 
           {/* EOL (line ending) -> click toggles LF / CRLF */}

@@ -33,6 +33,8 @@ interface UseTerminalReturn {
   clearSearch: () => void;
   /** Focus the terminal */
   focus: () => void;
+  /** Clear the terminal buffer */
+  clear: () => void;
 }
 
 export function useTerminal(options: UseTerminalOptions): UseTerminalReturn {
@@ -213,6 +215,11 @@ export function useTerminal(options: UseTerminalOptions): UseTerminalReturn {
     terminalRef.current?.focus();
   }, []);
 
+  const clear = useCallback(() => {
+    terminalRef.current?.clear();
+    terminalRef.current?.focus();
+  }, []);
+
   return {
     containerRef,
     terminalRef,
@@ -221,5 +228,6 @@ export function useTerminal(options: UseTerminalOptions): UseTerminalReturn {
     searchPrevious,
     clearSearch,
     focus,
+    clear,
   };
 }

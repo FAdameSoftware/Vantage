@@ -14,6 +14,8 @@ interface TerminalInstanceProps {
   cwd?: string;
   /** Whether this terminal is the currently visible one */
   isVisible: boolean;
+  /** Called on mount with a function that clears this terminal's buffer */
+  onRegisterClear?: (clearFn: () => void) => void;
 }
 
 // ─── Terminal Find Bar ──────────────────────────────────────────────────────
@@ -117,12 +119,18 @@ export function TerminalInstance({
   shellArgs,
   cwd,
   isVisible,
+  onRegisterClear,
 }: TerminalInstanceProps) {
-  const { containerRef, terminalRef, fit, search, searchPrevious, clearSearch, focus } = useTerminal({
+  const { containerRef, terminalRef, fit, search, searchPrevious, clearSearch, focus, clear } = useTerminal({
     shellPath,
     shellArgs,
     cwd,
   });
+
+  // Expose the clear function to the parent on mount
+  useEffect(() => {
+    onRegisterClear?.(clear);
+  }, [onRegisterClear, clear]);
   const rafRef = useRef<number | null>(null);
   const [findBarOpen, setFindBarOpen] = useState(false);
   const [blocksVisible, setBlocksVisible] = useState(false);
