@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 
@@ -16,17 +16,34 @@ export interface GitFileStatus {
 interface UseGitStatusReturn {
   branch: GitBranchInfo | null;
   fileStatuses: Map<string, GitFileStatus>;
+  /** All file statuses as a flat array (convenience accessor) */
+  allStatuses: GitFileStatus[];
+  /** Only staged files */
+  stagedFiles: GitFileStatus[];
+  /** Only unstaged / untracked files */
+  unstagedFiles: GitFileStatus[];
   isGitRepo: boolean;
   refresh: () => void;
 }
 
 export function useGitStatus(rootPath: string | null): UseGitStatusReturn {
   const [branch, setBranch] = useState<GitBranchInfo | null>(null);
+  const [allStatuses, setAllStatuses] = useState<GitFileStatus[]>([]);
   const [fileStatuses, setFileStatuses] = useState<Map<string, GitFileStatus>>(
     new Map()
   );
   const [isGitRepo, setIsGitRepo] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const stagedFiles = useMemo(
+    () => allStatuses.filter((s) => s.is_staged),
+    [allStatuses]
+  );
+
+  const unstagedFiles = useMemo(
+    () => allStatuses.filter((s) => !s.is_staged),
+    [allStatuses]
+  );
 
   const refresh = useCallback(async () => {
     if (!rootPath) return;
@@ -42,6 +59,7 @@ export function useGitStatus(rootPath: string | null): UseGitStatusReturn {
         const statuses = await invoke<GitFileStatus[]>("get_git_status", {
           cwd: rootPath,
         });
+        setAllStatuses(statuses);
         const statusMap = new Map<string, GitFileStatus>();
         for (const status of statuses) {
           // Normalize path: make it absolute by prepending rootPath
@@ -56,6 +74,7 @@ export function useGitStatus(rootPath: string | null): UseGitStatusReturn {
     } catch {
       setIsGitRepo(false);
       setBranch(null);
+      setAllStatuses([]);
       setFileStatuses(new Map());
     }
   }, [rootPath]);
@@ -87,5 +106,5 @@ export function useGitStatus(rootPath: string | null): UseGitStatusReturn {
     };
   }, [refresh]);
 
-  return { branch, fileStatuses, isGitRepo, refresh };
+  return { branch, fileStatuses, allStatuses, stagedFiles, unstagedFiles, isGitRepo, refresh };
 }

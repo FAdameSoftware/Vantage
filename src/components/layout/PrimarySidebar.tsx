@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Search, GitBranch as GitBranchIcon, Bot, Settings, Files, LayoutGrid, GitFork } from "lucide-react";
 import { useLayoutStore, type ActivityBarItem } from "@/stores/layout";
 import { FileExplorer } from "@/components/files/FileExplorer";
@@ -6,6 +7,7 @@ import { SettingsPanel } from "@/components/settings/SettingsPanel";
 import { KanbanBoard } from "@/components/agents/KanbanBoard";
 import { AgentTreeView } from "@/components/agents/AgentTreeView";
 import { GitLogPanel } from "@/components/git/GitLogPanel";
+import { SourceControlPanel } from "@/components/git/SourceControlPanel";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 
 const panelConfig: Record<
@@ -42,6 +44,52 @@ const panelConfig: Record<
     description: "Application settings will appear here.",
   },
 };
+
+// ── Git panel with Source Control / History tabs ────────────────────
+
+function GitPanel() {
+  const [tab, setTab] = useState<"changes" | "history">("changes");
+
+  return (
+    <div className="flex flex-col h-full overflow-hidden">
+      {/* Tab bar */}
+      <div
+        className="flex items-center shrink-0"
+        style={{ borderBottom: "1px solid var(--color-surface-0)" }}
+      >
+        {(["changes", "history"] as const).map((t) => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => setTab(t)}
+            className="flex-1 py-1.5 text-[11px] font-medium text-center transition-colors"
+            style={{
+              color:
+                tab === t ? "var(--color-text)" : "var(--color-overlay-1)",
+              borderBottom:
+                tab === t ? "2px solid var(--color-blue)" : "2px solid transparent",
+            }}
+          >
+            {t === "changes" ? "Source Control" : "History"}
+          </button>
+        ))}
+      </div>
+
+      {/* Panel content */}
+      <div className="flex-1 overflow-hidden">
+        {tab === "changes" ? (
+          <ErrorBoundary>
+            <SourceControlPanel />
+          </ErrorBoundary>
+        ) : (
+          <ErrorBoundary>
+            <GitLogPanel />
+          </ErrorBoundary>
+        )}
+      </div>
+    </div>
+  );
+}
 
 // ── Agents view toggle ──────────────────────────────────────────────
 
@@ -125,7 +173,7 @@ export function PrimarySidebar() {
             <SearchPanel />
           </ErrorBoundary>
         ) : activeItem === "git" ? (
-          <GitLogPanel />
+          <GitPanel />
         ) : activeItem === "agents" ? (
           <AgentsPanel />
         ) : activeItem === "settings" ? (
