@@ -64,10 +64,16 @@ export function useFileTree(): UseFileTreeReturn {
       setExpandedPaths(new Set());
       loadTree(storeProjectRootPath);
 
-      // Start file watcher for the restored/new root
-      invoke("start_file_watcher", { path: storeProjectRootPath }).catch((err) =>
-        console.error("Failed to start file watcher:", err)
-      );
+      // Stop the previous file watcher before starting a new one to prevent
+      // watcher leaks when switching projects. Without this, each project switch
+      // could leave an orphaned watcher on the Rust side.
+      invoke("stop_file_watcher")
+        .catch(() => {/* ignore -- no watcher may be running yet */})
+        .then(() =>
+          invoke("start_file_watcher", { path: storeProjectRootPath }).catch((err) =>
+            console.error("Failed to start file watcher:", err)
+          )
+        );
     }
   }, [storeProjectRootPath, rootPath, loadTree]);
 
@@ -80,10 +86,15 @@ export function useFileTree(): UseFileTreeReturn {
       // Sync to layout store so command palette can read it globally
       useLayoutStore.getState().setProjectRootPath(path);
 
-      // Start file watcher for the new root
-      invoke("start_file_watcher", { path }).catch((err) =>
-        console.error("Failed to start file watcher:", err)
-      );
+      // Stop the previous file watcher before starting a new one to prevent
+      // watcher leaks when switching projects via setRootPath.
+      invoke("stop_file_watcher")
+        .catch(() => {/* ignore -- no watcher may be running yet */})
+        .then(() =>
+          invoke("start_file_watcher", { path }).catch((err) =>
+            console.error("Failed to start file watcher:", err)
+          )
+        );
     },
     [loadTree]
   );

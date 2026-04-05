@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useMemo } from "react";
 import { useLayoutStore } from "@/stores/layout";
 import { useEditorStore } from "@/stores/editor";
 import { useCommandPaletteStore } from "@/stores/commandPalette";
@@ -81,7 +81,11 @@ export function useKeybindings() {
     }
   }, []);
 
-  const keybindings: Keybinding[] = [
+  // Memoize the keybindings array so its reference is stable across renders.
+  // Without this, the array is recreated every render, which causes handleKeyDown
+  // to get a new identity (it depends on keybindings), which triggers the useEffect
+  // to remove and re-add the keydown event listener on every single render.
+  const keybindings: Keybinding[] = useMemo(() => [
     // Layout toggles
     {
       key: "b",
@@ -217,7 +221,11 @@ export function useKeybindings() {
       action: handlePrevTab,
       description: "Previous Tab",
     },
-  ];
+  ], [
+    togglePrimarySidebar, togglePanel, toggleSecondarySidebar,
+    openPalette, setActiveActivityBarItem, handleCycleTheme,
+    handleSave, handleCloseActiveTab, handleNextTab, handlePrevTab,
+  ]);
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {

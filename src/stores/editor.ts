@@ -174,7 +174,7 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
   },
 
   closeTab: (id) => {
-    const { tabs, activeTabId } = get();
+    const { tabs, activeTabId, markdownPreviewTabs, popoutTabs, pendingDiffs } = get();
     const tabIndex = tabs.findIndex((t) => t.id === id);
     if (tabIndex === -1) return;
 
@@ -189,7 +189,23 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
       newActiveId = activeTabId;
     }
 
-    set({ tabs: newTabs, activeTabId: newActiveId });
+    // Clean up associated Set/Map entries to prevent unbounded growth.
+    // Without this, markdownPreviewTabs, popoutTabs, and pendingDiffs accumulate
+    // stale IDs across many tab open/close cycles.
+    const nextPreview = new Set(markdownPreviewTabs);
+    nextPreview.delete(id);
+    const nextPopout = new Set(popoutTabs);
+    nextPopout.delete(id);
+    const nextDiffs = new Map(pendingDiffs);
+    nextDiffs.delete(id);
+
+    set({
+      tabs: newTabs,
+      activeTabId: newActiveId,
+      markdownPreviewTabs: nextPreview,
+      popoutTabs: nextPopout,
+      pendingDiffs: nextDiffs,
+    });
   },
 
   setActiveTab: (id) => {
@@ -248,14 +264,33 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
   },
 
   closeAllTabs: () => {
-    set({ tabs: [], activeTabId: null });
+    // Reset all tab-associated collections to prevent stale ID accumulation.
+    set({
+      tabs: [],
+      activeTabId: null,
+      markdownPreviewTabs: new Set<string>(),
+      popoutTabs: new Set<string>(),
+      pendingDiffs: new Map<string, PendingDiff>(),
+    });
   },
 
   closeOtherTabs: (id) => {
-    const { tabs } = get();
+    const { tabs, markdownPreviewTabs, popoutTabs, pendingDiffs } = get();
+    // Keep only the entries for the surviving tab to prevent stale ID accumulation.
+    const nextPreview = new Set<string>();
+    if (markdownPreviewTabs.has(id)) nextPreview.add(id);
+    const nextPopout = new Set<string>();
+    if (popoutTabs.has(id)) nextPopout.add(id);
+    const nextDiffs = new Map<string, PendingDiff>();
+    const existingDiff = pendingDiffs.get(id);
+    if (existingDiff) nextDiffs.set(id, existingDiff);
+
     set({
       tabs: tabs.filter((t) => t.id === id),
       activeTabId: id,
+      markdownPreviewTabs: nextPreview,
+      popoutTabs: nextPopout,
+      pendingDiffs: nextDiffs,
     });
   },
 

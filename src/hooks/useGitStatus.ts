@@ -60,12 +60,20 @@ export function useGitStatus(rootPath: string | null): UseGitStatusReturn {
     }
   }, [rootPath]);
 
-  // Initial fetch and poll every 5 seconds
+  // Initial fetch and poll every 5 seconds.
+  // Clear any existing interval at the START of the effect to prevent accumulation
+  // when rootPath changes (which changes the refresh callback identity). Without this,
+  // the old interval could keep running because the ref is overwritten before the
+  // previous cleanup function executes in the same render cycle.
   useEffect(() => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
     refresh();
     intervalRef.current = setInterval(refresh, 5000);
     return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
     };
   }, [refresh]);
 
