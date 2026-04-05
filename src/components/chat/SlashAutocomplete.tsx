@@ -19,6 +19,8 @@ export function SlashAutocomplete({
   return (
     <div
       className="absolute rounded-md shadow-lg overflow-y-auto z-50"
+      role="listbox"
+      aria-label="Slash commands"
       style={{
         bottom: "100%",
         left: 0,
@@ -32,6 +34,9 @@ export function SlashAutocomplete({
         <div
           key={cmd.name}
           className="px-2 py-1.5 cursor-pointer"
+          role="option"
+          id={`slash-option-${cmd.name}`}
+          aria-selected={i === selectedIndex}
           style={{
             backgroundColor:
               i === selectedIndex ? "var(--color-surface-1)" : undefined,

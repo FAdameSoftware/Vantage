@@ -114,8 +114,7 @@ impl SessionManager {
         Ok(())
     }
 
-    /// Stop all active sessions.
-    #[allow(dead_code)]
+    /// Stop all active sessions. Called on project switch and app exit.
     pub async fn stop_all(&self) {
         let mut procs = self.processes.lock().await;
         let ids: Vec<String> = procs.keys().cloned().collect();

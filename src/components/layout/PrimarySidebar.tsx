@@ -6,6 +6,7 @@ import { SettingsPanel } from "@/components/settings/SettingsPanel";
 import { KanbanBoard } from "@/components/agents/KanbanBoard";
 import { AgentTreeView } from "@/components/agents/AgentTreeView";
 import { GitLogPanel } from "@/components/git/GitLogPanel";
+import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 
 const panelConfig: Record<
   ActivityBarItem,
@@ -116,9 +117,13 @@ export function PrimarySidebar() {
       {/* Content */}
       <div className="flex-1 overflow-hidden">
         {activeItem === "explorer" ? (
-          <FileExplorer />
+          <ErrorBoundary>
+            <FileExplorer />
+          </ErrorBoundary>
         ) : activeItem === "search" ? (
-          <SearchPanel />
+          <ErrorBoundary>
+            <SearchPanel />
+          </ErrorBoundary>
         ) : activeItem === "git" ? (
           <GitLogPanel />
         ) : activeItem === "agents" ? (

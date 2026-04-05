@@ -72,6 +72,52 @@ export function FileTreeNode({
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
             handleClick();
+          } else if (e.key === "ArrowRight") {
+            e.preventDefault();
+            // Expand directory, or do nothing for files
+            if (node.is_dir && !isExpanded) {
+              onToggleExpand(node.path);
+            } else if (node.is_dir && isExpanded) {
+              // Focus first child
+              const next = (e.currentTarget as HTMLElement).nextElementSibling
+                ?.querySelector("[role='treeitem']") as HTMLElement | null;
+              next?.focus();
+            }
+          } else if (e.key === "ArrowLeft") {
+            e.preventDefault();
+            // Collapse directory, or move focus to parent
+            if (node.is_dir && isExpanded) {
+              onToggleExpand(node.path);
+            } else {
+              // Focus parent treeitem
+              const group = (e.currentTarget as HTMLElement).closest("[role='group']");
+              const parent = group?.previousElementSibling as HTMLElement | null;
+              if (parent?.getAttribute("role") === "treeitem") {
+                parent.focus();
+              }
+            }
+          } else if (e.key === "ArrowDown") {
+            e.preventDefault();
+            // Move to next visible treeitem
+            const tree = (e.currentTarget as HTMLElement).closest("[role='tree']");
+            if (tree) {
+              const items = Array.from(tree.querySelectorAll("[role='treeitem']")) as HTMLElement[];
+              const idx = items.indexOf(e.currentTarget as HTMLElement);
+              if (idx >= 0 && idx < items.length - 1) {
+                items[idx + 1].focus();
+              }
+            }
+          } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            // Move to previous visible treeitem
+            const tree = (e.currentTarget as HTMLElement).closest("[role='tree']");
+            if (tree) {
+              const items = Array.from(tree.querySelectorAll("[role='treeitem']")) as HTMLElement[];
+              const idx = items.indexOf(e.currentTarget as HTMLElement);
+              if (idx > 0) {
+                items[idx - 1].focus();
+              }
+            }
           }
         }}
       >

@@ -3,6 +3,105 @@ import { X, FileCode, Eye, EyeOff, ExternalLink } from "lucide-react";
 import { useEditorStore, type EditorTab } from "@/stores/editor";
 import { useFloatingWindow } from "@/hooks/useFloatingWindow";
 
+// ── Unsaved changes confirmation dialog ────────────────────────────
+
+interface UnsavedDialogState {
+  visible: boolean;
+  tabId: string | null;
+  tabName: string;
+}
+
+function UnsavedChangesDialog({
+  state,
+  onSave,
+  onDiscard,
+  onCancel,
+}: {
+  state: UnsavedDialogState;
+  onSave: () => void;
+  onDiscard: () => void;
+  onCancel: () => void;
+}) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (state.visible) {
+      dialogRef.current?.focus();
+    }
+  }, [state.visible]);
+
+  if (!state.visible || !state.tabId) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+      onClick={onCancel}
+    >
+      <div
+        ref={dialogRef}
+        className="w-80 rounded-lg p-4 flex flex-col gap-3"
+        style={{
+          backgroundColor: "var(--color-mantle)",
+          border: "1px solid var(--color-surface-1)",
+          boxShadow: "0 16px 48px rgba(0,0,0,0.5)",
+        }}
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") onCancel();
+        }}
+        tabIndex={-1}
+      >
+        <span
+          className="text-xs font-semibold"
+          style={{ color: "var(--color-text)" }}
+        >
+          Unsaved Changes
+        </span>
+        <p className="text-xs" style={{ color: "var(--color-subtext-0)" }}>
+          Do you want to save the changes you made to{" "}
+          <strong style={{ color: "var(--color-text)" }}>{state.tabName}</strong>?
+        </p>
+        <div className="flex items-center justify-end gap-2">
+          <button
+            type="button"
+            onClick={onDiscard}
+            className="px-2.5 py-1 text-xs rounded transition-opacity hover:opacity-80"
+            style={{
+              backgroundColor: "var(--color-red)",
+              color: "var(--color-base)",
+            }}
+          >
+            Discard
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="px-2.5 py-1 text-xs rounded transition-opacity hover:opacity-80"
+            style={{
+              backgroundColor: "var(--color-surface-0)",
+              color: "var(--color-subtext-0)",
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onSave}
+            className="px-2.5 py-1 text-xs rounded transition-opacity hover:opacity-80"
+            style={{
+              backgroundColor: "var(--color-blue)",
+              color: "var(--color-base)",
+            }}
+          >
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Context menu ────────────────────────────────────────────────────
 
 interface ContextMenuState {
@@ -119,6 +218,7 @@ export function EditorTabs() {
   const activeTabId = useEditorStore((s) => s.activeTabId);
   const setActiveTab = useEditorStore((s) => s.setActiveTab);
   const closeTab = useEditorStore((s) => s.closeTab);
+  const markSaved = useEditorStore((s) => s.markSaved);
   const pinTab = useEditorStore((s) => s.pinTab);
   const toggleMarkdownPreview = useEditorStore((s) => s.toggleMarkdownPreview);
   const markdownPreviewTabs = useEditorStore((s) => s.markdownPreviewTabs);
@@ -135,8 +235,55 @@ export function EditorTabs() {
     tabId: null,
   });
 
+  const [unsavedDialog, setUnsavedDialog] = useState<UnsavedDialogState>({
+    visible: false,
+    tabId: null,
+    tabName: "",
+  });
+
   const handleCloseContextMenu = useCallback(() => {
     setContextMenu((s) => ({ ...s, visible: false }));
+  }, []);
+
+  // Close a tab with dirty-check: if the tab has unsaved changes, show a confirmation dialog.
+  const safeCloseTab = useCallback(
+    (tabId: string) => {
+      const tab = tabs.find((t) => t.id === tabId);
+      if (!tab) return;
+      if (tab.isDirty) {
+        setUnsavedDialog({ visible: true, tabId: tab.id, tabName: tab.name });
+      } else {
+        closeTab(tabId);
+      }
+    },
+    [tabs, closeTab],
+  );
+
+  const handleUnsavedSave = useCallback(async () => {
+    const tabId = unsavedDialog.tabId;
+    if (!tabId) return;
+    const tab = tabs.find((t) => t.id === tabId);
+    if (!tab) return;
+    try {
+      const { invoke } = await import("@tauri-apps/api/core");
+      await invoke("write_file", { path: tab.path, content: tab.content });
+      markSaved(tabId, tab.content);
+    } catch (e) {
+      console.error("Failed to save file before closing:", e);
+    }
+    closeTab(tabId);
+    setUnsavedDialog({ visible: false, tabId: null, tabName: "" });
+  }, [unsavedDialog, tabs, markSaved, closeTab]);
+
+  const handleUnsavedDiscard = useCallback(() => {
+    if (unsavedDialog.tabId) {
+      closeTab(unsavedDialog.tabId);
+    }
+    setUnsavedDialog({ visible: false, tabId: null, tabName: "" });
+  }, [unsavedDialog, closeTab]);
+
+  const handleUnsavedCancel = useCallback(() => {
+    setUnsavedDialog({ visible: false, tabId: null, tabName: "" });
   }, []);
 
   if (tabs.length === 0) return null;
@@ -156,7 +303,7 @@ export function EditorTabs() {
 
   const handleTabClose = (e: React.MouseEvent, tab: EditorTab) => {
     e.stopPropagation();
-    closeTab(tab.id);
+    safeCloseTab(tab.id);
   };
 
   const handleTabDoubleClick = (tab: EditorTab) => {
@@ -168,7 +315,7 @@ export function EditorTabs() {
   const handleMiddleClick = (e: React.MouseEvent, tab: EditorTab) => {
     if (e.button === 1) {
       e.preventDefault();
-      closeTab(tab.id);
+      safeCloseTab(tab.id);
     }
   };
 
@@ -278,9 +425,17 @@ export function EditorTabs() {
         state={contextMenu}
         onClose={handleCloseContextMenu}
         onPopOut={handlePopOut}
-        onCloseTab={closeTab}
+        onCloseTab={safeCloseTab}
         onCloseOthers={closeOtherTabs}
         onCloseAll={closeAllTabs}
+      />
+
+      {/* Unsaved changes confirmation dialog */}
+      <UnsavedChangesDialog
+        state={unsavedDialog}
+        onSave={handleUnsavedSave}
+        onDiscard={handleUnsavedDiscard}
+        onCancel={handleUnsavedCancel}
       />
     </>
   );

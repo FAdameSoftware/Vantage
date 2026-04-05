@@ -209,6 +209,7 @@ function extractFromAssistantMsg(msg: AssistantMessage) {
   let text = "";
   let thinking = "";
   const toolCalls: import("@/stores/conversation").ToolCall[] = [];
+  const toolResults: Array<{ tool_use_id: string; content: string; is_error?: boolean }> = [];
 
   for (const block of msg.message.content) {
     if (block.type === "text") {
@@ -223,6 +224,21 @@ function extractFromAssistantMsg(msg: AssistantMessage) {
         inputJson: JSON.stringify(block.input),
         isExecuting: false,
       });
+    } else if (block.type === "tool_result") {
+      toolResults.push({
+        tool_use_id: block.tool_use_id,
+        content: block.content,
+        is_error: block.is_error,
+      });
+    }
+  }
+
+  // Attach tool_result output to matching tool_use entries
+  for (const result of toolResults) {
+    const matchingCall = toolCalls.find((tc) => tc.id === result.tool_use_id);
+    if (matchingCall) {
+      matchingCall.output = result.content;
+      matchingCall.isError = result.is_error ?? false;
     }
   }
 
@@ -846,6 +862,29 @@ export function useClaude() {
     };
     window.addEventListener("vantage:investigate", handler);
     return () => window.removeEventListener("vantage:investigate", handler);
+  }, [startAgentSession, sendAgentMessage]);
+
+  // ── Listen for agent auto-start events from CreateAgentDialog ──
+
+  useEffect(() => {
+    const handler = async (e: Event) => {
+      const detail = (e as CustomEvent).detail as {
+        agentId: string;
+        taskDescription: string;
+      };
+      // Resolve CWD from current session or project root
+      const cwd =
+        useConversationStore.getState().session?.cwd ??
+        useLayoutStore.getState().projectRootPath ??
+        ".";
+      await startAgentSession(detail.agentId, cwd);
+      // Small delay to let session initialize before sending the prompt
+      setTimeout(() => {
+        void sendAgentMessage(detail.agentId, detail.taskDescription);
+      }, 1000);
+    };
+    window.addEventListener("vantage:agent-auto-start", handler);
+    return () => window.removeEventListener("vantage:agent-auto-start", handler);
   }, [startAgentSession, sendAgentMessage]);
 
   return {

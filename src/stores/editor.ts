@@ -115,6 +115,42 @@ export interface EditorState {
   hasPendingDiff: (tabId: string) => boolean;
 }
 
+// ── Fine-grained selectors ────────────────────────────────────────────
+// These prevent unnecessary re-renders in components that only need
+// specific slices of the editor state (e.g., tab names for the tab bar,
+// dirty state for the status bar) rather than the full tabs array which
+// changes on every keystroke due to content updates.
+
+/** Select only the currently active tab object (or null). */
+export const selectActiveTab = (s: EditorState): EditorTab | null =>
+  s.tabs.find((t) => t.id === s.activeTabId) ?? null;
+
+/** Select tab metadata for the tab bar (excludes content to avoid re-renders on typing). */
+export const selectTabList = (s: EditorState) =>
+  s.tabs.map((t) => ({
+    id: t.id,
+    name: t.name,
+    isDirty: t.isDirty,
+    isPreview: t.isPreview,
+    language: t.language,
+  }));
+
+/** Select only the IDs of tabs with unsaved changes. */
+export const selectDirtyTabIds = (s: EditorState): string[] =>
+  s.tabs.filter((t) => t.isDirty).map((t) => t.id);
+
+/** Select the content of the active tab (for the editor itself). */
+export const selectActiveTabContent = (s: EditorState): string | null => {
+  const tab = s.tabs.find((t) => t.id === s.activeTabId);
+  return tab?.content ?? null;
+};
+
+/** Select the active tab ID only. */
+export const selectActiveTabId = (s: EditorState): string | null => s.activeTabId;
+
+/** Select cursor position only. */
+export const selectCursorPosition = (s: EditorState) => s.cursorPosition;
+
 /** Normalize a file path to use as a tab ID (forward slashes, lowercase drive letter) */
 function normalizeTabId(path: string): string {
   let normalized = path.replace(/\\/g, "/");

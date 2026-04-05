@@ -115,13 +115,24 @@ export function CreateAgentDialog({
     e.preventDefault();
     if (!name.trim()) return;
 
-    createAgent({
+    const agentId = createAgent({
       name: name.trim(),
       taskDescription: taskDescription.trim(),
       model,
       role,
       parentId,
     });
+
+    // Auto-start the agent session by dispatching an event that useClaude listens for.
+    // This mirrors the pattern used by "Investigate with Claude" in FileExplorer.
+    const trimmedTask = taskDescription.trim();
+    if (trimmedTask) {
+      window.dispatchEvent(
+        new CustomEvent("vantage:agent-auto-start", {
+          detail: { agentId, taskDescription: trimmedTask },
+        }),
+      );
+    }
 
     // Reset form and close
     setName("");

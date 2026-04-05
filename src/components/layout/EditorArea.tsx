@@ -2,13 +2,14 @@ import { useCallback, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { FileCode, FolderOpen } from "lucide-react";
 import { open } from "@tauri-apps/plugin-dialog";
-import { useEditorStore } from "@/stores/editor";
+import { useEditorStore, selectActiveTab } from "@/stores/editor";
 import { useLayoutStore } from "@/stores/layout";
 import { MonacoEditor } from "@/components/editor/MonacoEditor";
 import { DiffViewer } from "@/components/editor/DiffViewer";
 import { EditorTabs } from "@/components/editor/EditorTabs";
 import { MarkdownPreview } from "@/components/editor/MarkdownPreview";
 import { UsageDashboard } from "@/components/analytics/UsageDashboard";
+import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 
 function Breadcrumbs() {
   const activeTab = useEditorStore((s) => {
@@ -132,14 +133,12 @@ function KeyboardHint({ keys, label }: { keys: string; label: string }) {
 }
 
 export function EditorArea() {
-  const tabs = useEditorStore((s) => s.tabs);
-  const activeTabId = useEditorStore((s) => s.activeTabId);
   const updateContent = useEditorStore((s) => s.updateContent);
   const markSaved = useEditorStore((s) => s.markSaved);
   const markdownPreviewTabs = useEditorStore((s) => s.markdownPreviewTabs);
   const pendingDiffs = useEditorStore((s) => s.pendingDiffs);
 
-  const activeTab = tabs.find((t) => t.id === activeTabId) ?? null;
+  const activeTab = useEditorStore(selectActiveTab);
 
   // If the active tab has a pending diff, show the diff viewer instead of the editor.
   // setPendingDiff is wired in useClaude hook — it captures before/after content
@@ -225,13 +224,15 @@ export function EditorArea() {
               className={isMarkdownPreview ? "w-1/2" : "w-full"}
               style={{ overflow: "hidden" }}
             >
-              <MonacoEditor
-                key={activeTab.id}
-                filePath={activeTab.path}
-                language={activeTab.language}
-                value={activeTab.content}
-                onChange={handleContentChange}
-              />
+              <ErrorBoundary>
+                <MonacoEditor
+                  key={activeTab.id}
+                  filePath={activeTab.path}
+                  language={activeTab.language}
+                  value={activeTab.content}
+                  onChange={handleContentChange}
+                />
+              </ErrorBoundary>
             </div>
 
             {/* Markdown preview — right half, only when toggled */}

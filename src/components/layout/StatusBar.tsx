@@ -11,7 +11,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
-import { useEditorStore } from "@/stores/editor";
+import { useEditorStore, selectActiveTab, selectCursorPosition } from "@/stores/editor";
 import { useConversationStore } from "@/stores/conversation";
 import { useLayoutStore } from "@/stores/layout";
 import { useSettingsStore } from "@/stores/settings";
@@ -22,12 +22,9 @@ import { BuddyWidget } from "@/components/shared/BuddyWidget";
 import { EffortLevelSelector } from "@/components/shared/EffortLevelSelector";
 
 export function StatusBar() {
-  const cursorPosition = useEditorStore((s) => s.cursorPosition);
+  const cursorPosition = useEditorStore(selectCursorPosition);
   const vimModeLabel = useEditorStore((s) => s.vimModeLabel);
-  const activeTab = useEditorStore((s) => {
-    const tab = s.tabs.find((t) => t.id === s.activeTabId);
-    return tab ?? null;
-  });
+  const activeTab = useEditorStore(selectActiveTab);
 
   const isStreaming = useConversationStore((s) => s.isStreaming);
   const session = useConversationStore((s) => s.session);

@@ -189,6 +189,15 @@ async fn claude_stop_session(
 
 #[tauri::command]
 #[specta::specta]
+async fn claude_stop_all_sessions(app_handle: tauri::AppHandle) -> Result<(), String> {
+    let state = app_handle.state::<TokioMutex<SessionManager>>();
+    let manager = state.lock().await;
+    manager.stop_all().await;
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
 async fn claude_list_active_sessions(app_handle: tauri::AppHandle) -> Vec<String> {
     let state = app_handle.state::<TokioMutex<SessionManager>>();
     let manager = state.lock().await;
@@ -552,6 +561,7 @@ pub fn run() {
             claude_respond_permission,
             claude_interrupt_session,
             claude_stop_session,
+            claude_stop_all_sessions,
             claude_list_active_sessions,
             claude_list_sessions,
             claude_is_session_alive,

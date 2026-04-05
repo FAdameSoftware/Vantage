@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { useAgentConversationsStore } from "./agentConversations";
 
 // ── Agent status lifecycle ──────────────────────────────────────────
 
@@ -43,7 +44,43 @@ const AGENT_COLORS = [
   "var(--color-flamingo)",
   "var(--color-sky)",
   "var(--color-lavender)",
+  "var(--color-red)",
+  "var(--color-maroon)",
+  "var(--color-sapphire)",
+  "var(--color-rosewater)",
+  "var(--color-subtext-1)",
+  "var(--color-overlay-2)",
+  "var(--color-text)",
+  "var(--color-surface-2)",
+  "var(--color-accent)",
+  "var(--color-crust)",
 ] as const;
+
+/**
+ * Pick the least-recently-used color from the palette.
+ * Counts how many active agents use each color and picks the one with the
+ * lowest count. Ties are broken by palette order (earlier = preferred).
+ */
+function pickLeastUsedColor(agents: Map<string, Agent>): string {
+  const counts = new Map<string, number>();
+  for (const color of AGENT_COLORS) {
+    counts.set(color, 0);
+  }
+  for (const agent of agents.values()) {
+    const current = counts.get(agent.color) ?? 0;
+    counts.set(agent.color, current + 1);
+  }
+  let bestColor: string = AGENT_COLORS[0];
+  let bestCount = Infinity;
+  for (const color of AGENT_COLORS) {
+    const count = counts.get(color) ?? 0;
+    if (count < bestCount) {
+      bestCount = count;
+      bestColor = color;
+    }
+  }
+  return bestColor;
+}
 
 // ── Timeline event (for agent timeline view, Task 4) ────────────────
 
@@ -251,8 +288,7 @@ export const useAgentsStore = create<AgentsState>()((set, get) => ({
   createAgent({ name, taskDescription, model, role = "builder", parentId = null }) {
     const id = crypto.randomUUID();
     const { agents } = get();
-    const colorIndex = agents.size % AGENT_COLORS.length;
-    const color = AGENT_COLORS[colorIndex];
+    const color = pickLeastUsedColor(agents);
     const now = Date.now();
 
     const agent: Agent = {
@@ -313,21 +349,28 @@ export const useAgentsStore = create<AgentsState>()((set, get) => ({
   },
 
   removeAgent(agentId) {
+    // Collect IDs to remove first (before mutating state) so we can clean up conversations.
+    const { agents: currentAgents } = get();
+    const toRemove = new Set<string>();
+    const queue = [agentId];
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      toRemove.add(current);
+      const node = currentAgents.get(current);
+      if (node) {
+        for (const childId of node.childIds) queue.push(childId);
+      }
+    }
+
+    // Clean up orphaned agent conversations for all removed agents (5E fix)
+    const convStore = useAgentConversationsStore.getState();
+    for (const id of toRemove) {
+      convStore.removeConversation(id);
+    }
+
     set((state) => {
       const agent = state.agents.get(agentId);
       if (!agent) return {};
-
-      // Collect all IDs to remove (the agent + all descendants)
-      const toRemove = new Set<string>();
-      const queue = [agentId];
-      while (queue.length > 0) {
-        const current = queue.shift()!;
-        toRemove.add(current);
-        const node = state.agents.get(current);
-        if (node) {
-          for (const childId of node.childIds) queue.push(childId);
-        }
-      }
 
       const next = new Map(state.agents);
 

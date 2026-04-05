@@ -197,6 +197,7 @@ export function ChatInput({
             onChange={handleChange}
             onKeyDown={handleKeyDown}
             disabled={disabled}
+            maxLength={100000}
           />
 
           {/* Deep Think toggle — always visible */}

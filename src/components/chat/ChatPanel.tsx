@@ -53,14 +53,26 @@ function stripModelDate(model: string): string {
 
 // ─── ChatPanel ──────────────────────────────────────────────────────────────
 
+// Fine-grained selectors to minimize re-renders during streaming.
+// Each selector returns only the specific value the component needs,
+// so a change to e.g. activeBlocks during streaming won't cause the
+// header or input area to re-render.
+const selectMessages = (s: import("@/stores/conversation").ConversationState) => s.messages;
+const selectIsStreaming = (s: import("@/stores/conversation").ConversationState) => s.isStreaming;
+const selectIsThinking = (s: import("@/stores/conversation").ConversationState) => s.isThinking;
+const selectThinkingStartedAt = (s: import("@/stores/conversation").ConversationState) => s.thinkingStartedAt;
+const selectSession = (s: import("@/stores/conversation").ConversationState) => s.session;
+const selectConnectionStatus = (s: import("@/stores/conversation").ConversationState) => s.connectionStatus;
+const selectTotalCost = (s: import("@/stores/conversation").ConversationState) => s.totalCost;
+
 export function ChatPanel() {
-  const messages = useConversationStore((s) => s.messages);
-  const isStreaming = useConversationStore((s) => s.isStreaming);
-  const isThinking = useConversationStore((s) => s.isThinking);
-  const thinkingStartedAt = useConversationStore((s) => s.thinkingStartedAt);
-  const session = useConversationStore((s) => s.session);
-  const connectionStatus = useConversationStore((s) => s.connectionStatus);
-  const totalCost = useConversationStore((s) => s.totalCost);
+  const messages = useConversationStore(selectMessages);
+  const isStreaming = useConversationStore(selectIsStreaming);
+  const isThinking = useConversationStore(selectIsThinking);
+  const thinkingStartedAt = useConversationStore(selectThinkingStartedAt);
+  const session = useConversationStore(selectSession);
+  const connectionStatus = useConversationStore(selectConnectionStatus);
+  const totalCost = useConversationStore(selectTotalCost);
 
   const { startSession, sendMessage, interruptSession, stopSession } = useClaude();
 

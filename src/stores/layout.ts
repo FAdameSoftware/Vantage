@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { invoke } from "@tauri-apps/api/core";
 
 export type ActivityBarItem = "explorer" | "search" | "git" | "agents" | "settings";
 
@@ -64,7 +65,16 @@ export const useLayoutStore = create<LayoutState>()(
       setPrimarySidebarSize: (size) => set({ primarySidebarSize: size }),
       setSecondarySidebarSize: (size) => set({ secondarySidebarSize: size }),
       setPanelSize: (size) => set({ panelSize: size }),
-      setProjectRootPath: (path) => set({ projectRootPath: path }),
+      setProjectRootPath: (path) => {
+        const prev = get().projectRootPath;
+        set({ projectRootPath: path });
+        // Stop all active Claude sessions when switching projects
+        if (prev && prev !== path) {
+          invoke("claude_stop_all_sessions").catch((e: unknown) => {
+            console.warn("Failed to stop sessions on project switch:", e);
+          });
+        }
+      },
       setPreviewUrl: (url) => set({ previewUrl: url, ...(url ? { previewActive: true, activePanelTab: "browser" } : {}) }),
       setPreviewActive: (active) => set({ previewActive: active }),
       setActivePanelTab: (tab) => set({ activePanelTab: tab }),

@@ -2,6 +2,47 @@ use serde::{Deserialize, Serialize};
 use specta::Type;
 use std::process::Command;
 use std::fs;
+use std::time::Duration;
+
+/// Default timeout for git commands (30 seconds).
+const GIT_TIMEOUT_SECS: u64 = 30;
+
+/// Run a git Command with a timeout. Spawns the process, waits up to
+/// `GIT_TIMEOUT_SECS`, and kills it if it has not finished.
+fn run_git_with_timeout(cmd: &mut Command) -> Result<std::process::Output, String> {
+    let mut child = cmd
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .map_err(|e| format!("Failed to spawn git: {}", e))?;
+
+    let timeout = Duration::from_secs(GIT_TIMEOUT_SECS);
+    let start = std::time::Instant::now();
+    loop {
+        match child.try_wait() {
+            Ok(Some(_status)) => {
+                // Process finished -- collect output
+                return child
+                    .wait_with_output()
+                    .map_err(|e| format!("Failed to read git output: {}", e));
+            }
+            Ok(None) => {
+                if start.elapsed() >= timeout {
+                    let _ = child.kill();
+                    let _ = child.wait();
+                    return Err(format!(
+                        "Git command timed out after {}s",
+                        GIT_TIMEOUT_SECS
+                    ));
+                }
+                std::thread::sleep(Duration::from_millis(50));
+            }
+            Err(e) => {
+                return Err(format!("Error waiting for git process: {}", e));
+            }
+        }
+    }
+}
 
 // ── Security: Git Input Validation ─────────────────────────────────
 
@@ -145,11 +186,11 @@ pub struct GitBlameLine {
 /// Returns None for branch if not in a git repo.
 pub fn get_branch(cwd: &str) -> Result<GitBranchInfo, String> {
     // Try symbolic-ref first (works for normal branches)
-    let output = Command::new("git")
-        .args(["symbolic-ref", "--short", "HEAD"])
-        .current_dir(cwd)
-        .output()
-        .map_err(|e| format!("Failed to run git: {}", e))?;
+    let output = run_git_with_timeout(
+        Command::new("git")
+            .args(["symbolic-ref", "--short", "HEAD"])
+            .current_dir(cwd),
+    )?;
 
     if output.status.success() {
         let branch = String::from_utf8_lossy(&output.stdout).trim().to_string();
@@ -160,11 +201,11 @@ pub fn get_branch(cwd: &str) -> Result<GitBranchInfo, String> {
     }
 
     // Fallback: detached HEAD -- get short commit hash
-    let output = Command::new("git")
-        .args(["rev-parse", "--short", "HEAD"])
-        .current_dir(cwd)
-        .output()
-        .map_err(|e| format!("Failed to run git: {}", e))?;
+    let output = run_git_with_timeout(
+        Command::new("git")
+            .args(["rev-parse", "--short", "HEAD"])
+            .current_dir(cwd),
+    )?;
 
     if output.status.success() {
         let hash = String::from_utf8_lossy(&output.stdout).trim().to_string();
@@ -189,11 +230,11 @@ pub fn show_file(cwd: &str, file_path: &str, git_ref: &str) -> Result<String, St
     validate_git_ref(git_ref)?;
     validate_git_file_path(file_path)?;
 
-    let output = Command::new("git")
-        .args(["show", &format!("{}:{}", git_ref, file_path)])
-        .current_dir(cwd)
-        .output()
-        .map_err(|e| format!("Failed to run git show: {}", e))?;
+    let output = run_git_with_timeout(
+        Command::new("git")
+            .args(["show", &format!("{}:{}", git_ref, file_path)])
+            .current_dir(cwd),
+    )?;
 
     if output.status.success() {
         return Ok(String::from_utf8_lossy(&output.stdout).to_string());
@@ -225,11 +266,11 @@ pub fn read_working_file(path: &str) -> Result<String, String> {
 /// Get the git status of all changed files in the working directory.
 /// Uses `git status --porcelain=v1` for machine-readable output.
 pub fn get_status(cwd: &str) -> Result<Vec<GitFileStatus>, String> {
-    let output = Command::new("git")
-        .args(["status", "--porcelain=v1", "-uall"])
-        .current_dir(cwd)
-        .output()
-        .map_err(|e| format!("Failed to run git: {}", e))?;
+    let output = run_git_with_timeout(
+        Command::new("git")
+            .args(["status", "--porcelain=v1", "-uall"])
+            .current_dir(cwd),
+    )?;
 
     if !output.status.success() {
         return Ok(vec![]); // Not a git repo, return empty
@@ -278,16 +319,16 @@ pub fn git_log(cwd: &str, limit: u32) -> Result<Vec<GitLogEntry>, String> {
         record_sep = record_sep
     );
 
-    let output = Command::new("git")
-        .args([
-            "log",
-            &format!("--max-count={}", limit),
-            &format!("--format={}", format_str),
-            "--no-color",
-        ])
-        .current_dir(cwd)
-        .output()
-        .map_err(|e| format!("Failed to run git log: {}", e))?;
+    let output = run_git_with_timeout(
+        Command::new("git")
+            .args([
+                "log",
+                &format!("--max-count={}", limit),
+                &format!("--format={}", format_str),
+                "--no-color",
+            ])
+            .current_dir(cwd),
+    )?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -343,11 +384,11 @@ pub fn git_blame(cwd: &str, file_path: &str) -> Result<Vec<GitBlameLine>, String
     // Security: validate file path
     validate_git_file_path(file_path)?;
 
-    let output = Command::new("git")
-        .args(["blame", "--porcelain", file_path])
-        .current_dir(cwd)
-        .output()
-        .map_err(|e| format!("Failed to run git blame: {}", e))?;
+    let output = run_git_with_timeout(
+        Command::new("git")
+            .args(["blame", "--porcelain", file_path])
+            .current_dir(cwd),
+    )?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -421,26 +462,26 @@ pub fn git_diff_commit(cwd: &str, hash: &str) -> Result<String, String> {
     // Security: validate commit hash
     validate_commit_hash(hash)?;
 
-    let output = Command::new("git")
-        .args(["diff", &format!("{}~1..{}", hash, hash), "--no-color"])
-        .current_dir(cwd)
-        .output()
-        .map_err(|e| format!("Failed to run git diff: {}", e))?;
+    let output = run_git_with_timeout(
+        Command::new("git")
+            .args(["diff", &format!("{}~1..{}", hash, hash), "--no-color"])
+            .current_dir(cwd),
+    )?;
 
     if output.status.success() {
         Ok(String::from_utf8_lossy(&output.stdout).to_string())
     } else {
         // Handle first commit (no parent) - diff against empty tree
-        let output = Command::new("git")
-            .args([
-                "diff",
-                "--no-color",
-                "4b825dc642cb6eb9a060e54bf899d69f",
-                hash,
-            ])
-            .current_dir(cwd)
-            .output()
-            .map_err(|e| format!("git diff fallback failed: {}", e))?;
+        let output = run_git_with_timeout(
+            Command::new("git")
+                .args([
+                    "diff",
+                    "--no-color",
+                    "4b825dc642cb6eb9a060e54bf899d69f",
+                    hash,
+                ])
+                .current_dir(cwd),
+        )?;
         Ok(String::from_utf8_lossy(&output.stdout).to_string())
     }
 }
@@ -715,23 +756,24 @@ pub struct PrInfo {
 /// Returns an empty list (not an error) when `gh` is unavailable or the
 /// directory is not a GitHub repo.
 pub fn get_pr_list(cwd: &str, limit: u32) -> Result<Vec<PrInfo>, String> {
-    let output = Command::new("gh")
-        .args([
-            "pr",
-            "list",
-            "--json",
-            "number,title,state",
-            "--limit",
-            &limit.to_string(),
-            "--state",
-            "open",
-        ])
-        .current_dir(cwd)
-        .output();
+    let output = run_git_with_timeout(
+        Command::new("gh")
+            .args([
+                "pr",
+                "list",
+                "--json",
+                "number,title,state",
+                "--limit",
+                &limit.to_string(),
+                "--state",
+                "open",
+            ])
+            .current_dir(cwd),
+    );
 
     let output = match output {
         Ok(o) => o,
-        // gh not installed or not on PATH — return empty list gracefully
+        // gh not installed, not on PATH, or timed out — return empty list gracefully
         Err(_) => return Ok(Vec::new()),
     };
 

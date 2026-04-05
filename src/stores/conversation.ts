@@ -174,16 +174,22 @@ function assembleMessage(
       thinking += block.text;
     } else if (block.type === "tool_use") {
       let input: Record<string, unknown> = {};
+      let parseError = false;
       try {
         input = JSON.parse(block.inputJson || "{}") as Record<string, unknown>;
-      } catch {
-        // leave as empty object if JSON is malformed
+      } catch (err) {
+        parseError = true;
+        const truncated = (block.inputJson || "").slice(0, 200);
+        console.warn(
+          `Failed to parse tool input JSON for ${block.toolName ?? "unknown"}: ${err}. Raw JSON (truncated): ${truncated}`,
+        );
       }
       toolCalls.push({
         id: block.toolUseId ?? generateId(),
         name: block.toolName ?? "",
         input,
         inputJson: block.inputJson,
+        isError: parseError,
         isExecuting: false,
       });
     }
@@ -208,6 +214,8 @@ function extractFromAssistantMessage(msg: AssistantMessage): ConversationMessage
   let text = "";
   let thinking = "";
   const toolCalls: ToolCall[] = [];
+  // Collect tool_result blocks to attach to matching tool_use blocks
+  const toolResults: Array<{ tool_use_id: string; content: string; is_error?: boolean }> = [];
 
   for (const block of msg.message.content) {
     if (block.type === "text") {
@@ -222,6 +230,21 @@ function extractFromAssistantMessage(msg: AssistantMessage): ConversationMessage
         inputJson: JSON.stringify(block.input),
         isExecuting: false,
       });
+    } else if (block.type === "tool_result") {
+      toolResults.push({
+        tool_use_id: block.tool_use_id,
+        content: block.content,
+        is_error: block.is_error,
+      });
+    }
+  }
+
+  // Attach tool_result output to matching tool_use entries
+  for (const result of toolResults) {
+    const matchingCall = toolCalls.find((tc) => tc.id === result.tool_use_id);
+    if (matchingCall) {
+      matchingCall.output = result.content;
+      matchingCall.isError = result.is_error ?? false;
     }
   }
 
@@ -429,16 +452,49 @@ export const useConversationStore = create<ConversationState>()((set, get) => ({
 
   handleAssistantMessage(msg: AssistantMessage) {
     const assembled = extractFromAssistantMessage(msg);
+
+    // Also check for tool_result blocks that reference tool_use IDs from
+    // previous messages (tool results often arrive in a separate assistant
+    // message after the tool_use message).
+    const toolResults: Array<{ tool_use_id: string; content: string; is_error?: boolean }> = [];
+    for (const block of msg.message.content) {
+      if (block.type === "tool_result") {
+        toolResults.push({
+          tool_use_id: block.tool_use_id,
+          content: block.content,
+          is_error: block.is_error,
+        });
+      }
+    }
+
     set((state) => {
+      let messages = [...state.messages];
+
+      // Attach tool results to matching tool calls in prior messages
+      if (toolResults.length > 0) {
+        messages = messages.map((m) => {
+          if (m.toolCalls.length === 0) return m;
+          let changed = false;
+          const updatedCalls = m.toolCalls.map((tc) => {
+            const result = toolResults.find((r) => r.tool_use_id === tc.id);
+            if (result && tc.output === undefined) {
+              changed = true;
+              return { ...tc, output: result.content, isError: result.is_error ?? false, isExecuting: false };
+            }
+            return tc;
+          });
+          return changed ? { ...m, toolCalls: updatedCalls } : m;
+        });
+      }
+
       // Try to reconcile: replace an existing message with matching ID
-      const existingIdx = state.messages.findIndex((m) => m.id === assembled.id);
+      const existingIdx = messages.findIndex((m) => m.id === assembled.id);
       if (existingIdx !== -1) {
-        const updated = [...state.messages];
-        updated[existingIdx] = assembled;
-        return { messages: updated };
+        messages[existingIdx] = assembled;
+        return { messages };
       }
       // Otherwise append
-      return { messages: [...state.messages, assembled] };
+      return { messages: [...messages, assembled] };
     });
   },
 

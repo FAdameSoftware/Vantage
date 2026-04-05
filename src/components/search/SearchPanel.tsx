@@ -319,16 +319,18 @@ export function SearchPanel() {
         )}
 
         {/* File groups */}
-        {results?.files.map((fileResult) => (
-          <FileResultGroup
-            key={fileResult.file_path}
-            fileResult={fileResult}
-            isExpanded={expandedFiles.has(fileResult.file_path)}
-            onToggle={() => toggleFileExpanded(fileResult.file_path)}
-            onMatchClick={handleMatchClick}
-            rootPath={projectRootPath ?? ""}
-          />
-        ))}
+        <div role="list" aria-label="Search results">
+          {results?.files.map((fileResult) => (
+            <FileResultGroup
+              key={fileResult.file_path}
+              fileResult={fileResult}
+              isExpanded={expandedFiles.has(fileResult.file_path)}
+              onToggle={() => toggleFileExpanded(fileResult.file_path)}
+              onMatchClick={handleMatchClick}
+              rootPath={projectRootPath ?? ""}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -385,7 +387,7 @@ function FileResultGroup({
   const matchCount = fileResult.matches.length;
 
   return (
-    <div>
+    <div role="listitem">
       {/* File header */}
       <div
         className="flex items-center gap-1 px-2 h-[22px] cursor-pointer hover:bg-[var(--color-surface-0)] transition-colors select-none"
