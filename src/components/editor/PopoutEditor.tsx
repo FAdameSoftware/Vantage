@@ -105,7 +105,10 @@ export function PopoutEditor() {
     };
   }, [tabId, updateContent]);
 
-  // Listen for init data from main window
+  // Listen for init data from main window, then signal readiness.
+  // Race condition fix (2B): The popout window emits "popout-ready" after
+  // setting up its init listener, so the main window knows it is safe to send
+  // the "popout-init" payload. This replaces the fragile setTimeout(500).
   useEffect(() => {
     if (!tabId) return;
 
@@ -114,6 +117,11 @@ export function PopoutEditor() {
         const { path, name, language, content } = event.payload;
         useEditorStore.getState().openFile(path, name, language, content);
       }
+    });
+
+    // Signal to the main window that this popout is ready to receive init data
+    emit("popout-ready", { tabId }).catch((err) => {
+      console.error("Failed to emit popout-ready event:", err);
     });
 
     return () => {

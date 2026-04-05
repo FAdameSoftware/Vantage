@@ -100,22 +100,39 @@ export function useFloatingWindow() {
       const popoutWindow = await createPopoutWindow(tabId, tab.name);
       if (!popoutWindow) return;
 
-      // Send initial data to the popout window once it's ready
-      // Small delay to let the window load its JS
-      setTimeout(() => {
-        emit("popout-init", {
-          tabId: tab.id,
-          path: tab.path,
-          name: tab.name,
-          language: tab.language,
-          content: tab.content,
-        }).catch((err) => {
-          console.error("Failed to emit popout-init event:", err);
-        });
-      }, 500);
+      // Race condition fix (2B): Replace fragile setTimeout(500) with event-driven
+      // readiness. The popout window emits "popout-ready" after its React app mounts.
+      // We wait for that signal before sending init data, with a 5s timeout fallback
+      // that closes the window and warns the user if it never becomes ready.
+      const readyUnlisten = await listen<{ tabId: string }>(
+        "popout-ready",
+        (event) => {
+          if (event.payload.tabId !== tabId) return;
+          clearTimeout(readyTimeout);
+          readyUnlisten();
+          emit("popout-init", {
+            tabId: tab.id,
+            path: tab.path,
+            name: tab.name,
+            language: tab.language,
+            content: tab.content,
+          }).catch((err) => {
+            console.error("Failed to emit popout-init event:", err);
+          });
+        },
+      );
+
+      const readyTimeout = setTimeout(() => {
+        readyUnlisten();
+        console.error("Popout window failed to signal ready within 5 seconds");
+        returnPopoutTab(tabId);
+        popoutWindow.close().catch(() => {});
+      }, 5000);
 
       // Listen for close to return the tab
       popoutWindow.onCloseRequested(async () => {
+        clearTimeout(readyTimeout);
+        readyUnlisten();
         returnPopoutTab(tabId);
         await popoutWindow.close();
       });

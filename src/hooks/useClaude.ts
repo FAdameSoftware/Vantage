@@ -291,6 +291,12 @@ function capturePendingDiffs(assistantMsg: AssistantMessage) {
 export function useClaude() {
   const sessionIdRef = useRef<string | null>(null);
 
+  // Race condition fix (2A): Prevent concurrent session creation.
+  // If sendMessage auto-starts a session while startSession is already in-flight,
+  // two sessions would be created in parallel. This ref holds the pending start
+  // promise so sendMessage can await it instead of starting a second session.
+  const sessionStartPromiseRef = useRef<Promise<string | null> | null>(null);
+
   const handleSystemInit = useConversationStore((s) => s.handleSystemInit);
   const handleStreamEvent = useConversationStore((s) => s.handleStreamEvent);
   const handleAssistantMessage = useConversationStore(
@@ -560,26 +566,42 @@ export function useClaude() {
 
   const startSession = useCallback(
     async (cwd: string, resumeSessionId?: string, fromPr?: number) => {
-      setConnectionStatus("starting");
-      try {
-        const settings = useSettingsStore.getState();
-        const id = await invoke<string>("claude_start_session", {
-          cwd,
-          sessionId: resumeSessionId ?? null,
-          resume: !!resumeSessionId,
-          effortLevel: settings.effortLevel,
-          planMode: settings.planMode,
-          fromPr: fromPr ?? null,
-        });
-        sessionIdRef.current = id;
-        const session: SessionMetadata = {
-          sessionId: id,
-          cwd,
-        };
-        setSession(session);
-      } catch (err) {
-        setConnectionStatus("error", String(err));
+      // Race condition fix (2A): If a session start is already in-flight, await it
+      // instead of starting a duplicate session.
+      if (sessionStartPromiseRef.current) {
+        await sessionStartPromiseRef.current;
+        return;
       }
+
+      setConnectionStatus("starting");
+      const startPromise = (async (): Promise<string | null> => {
+        try {
+          const settings = useSettingsStore.getState();
+          const id = await invoke<string>("claude_start_session", {
+            cwd,
+            sessionId: resumeSessionId ?? null,
+            resume: !!resumeSessionId,
+            effortLevel: settings.effortLevel,
+            planMode: settings.planMode,
+            fromPr: fromPr ?? null,
+          });
+          sessionIdRef.current = id;
+          const session: SessionMetadata = {
+            sessionId: id,
+            cwd,
+          };
+          setSession(session);
+          return id;
+        } catch (err) {
+          setConnectionStatus("error", String(err));
+          return null;
+        } finally {
+          sessionStartPromiseRef.current = null;
+        }
+      })();
+
+      sessionStartPromiseRef.current = startPromise;
+      await startPromise;
     },
     [setConnectionStatus, setSession],
   );
@@ -588,6 +610,14 @@ export function useClaude() {
 
   const sendMessage = useCallback(
     async (content: string, cwd?: string) => {
+      // Race condition fix (2A): If a session start is already in-flight,
+      // await it instead of starting a duplicate session. Two rapid sendMessage
+      // calls would otherwise both see sessionIdRef.current === null and both
+      // invoke claude_start_session, creating two parallel sessions.
+      if (!sessionIdRef.current && sessionStartPromiseRef.current) {
+        await sessionStartPromiseRef.current;
+      }
+
       // If no active session, auto-start one first
       if (!sessionIdRef.current) {
         const sessionCwd =
@@ -596,26 +626,36 @@ export function useClaude() {
           useLayoutStore.getState().projectRootPath ??
           ".";
         setConnectionStatus("starting");
-        try {
-          const settings = useSettingsStore.getState();
-          const id = await invoke<string>("claude_start_session", {
-            cwd: sessionCwd,
-            sessionId: null,
-            resume: false,
-            effortLevel: settings.effortLevel,
-            planMode: settings.planMode,
-            fromPr: null,
-          });
-          sessionIdRef.current = id;
-          const session: SessionMetadata = {
-            sessionId: id,
-            cwd: sessionCwd,
-          };
-          setSession(session);
-        } catch (err) {
-          setConnectionStatus("error", String(err));
-          return;
-        }
+
+        const startPromise = (async (): Promise<string | null> => {
+          try {
+            const settings = useSettingsStore.getState();
+            const id = await invoke<string>("claude_start_session", {
+              cwd: sessionCwd,
+              sessionId: null,
+              resume: false,
+              effortLevel: settings.effortLevel,
+              planMode: settings.planMode,
+              fromPr: null,
+            });
+            sessionIdRef.current = id;
+            const session: SessionMetadata = {
+              sessionId: id,
+              cwd: sessionCwd,
+            };
+            setSession(session);
+            return id;
+          } catch (err) {
+            setConnectionStatus("error", String(err));
+            return null;
+          } finally {
+            sessionStartPromiseRef.current = null;
+          }
+        })();
+
+        sessionStartPromiseRef.current = startPromise;
+        const result = await startPromise;
+        if (!result) return;
       }
 
       // Optimistically add the user message to the store

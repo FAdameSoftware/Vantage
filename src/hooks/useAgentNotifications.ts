@@ -47,76 +47,84 @@ export function useAgentNotifications() {
       const nextStatuses = new Map<string, AgentStatus>();
 
       for (const [agentId, agent] of state.agents) {
-        nextStatuses.set(agentId, agent.status);
-        const prevStatus = prevStatuses.get(agentId);
+        // Race condition fix (2C): Wrap the per-agent loop body in try/catch so that
+        // an error processing one agent (e.g., accessing a deleted agent's property)
+        // does not prevent cleanup of other agents' stall timers or skip status tracking.
+        try {
+          nextStatuses.set(agentId, agent.status);
+          const prevStatus = prevStatuses.get(agentId);
 
-        // Only fire on actual status transitions
-        if (prevStatus === agent.status) continue;
+          // Only fire on actual status transitions
+          if (prevStatus === agent.status) continue;
 
-        // Agent completed
-        if (agent.status === "completed" && prevStatus && prevStatus !== "completed") {
-          toast.success(`${agent.name} completed`, {
-            description: agent.taskDescription.slice(0, 80),
-          });
-          sendSystemNotification(
-            `${agent.name} completed`,
-            agent.taskDescription.slice(0, 120)
-          );
-        }
-
-        // Agent errored
-        if (agent.status === "error" && prevStatus && prevStatus !== "error") {
-          toast.error(`${agent.name} encountered an error`, {
-            description: agent.errorMessage?.slice(0, 80) ?? "Unknown error",
-          });
-          sendSystemNotification(
-            `${agent.name} error`,
-            agent.errorMessage?.slice(0, 120) ?? "An error occurred"
-          );
-        }
-
-        // Agent needs permission (toast only -- user must act in-app)
-        if (
-          agent.status === "waiting_permission" &&
-          prevStatus &&
-          prevStatus !== "waiting_permission"
-        ) {
-          toast.warning(`${agent.name} needs permission`, {
-            description: "An action requires your approval",
-          });
-        }
-
-        // Stall detection: set up timer for working agents
-        if (agent.status === "working") {
-          // Clear any existing stall timer
-          const existingTimer = stallTimersRef.current.get(agentId);
-          if (existingTimer) clearTimeout(existingTimer);
-
-          const timer = setTimeout(() => {
-            // Re-check the current state when timer fires
-            const currentAgent = useAgentsStore.getState().agents.get(agentId);
-            if (!currentAgent || currentAgent.status !== "working") return;
-
-            // Check if lastActivityAt is stale
-            const elapsed = Date.now() - currentAgent.lastActivityAt;
-            if (elapsed >= STALL_TIMEOUT_MS) {
-              toast.warning(`${currentAgent.name} may be stalled`, {
-                description: "No activity for 60 seconds",
-              });
-
-              // Update agent status to stalled
-              useAgentsStore.getState().updateAgentStatus(agentId, "stalled");
-            }
-          }, STALL_TIMEOUT_MS);
-
-          stallTimersRef.current.set(agentId, timer);
-        } else {
-          // Clear stall timer for non-working agents
-          const existingTimer = stallTimersRef.current.get(agentId);
-          if (existingTimer) {
-            clearTimeout(existingTimer);
-            stallTimersRef.current.delete(agentId);
+          // Agent completed
+          if (agent.status === "completed" && prevStatus && prevStatus !== "completed") {
+            toast.success(`${agent.name} completed`, {
+              description: agent.taskDescription.slice(0, 80),
+            });
+            sendSystemNotification(
+              `${agent.name} completed`,
+              agent.taskDescription.slice(0, 120)
+            );
           }
+
+          // Agent errored
+          if (agent.status === "error" && prevStatus && prevStatus !== "error") {
+            toast.error(`${agent.name} encountered an error`, {
+              description: agent.errorMessage?.slice(0, 80) ?? "Unknown error",
+            });
+            sendSystemNotification(
+              `${agent.name} error`,
+              agent.errorMessage?.slice(0, 120) ?? "An error occurred"
+            );
+          }
+
+          // Agent needs permission (toast only -- user must act in-app)
+          if (
+            agent.status === "waiting_permission" &&
+            prevStatus &&
+            prevStatus !== "waiting_permission"
+          ) {
+            toast.warning(`${agent.name} needs permission`, {
+              description: "An action requires your approval",
+            });
+          }
+
+          // Stall detection: set up timer for working agents
+          if (agent.status === "working") {
+            // Clear any existing stall timer
+            const existingTimer = stallTimersRef.current.get(agentId);
+            if (existingTimer) clearTimeout(existingTimer);
+
+            const timer = setTimeout(() => {
+              // Re-check the current state when timer fires
+              const currentAgent = useAgentsStore.getState().agents.get(agentId);
+              if (!currentAgent || currentAgent.status !== "working") return;
+
+              // Check if lastActivityAt is stale
+              const elapsed = Date.now() - currentAgent.lastActivityAt;
+              if (elapsed >= STALL_TIMEOUT_MS) {
+                toast.warning(`${currentAgent.name} may be stalled`, {
+                  description: "No activity for 60 seconds",
+                });
+
+                // Update agent status to stalled
+                useAgentsStore.getState().updateAgentStatus(agentId, "stalled");
+              }
+            }, STALL_TIMEOUT_MS);
+
+            stallTimersRef.current.set(agentId, timer);
+          } else {
+            // Clear stall timer for non-working agents
+            const existingTimer = stallTimersRef.current.get(agentId);
+            if (existingTimer) {
+              clearTimeout(existingTimer);
+              stallTimersRef.current.delete(agentId);
+            }
+          }
+        } catch (err) {
+          // Ensure one agent's error does not leak timers for other agents
+          console.warn(`Agent notification error for ${agentId}:`, err);
         }
       }
 

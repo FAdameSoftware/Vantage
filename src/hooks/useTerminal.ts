@@ -91,6 +91,13 @@ export function useTerminal(options: UseTerminalOptions): UseTerminalReturn {
     // a PTY process and returns a handle with onData/write/resize methods
     let cleanupPty: (() => void) | null = null;
 
+    // Race condition fix (2D): Track whether the component has unmounted during
+    // the async PTY spawn. If unmount happens before spawn resolves, the PTY
+    // process would be orphaned because cleanupPty hasn't been assigned yet.
+    // The mounted flag lets us kill the PTY immediately after spawn if the
+    // component is already gone.
+    let mounted = true;
+
     (async () => {
       try {
         const { spawn } = await import("tauri-pty");
@@ -100,6 +107,13 @@ export function useTerminal(options: UseTerminalOptions): UseTerminalReturn {
           rows: terminal.rows,
           cwd: options.cwd,
         });
+
+        // Race condition fix (2D): If component unmounted while spawn was in-flight,
+        // kill the PTY immediately and skip wiring up event handlers.
+        if (!mounted) {
+          pty.kill();
+          return;
+        }
 
         ptyRef.current = pty;
 
@@ -147,6 +161,7 @@ export function useTerminal(options: UseTerminalOptions): UseTerminalReturn {
     })();
 
     return () => {
+      mounted = false;
       if (cleanupPty) cleanupPty();
       terminal.dispose();
       terminalRef.current = null;

@@ -342,8 +342,15 @@ export const useConversationStore = create<ConversationState>()((set, get) => ({
       case "content_block_delta": {
         const { index, delta } = event;
         set((state) => {
+          // Race condition fix (2E): Ignore content_block_delta if no matching block
+          // exists in activeBlocks. This can happen if events arrive out of order
+          // (e.g., delta before block_start) or if a malformed event references
+          // a non-existent index.
           const existing = state.activeBlocks.get(index);
-          if (!existing) return {};
+          if (!existing) {
+            console.warn(`Ignoring content_block_delta for unknown block index ${index}`);
+            return {};
+          }
           const updated: ActiveBlock = { ...existing };
 
           if (delta.type === "text_delta") {
@@ -364,8 +371,13 @@ export const useConversationStore = create<ConversationState>()((set, get) => ({
       case "content_block_stop": {
         const { index } = event;
         set((state) => {
+          // Race condition fix (2E): Ignore content_block_stop for unknown indices.
+          // This guards against out-of-order events or duplicate stop signals.
           const existing = state.activeBlocks.get(index);
-          if (!existing) return {};
+          if (!existing) {
+            console.warn(`Ignoring content_block_stop for unknown block index ${index}`);
+            return {};
+          }
           const updated: ActiveBlock = { ...existing, isComplete: true };
           const next = new Map(state.activeBlocks);
           next.set(index, updated);
@@ -386,6 +398,10 @@ export const useConversationStore = create<ConversationState>()((set, get) => ({
       }
 
       case "message_stop": {
+        // Race condition fix (2E): Always reset activeBlocks on message_stop,
+        // even if some blocks are incomplete. This prevents the activeBlocks Map
+        // from getting into an inconsistent state if events were lost or arrived
+        // out of order during streaming.
         const state = get();
         const assembled = assembleMessage(
           state.activeMessageId ?? generateId(),
