@@ -6,6 +6,7 @@ import {
   filterCommands,
   type SlashCommand,
 } from "@/lib/slashCommands";
+import { handleSlashCommand } from "@/lib/slashHandlers";
 import { useQuickQuestionStore } from "@/stores/quickQuestion";
 
 interface ChatInputProps {
@@ -62,6 +63,23 @@ export function ChatInput({
   const handleSend = useCallback(() => {
     const trimmed = text.trim();
     if (!trimmed || isStreaming || disabled) return;
+
+    // Route slash commands through the local handler first.
+    // If the handler returns true, the command was handled locally and we
+    // must not forward it to Claude.
+    if (trimmed.startsWith("/")) {
+      const handled = handleSlashCommand(trimmed, onSend);
+      setText("");
+      setShowSlash(false);
+      setSlashQuery("");
+      if (textareaRef.current) {
+        textareaRef.current.style.height = "auto";
+      }
+      if (handled) return;
+      // handleSlashCommand already called onSend for forwarded commands.
+      return;
+    }
+
     // Prepend ultrathink keyword when Deep Think is enabled
     const message = ultrathink ? `ultrathink ${trimmed}` : trimmed;
     onSend(message);
