@@ -40,6 +40,10 @@ src-tauri/              # Rust backend
     git.rs              # Git operations (branch, status, log, blame)
     search.rs           # Project search (ripgrep + ignore fallback)
     worktree.rs         # Git worktree management
+    workspace.rs        # Workspace file I/O (~/.vantage/)
+    indexer.rs          # Codebase indexing
+    plugins.rs          # Plugin discovery and management
+    session_search.rs   # JSONL session search
     prerequisites.rs    # First-launch checks
     mcp.rs              # MCP config read/write
     merge_queue.rs      # Quality gates, merge, rebase
@@ -53,9 +57,10 @@ src-tauri/              # Rust backend
 npm run dev           # Vite dev server only (no Tauri)
 npm run tauri dev     # Full Tauri dev mode (needs cargo on PATH)
 npm run build         # Vite production build
-npx vitest run        # Run unit tests (337 tests)
+npx vitest run        # Run frontend tests (337 tests)
 npx playwright test   # Run E2E tests (needs Vite server running)
 npm run lint:security # Semgrep security scan (TypeScript + React rules)
+cd src-tauri && cargo test  # Run Rust backend tests (76 tests)
 ```
 
 ## Key Patterns
@@ -69,7 +74,11 @@ npm run lint:security # Semgrep security scan (TypeScript + React rules)
 ## Testing
 
 - Unit tests: `src/stores/__tests__/` — Vitest with jsdom
+- Component tests: `src/components/__tests__/` — Testing Library + Vitest
+- Edge case tests: `src/stores/__tests__/edge-cases.test.ts`, `src/__tests__/ipc-edge-cases.test.ts`
 - E2E tests: `e2e/vantage.spec.ts` — Playwright against browser mock
+- Accessibility tests: `e2e/accessibility.spec.ts` — axe-core WCAG audits
+- Rust tests: `src-tauri/src/` — `#[cfg(test)]` modules (path validation, git injection, merge queue)
 - Visual testing: Chrome DevTools MCP tools for screenshots and interaction
 - The Tauri mock layer ensures the full UI renders in a browser without Tauri
 
