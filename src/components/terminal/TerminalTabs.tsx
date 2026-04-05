@@ -183,7 +183,7 @@ export function TerminalPanel() {
         style={{ backgroundColor: "var(--color-mantle)" }}
       >
         {/* Tabs — role="tablist" must only contain role="tab" children */}
-        <div className="flex items-center gap-0.5 overflow-x-auto" role="tablist">
+        <div className="flex items-center gap-0.5 overflow-x-auto min-w-0 flex-1" role="tablist">
           {tabs.map((tab) => (
             <div
               key={tab.id}
@@ -240,7 +240,7 @@ export function TerminalPanel() {
               )}
               {renamingTabId !== tab.id && (
                 <span
-                  className="text-xs"
+                  className="text-xs truncate"
                   style={{ color: "var(--color-overlay-0)" }}
                 >
                   ({tab.shellName})

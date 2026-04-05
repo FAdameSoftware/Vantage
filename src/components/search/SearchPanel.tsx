@@ -666,7 +666,7 @@ function FileResultGroup({
     <div role="listitem">
       {/* File header */}
       <div
-        className="flex items-center gap-1 px-2 h-[22px] cursor-pointer hover:bg-[var(--color-surface-0)] transition-colors select-none"
+        className="flex items-center gap-1 px-2 h-[22px] cursor-pointer hover:bg-[var(--color-surface-0)] transition-colors select-none min-w-0 overflow-hidden"
         onClick={onToggle}
         role="button"
         tabIndex={0}
@@ -695,14 +695,14 @@ function FileResultGroup({
           style={{ color: "var(--color-blue)", flexShrink: 0 }}
         />
         <span
-          className="text-xs font-medium truncate"
+          className="text-xs font-medium truncate min-w-0"
           style={{ color: "var(--color-text)" }}
         >
           {fileName}
         </span>
         {relDir && (
           <span
-            className="text-xs truncate"
+            className="text-xs truncate min-w-0"
             style={{ color: "var(--color-overlay-1)" }}
           >
             {relDir}

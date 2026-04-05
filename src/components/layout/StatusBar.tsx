@@ -25,7 +25,21 @@ import { EffortLevelSelector } from "@/components/shared/EffortLevelSelector";
 import { useCommandPaletteStore } from "@/stores/commandPalette";
 import * as monaco from "monaco-editor";
 
+/** Track window width for responsive status bar priority tiers */
+function useWindowWidth() {
+  const [width, setWidth] = useState(
+    typeof window !== "undefined" ? window.innerWidth : 1920,
+  );
+  useEffect(() => {
+    const handleResize = () => setWidth(window.innerWidth);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+  return width;
+}
+
 export function StatusBar() {
+  const windowWidth = useWindowWidth();
   const cursorPosition = useEditorStore(selectCursorPosition);
   const selectionLineCount = useEditorStore(selectSelectionLineCount);
   const vimModeLabel = useEditorStore((s) => s.vimModeLabel);
@@ -89,6 +103,9 @@ export function StatusBar() {
   const usageTotalCost = useUsageStore((s) => s.totalCostUsd);
   const usageInputTokens = useUsageStore((s) => s.inputTokens);
   const usageOutputTokens = useUsageStore((s) => s.outputTokens);
+  const allTimeCost = useUsageStore((s) => s.allTimeCost);
+  const projectUsageLoaded = useUsageStore((s) => s.projectUsageLoaded);
+  const lastSessionModel = useUsageStore((s) => s.lastSessionModel);
 
   const unreadCount = useNotificationStore((s) => s.unreadCount);
 
@@ -187,12 +204,20 @@ export function StatusBar() {
     ? getLanguageDisplayName(activeTab.language)
     : "Plain Text";
 
-  const connectionStatus = isStreaming ? "Streaming" : session ? "Connected" : "Ready";
+  const connectionStatus = isStreaming
+    ? "Streaming"
+    : session
+      ? "Connected"
+      : projectUsageLoaded && allTimeCost > 0
+        ? "History"
+        : "Ready";
   const statusColor = isStreaming
     ? "var(--color-peach)"
     : session
       ? "var(--color-green)"
-      : "var(--color-overlay-1)";
+      : projectUsageLoaded && allTimeCost > 0
+        ? "var(--color-blue)"
+        : "var(--color-overlay-1)";
 
   // Click handlers
   const handleGitBranchClick = () => {
@@ -274,15 +299,15 @@ export function StatusBar() {
         <div className="flex items-center gap-3 min-w-0 overflow-hidden">
           {/* Git branch -> click opens branch picker */}
           {isGitRepo && branch?.branch && (
-            <div ref={branchPickerRef} className="relative">
+            <div ref={branchPickerRef} className="relative shrink-0">
               <button
-                className="flex items-center gap-1 hover:text-[var(--color-text)] transition-colors"
+                className="flex items-center gap-1 hover:text-[var(--color-text)] transition-colors max-w-[140px]"
                 aria-label={`Git branch: ${branch.branch}. Click to switch branch.`}
                 onClick={handleGitBranchClick}
                 title="Switch Branch"
               >
-                <GitBranch size={12} />
-                <span>
+                <GitBranch size={12} className="shrink-0" />
+                <span className="truncate">
                   {branch.is_detached ? `(${branch.branch})` : branch.branch}
                 </span>
               </button>
@@ -296,10 +321,10 @@ export function StatusBar() {
             </div>
           )}
 
-          {/* Git diff stat: +insertions -deletions */}
-          {isGitRepo && diffStat && (
+          {/* Git diff stat: +insertions -deletions — hidden below 1200px */}
+          {isGitRepo && diffStat && windowWidth >= 1200 && (
             <span
-              className="flex items-center gap-1 text-[11px] font-mono"
+              className="flex items-center gap-1 text-[11px] font-mono shrink-0"
               title={`${diffStat.insertions} insertions, ${diffStat.deletions} deletions`}
             >
               <span style={{ color: "var(--color-green)" }}>+{diffStat.insertions}</span>
@@ -308,7 +333,7 @@ export function StatusBar() {
           )}
 
           {/* Errors and warnings -> click focuses search panel */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               className="flex items-center gap-0.5 hover:text-[var(--color-text)] transition-colors"
               aria-label="0 errors. Click to open problems."
@@ -329,50 +354,56 @@ export function StatusBar() {
             </button>
           </div>
 
-          {/* Coding buddy — Inkwell -> click toggles visibility */}
-          <button
-            onClick={handleBuddyClick}
-            className="hover:opacity-80 transition-opacity"
-            title={showBuddy ? "Hide Inkwell" : "Show Inkwell"}
-          >
-            <BuddyWidget visible={showBuddy} />
-          </button>
+          {/* Coding buddy — Inkwell — hidden below 1200px */}
+          {windowWidth >= 1200 && (
+            <button
+              onClick={handleBuddyClick}
+              className="hover:opacity-80 transition-opacity shrink-0"
+              title={showBuddy ? "Hide Inkwell" : "Show Inkwell"}
+            >
+              <BuddyWidget visible={showBuddy} />
+            </button>
+          )}
 
-          {/* Notification bell */}
-          <button
-            className="flex items-center gap-0.5 hover:text-[var(--color-text)] transition-colors relative"
-            aria-label={`Notifications${unreadCount > 0 ? `: ${unreadCount} unread` : ""}`}
-            onClick={handleNotificationBellClick}
-            title="Notification Center"
-          >
-            <Bell size={12} />
-            {unreadCount > 0 && (
-              <span
-                className="absolute -top-1.5 -right-1.5 min-w-[14px] h-[14px] flex items-center justify-center rounded-full text-[9px] font-bold leading-none px-0.5"
+          {/* Notification bell — hidden below 1200px */}
+          {windowWidth >= 1200 && (
+            <button
+              className="flex items-center gap-0.5 hover:text-[var(--color-text)] transition-colors relative shrink-0"
+              aria-label={`Notifications${unreadCount > 0 ? `: ${unreadCount} unread` : ""}`}
+              onClick={handleNotificationBellClick}
+              title="Notification Center"
+            >
+              <Bell size={12} />
+              {unreadCount > 0 && (
+                <span
+                  className="absolute -top-1.5 -right-1.5 min-w-[14px] h-[14px] flex items-center justify-center rounded-full text-[9px] font-bold leading-none px-0.5"
+                  style={{
+                    backgroundColor: "var(--color-blue)",
+                    color: "var(--color-base)",
+                  }}
+                >
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
+            </button>
+          )}
+
+          {/* Index status — hidden below 1200px */}
+          {windowWidth >= 1200 && (
+            <div
+              className="flex items-center gap-0.5 shrink-0"
+              title={isIndexed ? "Project indexed" : "Project not indexed"}
+            >
+              <Database
+                size={11}
                 style={{
-                  backgroundColor: "var(--color-blue)",
-                  color: "var(--color-base)",
+                  color: isIndexed
+                    ? "var(--color-green)"
+                    : "var(--color-overlay-0)",
                 }}
-              >
-                {unreadCount > 99 ? "99+" : unreadCount}
-              </span>
-            )}
-          </button>
-
-          {/* Index status */}
-          <div
-            className="flex items-center gap-0.5"
-            title={isIndexed ? "Project indexed" : "Project not indexed"}
-          >
-            <Database
-              size={11}
-              style={{
-                color: isIndexed
-                  ? "var(--color-green)"
-                  : "var(--color-overlay-0)",
-              }}
-            />
-          </div>
+              />
+            </div>
+          )}
         </div>
 
         {/* Right side - file/session scoped */}
@@ -380,7 +411,7 @@ export function StatusBar() {
           {/* Vim mode indicator */}
           {vimMode && (
             <span
-              className="font-mono font-semibold px-1 rounded text-[10px]"
+              className="font-mono font-semibold px-1 rounded text-[10px] shrink-0"
               style={{
                 backgroundColor: vimModeLabelColor(vimModeLabel),
                 color: "var(--color-base)",
@@ -393,7 +424,7 @@ export function StatusBar() {
 
           {/* Line and column -> click opens go-to-line dialog */}
           <button
-            className="hover:text-[var(--color-text)] transition-colors"
+            className="hover:text-[var(--color-text)] transition-colors whitespace-nowrap shrink-0"
             onClick={handleLineColClick}
             title="Go to Line (Ctrl+G)"
           >
@@ -409,10 +440,10 @@ export function StatusBar() {
             )}
           </button>
 
-          {/* EOL (line ending) -> click toggles LF / CRLF */}
-          {activeTab && (
+          {/* EOL (line ending) — hidden below 800px */}
+          {activeTab && windowWidth >= 800 && (
             <button
-              className="hover:text-[var(--color-text)] transition-colors"
+              className="hover:text-[var(--color-text)] transition-colors shrink-0"
               onClick={handleEolClick}
               title={`Line Ending: ${eol}. Click to toggle.`}
               aria-label={`Line ending: ${eol}. Click to toggle between LF and CRLF.`}
@@ -421,10 +452,10 @@ export function StatusBar() {
             </button>
           )}
 
-          {/* Encoding — always UTF-8 */}
-          {activeTab && (
+          {/* Encoding — hidden below 800px */}
+          {activeTab && windowWidth >= 800 && (
             <span
-              className="cursor-default"
+              className="cursor-default shrink-0"
               title="File encoding: UTF-8"
               aria-label="Encoding: UTF-8"
             >
@@ -432,9 +463,9 @@ export function StatusBar() {
             </span>
           )}
 
-          {/* Tab size -> click opens selector dropdown */}
-          {activeTab && (
-            <div ref={tabSizeSelectorRef} className="relative">
+          {/* Tab size — hidden below 800px */}
+          {activeTab && windowWidth >= 800 && (
+            <div ref={tabSizeSelectorRef} className="relative shrink-0">
               <button
                 className="hover:text-[var(--color-text)] transition-colors"
                 onClick={handleTabSizeClick}
@@ -458,7 +489,7 @@ export function StatusBar() {
           {/* Auto-save indicator -> click cycles through modes */}
           {autoSave !== "off" && (
             <button
-              className="hover:text-[var(--color-text)] transition-colors"
+              className="hover:text-[var(--color-text)] transition-colors shrink-0"
               style={{ color: "var(--color-green)" }}
               onClick={() =>
                 setAutoSave(
@@ -472,24 +503,26 @@ export function StatusBar() {
             </button>
           )}
 
-          {/* Word Wrap toggle */}
-          <button
-            className="hover:text-[var(--color-text)] transition-colors"
-            style={{
-              color: wordWrap ? "var(--color-blue)" : undefined,
-            }}
-            onClick={() => setWordWrap(!wordWrap)}
-            title={wordWrap ? "Disable Word Wrap" : "Enable Word Wrap"}
-            aria-label={wordWrap ? "Word wrap on. Click to disable." : "Word wrap off. Click to enable."}
-            aria-pressed={wordWrap}
-          >
-            {wordWrap ? "Wrap: On" : "Wrap: Off"}
-          </button>
+          {/* Word Wrap toggle — hidden below 800px */}
+          {windowWidth >= 800 && (
+            <button
+              className="hover:text-[var(--color-text)] transition-colors shrink-0"
+              style={{
+                color: wordWrap ? "var(--color-blue)" : undefined,
+              }}
+              onClick={() => setWordWrap(!wordWrap)}
+              title={wordWrap ? "Disable Word Wrap" : "Enable Word Wrap"}
+              aria-label={wordWrap ? "Word wrap on. Click to disable." : "Word wrap off. Click to enable."}
+              aria-pressed={wordWrap}
+            >
+              {wordWrap ? "Wrap: On" : "Wrap: Off"}
+            </button>
+          )}
 
           {/* Language -> click opens language selector */}
-          <div ref={languageSelectorRef} className="relative">
+          <div ref={languageSelectorRef} className="relative shrink-0">
             <button
-              className="hover:text-[var(--color-text)] transition-colors"
+              className="hover:text-[var(--color-text)] transition-colors truncate max-w-[120px]"
               onClick={handleLanguageClick}
               title="Select Language Mode"
             >
@@ -505,7 +538,7 @@ export function StatusBar() {
 
           {/* Claude session status -> click opens chat panel */}
           <button
-            className="flex items-center gap-1 hover:text-[var(--color-text)] transition-colors"
+            className="flex items-center gap-1 hover:text-[var(--color-text)] transition-colors shrink-0"
             onClick={handleClaudeStatusClick}
             title="Toggle Chat Panel"
           >
@@ -517,47 +550,54 @@ export function StatusBar() {
             <span>{connectionStatus}</span>
           </button>
 
-          {/* Usage: session timer, tokens, cost -> click opens usage panel */}
-          <button
-            className="flex items-center gap-3 hover:text-[var(--color-text)] transition-colors"
-            onClick={() => setShowUsage((s) => !s)}
-            title="Toggle Usage Panel"
-          >
-            {/* Session timer */}
-            {elapsed && (
-              <div className="flex items-center gap-1" title="Session duration">
-                <Clock size={11} />
-                <span>{elapsed}</span>
+          {/* Usage: session timer, tokens, cost — hidden below 1000px */}
+          {windowWidth >= 1000 && (
+            <button
+              className="flex items-center gap-3 hover:text-[var(--color-text)] transition-colors shrink-0"
+              onClick={() => setShowUsage((s) => !s)}
+              title="Toggle Usage Panel"
+            >
+              {/* Session timer */}
+              {elapsed && (
+                <div className="flex items-center gap-1" title="Session duration">
+                  <Clock size={11} />
+                  <span>{elapsed}</span>
+                </div>
+              )}
+
+              {/* Token count */}
+              {(usageInputTokens > 0 || usageOutputTokens > 0) && (
+                <div
+                  className="flex items-center gap-1"
+                  title={`Input: ${usageInputTokens.toLocaleString()} | Output: ${usageOutputTokens.toLocaleString()}`}
+                >
+                  <Hash size={11} />
+                  <span>
+                    {((usageInputTokens + usageOutputTokens) / 1000).toFixed(1)}k
+                  </span>
+                </div>
+              )}
+
+              {/* Cost: session cost | all-time cost */}
+              <div className="flex items-center gap-1" title={allTimeCost > 0 ? `Session: $${(usageTotalCost || totalCost).toFixed(4)} | Project total: $${allTimeCost.toFixed(4)}` : "Session cost"}>
+                <Coins size={11} />
+                <span>${(usageTotalCost || totalCost).toFixed(4)}</span>
+                {allTimeCost > 0 && allTimeCost !== usageTotalCost && (
+                  <span style={{ color: "var(--color-overlay-1)", fontSize: "10px" }}>
+                    / ${allTimeCost.toFixed(2)}
+                  </span>
+                )}
               </div>
-            )}
+            </button>
+          )}
 
-            {/* Token count */}
-            {(usageInputTokens > 0 || usageOutputTokens > 0) && (
-              <div
-                className="flex items-center gap-1"
-                title={`Input: ${usageInputTokens.toLocaleString()} | Output: ${usageOutputTokens.toLocaleString()}`}
-              >
-                <Hash size={11} />
-                <span>
-                  {((usageInputTokens + usageOutputTokens) / 1000).toFixed(1)}k
-                </span>
-              </div>
-            )}
-
-            {/* Cost */}
-            <div className="flex items-center gap-1" title="Session cost">
-              <Coins size={11} />
-              <span>${(usageTotalCost || totalCost).toFixed(4)}</span>
-            </div>
-          </button>
-
-          {/* Effort level */}
-          <EffortLevelSelector />
+          {/* Effort level — hidden below 800px */}
+          {windowWidth >= 800 && <EffortLevelSelector />}
 
           {/* Model -> click opens model selector dropdown */}
-          <div ref={modelSelectorRef} className="relative">
+          <div ref={modelSelectorRef} className="relative shrink-0">
             <button
-              className="hover:text-[var(--color-text)] transition-colors"
+              className="hover:text-[var(--color-text)] transition-colors truncate max-w-[180px]"
               style={{ color: "var(--color-overlay-1)" }}
               onClick={handleModelClick}
               title="Select Model"

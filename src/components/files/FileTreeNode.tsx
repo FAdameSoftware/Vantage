@@ -99,7 +99,7 @@ export function FileTreeNode({
   return (
     <>
       <div
-        className="flex items-center h-[22px] cursor-pointer hover:bg-[var(--color-surface-0)] transition-colors select-none"
+        className="flex items-center h-[22px] cursor-pointer hover:bg-[var(--color-surface-0)] transition-colors select-none min-w-0 overflow-hidden"
         style={{ paddingLeft: `${paddingLeft}px` }}
         onClick={handleClick}
         onDoubleClick={handleDoubleClick}

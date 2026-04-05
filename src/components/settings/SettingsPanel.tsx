@@ -41,7 +41,7 @@ export function SettingsPanel() {
     <div className="flex flex-col h-full overflow-hidden">
       {/* Tab bar */}
       <div
-        className="flex items-center gap-0 shrink-0"
+        className="flex items-center gap-0 shrink-0 overflow-x-auto min-w-0"
         style={{
           borderBottom: "1px solid var(--color-surface-0)",
           backgroundColor: "var(--color-mantle)",
@@ -51,7 +51,7 @@ export function SettingsPanel() {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className="flex items-center gap-1.5 px-3 h-8 text-xs transition-colors relative"
+            className="flex items-center gap-1.5 px-3 h-8 text-xs transition-colors relative shrink-0 whitespace-nowrap"
             style={{
               color:
                 activeTab === tab.id

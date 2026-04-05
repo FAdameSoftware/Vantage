@@ -590,7 +590,7 @@ export function ChatPanel() {
     >
       {/* Header */}
       <div
-        className="flex items-center justify-between px-4 h-9 shrink-0 min-w-0"
+        className="flex items-center justify-between px-4 min-h-9 shrink-0 min-w-0 gap-1 py-1"
         style={{
           borderBottom: "1px solid var(--color-surface-0)",
         }}
@@ -604,7 +604,7 @@ export function ChatPanel() {
             Chat
           </span>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 flex-wrap">
           {/* Pinned filter toggle */}
           {pinnedMessageIds.size > 0 && (
             <button
