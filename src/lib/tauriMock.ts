@@ -430,6 +430,20 @@ const mockInvokeHandlers: Record<string, MockInvokeHandler> = {
     sessions: [],
   }),
 
+  // ── Claude Settings ──
+  read_claude_settings: () =>
+    JSON.stringify({
+      hooks: {
+        PreToolUse: [
+          { matcher: "Bash", command: "echo 'Pre-tool hook'" },
+        ],
+        PostToolUse: [
+          { matcher: "Write", command: "npx prettier --write $FILE_PATH" },
+        ],
+      },
+    }),
+  write_claude_settings: () => null,
+
   // ── Workspace I/O ──
   read_workspace_file: () => null,
   write_workspace_file: () => null,

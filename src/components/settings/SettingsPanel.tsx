@@ -1,21 +1,25 @@
 import { useState, useEffect } from "react";
-import { FileText, Server, BookOpen, Puzzle } from "lucide-react";
+import { FileText, Server, BookOpen, Puzzle, Zap, Settings } from "lucide-react";
 import { ClaudeMdEditor } from "./ClaudeMdEditor";
 import { McpManager } from "./McpManager";
 import { PluginManager } from "./PluginManager";
 import { SpecViewer } from "./SpecViewer";
+import { HooksEditor } from "./HooksEditor";
+import { PreferencesEditor } from "./PreferencesEditor";
 
-type SettingsTab = "claude-md" | "mcp-servers" | "plugins" | "spec-viewer";
+type SettingsTab = "preferences" | "claude-md" | "mcp-servers" | "plugins" | "hooks" | "spec-viewer";
 
 const tabs: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
+  { id: "preferences", label: "Preferences", icon: <Settings size={12} /> },
   { id: "claude-md", label: "CLAUDE.md", icon: <FileText size={12} /> },
   { id: "mcp-servers", label: "MCP Servers", icon: <Server size={12} /> },
   { id: "plugins", label: "Plugins", icon: <Puzzle size={12} /> },
+  { id: "hooks", label: "Hooks", icon: <Zap size={12} /> },
   { id: "spec-viewer", label: "Spec Viewer", icon: <BookOpen size={12} /> },
 ];
 
 export function SettingsPanel() {
-  const [activeTab, setActiveTab] = useState<SettingsTab>("claude-md");
+  const [activeTab, setActiveTab] = useState<SettingsTab>("preferences");
 
   // Listen for command palette "Open Spec Viewer" event
   useEffect(() => {
@@ -64,12 +68,16 @@ export function SettingsPanel() {
 
       {/* Tab content */}
       <div className="flex-1 overflow-hidden">
-        {activeTab === "claude-md" ? (
+        {activeTab === "preferences" ? (
+          <PreferencesEditor />
+        ) : activeTab === "claude-md" ? (
           <ClaudeMdEditor />
         ) : activeTab === "mcp-servers" ? (
           <McpManager />
         ) : activeTab === "plugins" ? (
           <PluginManager />
+        ) : activeTab === "hooks" ? (
+          <HooksEditor />
         ) : (
           <SpecViewer />
         )}

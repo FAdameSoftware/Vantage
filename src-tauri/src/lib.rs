@@ -1,6 +1,7 @@
 mod analytics;
 mod checkpoint;
 mod claude;
+mod claude_settings;
 mod files;
 mod git;
 mod indexer;
@@ -614,6 +615,20 @@ fn rebase_branch(
     merge_queue::rebase_branch(&worktree_path, &onto_branch)
 }
 
+// ── Claude Settings Commands ─────────────────────────────────────────
+
+#[tauri::command]
+#[specta::specta]
+fn read_claude_settings() -> Result<String, String> {
+    claude_settings::read_claude_settings()
+}
+
+#[tauri::command]
+#[specta::specta]
+fn write_claude_settings(content: String) -> Result<(), String> {
+    claude_settings::write_claude_settings(&content)
+}
+
 // ── Application Setup ───────────────────────────────────────────────
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -691,6 +706,8 @@ pub fn run() {
             install_plugin,
             index_project,
             get_project_index,
+            read_claude_settings,
+            write_claude_settings,
             workspace::read_workspace_file,
             workspace::write_workspace_file,
             workspace::list_workspace_files,
