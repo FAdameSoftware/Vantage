@@ -47,7 +47,7 @@ function App() {
   useAgentNotifications();
   useAutoUpdate();
   useCustomTheme();
-  useProjectUsage();
+  // useProjectUsage(); // temporarily disabled to debug hooks crash
 
   const theme = useSettingsStore((s) => s.theme);
 
