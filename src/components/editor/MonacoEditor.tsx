@@ -1,4 +1,4 @@
-import { useRef, useCallback, useState } from "react";
+import { useRef, useCallback, useState, useEffect } from "react";
 import Editor, { type OnMount, type OnChange } from "@monaco-editor/react";
 import type { editor as monacoEditor } from "monaco-editor";
 import { loader } from "@monaco-editor/react";
@@ -10,6 +10,10 @@ import { useSettingsStore } from "@/stores/settings";
 import type { ThemeName } from "@/stores/settings";
 import { useEditorStore } from "@/stores/editor";
 import { useVimMode } from "@/hooks/useVimMode";
+import {
+  registerOpenedFile,
+  updateRegisteredFile,
+} from "@/hooks/useCrossFileIntelligence";
 
 // Configure the loader to use the local monaco-editor package
 // instead of loading from CDN
@@ -127,6 +131,13 @@ export function MonacoEditor({
     onModeChange: setVimModeLabel,
   });
 
+  // Register this file with the cross-file TS intelligence system on mount
+  useEffect(() => {
+    registerOpenedFile(filePath, value);
+    // Only register on mount, not on every value change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filePath]);
+
   const handleEditorDidMount: OnMount = useCallback(
     (editor) => {
       editorRef.current = editor;
@@ -140,12 +151,17 @@ export function MonacoEditor({
         });
       });
 
-      // Pin preview tab on first edit
+      // Pin preview tab on first edit and update cross-file registration
       const tabId = filePath
         .replace(/\\/g, "/")
         .replace(/^([A-Z]):/, (m) => m.toLowerCase());
       editor.onDidChangeModelContent(() => {
         pinTab(tabId);
+        // Keep the TS worker in sync with editor content
+        const model = editor.getModel();
+        if (model) {
+          updateRegisteredFile(filePath, model.getValue());
+        }
       });
 
       // Focus the editor
