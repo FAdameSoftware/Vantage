@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { X, Send, Loader2 } from "lucide-react";
 import { useQuickQuestionStore } from "@/stores/quickQuestion";
 
@@ -64,10 +65,10 @@ export function QuickQuestionOverlay() {
     close();
   }, [close]);
 
-  if (!isOpen) return null;
-
   return (
-    <div
+    <AnimatePresence>
+      {isOpen && (
+    <motion.div
       className="absolute bottom-0 left-0 right-0 z-50 flex flex-col overflow-hidden rounded-t-md"
       style={{
         maxHeight: "320px",
@@ -76,6 +77,10 @@ export function QuickQuestionOverlay() {
         borderBottom: "none",
         boxShadow: "0 -4px 16px rgba(0,0,0,0.3)",
       }}
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 16 }}
+      transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
     >
       {/* Header */}
       <div
@@ -187,6 +192,8 @@ export function QuickQuestionOverlay() {
           <Send size={13} />
         </button>
       </div>
-    </div>
+    </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
