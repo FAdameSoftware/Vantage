@@ -130,6 +130,9 @@ export interface EditorState {
   /** Check if a tab has a pending diff */
   hasPendingDiff: (tabId: string) => boolean;
 
+  /** Reorder tabs by moving the tab at fromIndex to toIndex */
+  reorderTabs: (fromIndex: number, toIndex: number) => void;
+
   /** Reset the editor store to its default state (used on workspace switch) */
   resetToDefaults: () => void;
 }
@@ -476,6 +479,23 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
 
   hasPendingDiff: (tabId) => {
     return get().pendingDiffs.has(tabId);
+  },
+
+  reorderTabs: (fromIndex, toIndex) => {
+    const { tabs } = get();
+    if (
+      fromIndex === toIndex ||
+      fromIndex < 0 ||
+      toIndex < 0 ||
+      fromIndex >= tabs.length ||
+      toIndex >= tabs.length
+    ) {
+      return;
+    }
+    const next = [...tabs];
+    const [moved] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, moved);
+    set({ tabs: next });
   },
 
   resetToDefaults: () => {
