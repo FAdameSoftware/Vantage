@@ -130,6 +130,9 @@ export interface EditorState {
   /** Check if a tab has a pending diff */
   hasPendingDiff: (tabId: string) => boolean;
 
+  /** Close all tabs to the right of the given tab ID */
+  closeTabsToTheRight: (id: string) => void;
+
   /** Reorder tabs by moving the tab at fromIndex to toIndex */
   reorderTabs: (fromIndex: number, toIndex: number) => void;
 
@@ -147,7 +150,14 @@ export interface EditorState {
 export const selectActiveTab = (s: EditorState): EditorTab | null =>
   s.tabs.find((t) => t.id === s.activeTabId) ?? null;
 
-/** Select tab metadata for the tab bar (excludes content to avoid re-renders on typing). */
+/**
+ * Select tab metadata for the tab bar (excludes content to avoid re-renders on typing).
+ *
+ * WARNING: This selector creates a new array on every call via .map().
+ * Do NOT use directly with useEditorStore(selectTabList) — it will cause
+ * infinite re-renders. Wrap with useShallow or derive via useMemo after
+ * selecting s.tabs.
+ */
 export const selectTabList = (s: EditorState) =>
   s.tabs.map((t) => ({
     id: t.id,
@@ -157,7 +167,14 @@ export const selectTabList = (s: EditorState) =>
     language: t.language,
   }));
 
-/** Select only the IDs of tabs with unsaved changes. */
+/**
+ * Select only the IDs of tabs with unsaved changes.
+ *
+ * WARNING: This selector creates a new array on every call via .filter().map().
+ * Do NOT use directly with useEditorStore(selectDirtyTabIds) — it will cause
+ * infinite re-renders. Wrap with useShallow or derive via useMemo after
+ * selecting s.tabs.
+ */
 export const selectDirtyTabIds = (s: EditorState): string[] =>
   s.tabs.filter((t) => t.isDirty).map((t) => t.id);
 
@@ -479,6 +496,35 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
 
   hasPendingDiff: (tabId) => {
     return get().pendingDiffs.has(tabId);
+  },
+
+  closeTabsToTheRight: (id) => {
+    const { tabs, markdownPreviewTabs, popoutTabs, pendingDiffs } = get();
+    const idx = tabs.findIndex((t) => t.id === id);
+    if (idx === -1) return;
+    const keepTabs = tabs.slice(0, idx + 1);
+    const removedIds = new Set(tabs.slice(idx + 1).map((t) => t.id));
+
+    const nextPreview = new Set<string>();
+    markdownPreviewTabs.forEach((tid) => {
+      if (!removedIds.has(tid)) nextPreview.add(tid);
+    });
+    const nextPopout = new Set<string>();
+    popoutTabs.forEach((tid) => {
+      if (!removedIds.has(tid)) nextPopout.add(tid);
+    });
+    const nextDiffs = new Map<string, PendingDiff>();
+    pendingDiffs.forEach((diff, tid) => {
+      if (!removedIds.has(tid)) nextDiffs.set(tid, diff);
+    });
+
+    set({
+      tabs: keepTabs,
+      activeTabId: id,
+      markdownPreviewTabs: nextPreview,
+      popoutTabs: nextPopout,
+      pendingDiffs: nextDiffs,
+    });
   },
 
   reorderTabs: (fromIndex, toIndex) => {

@@ -133,6 +133,7 @@ interface ContextMenuProps {
   onSplitDown: (tabId: string) => void;
   onCloseTab: (tabId: string) => void;
   onCloseOthers: (tabId: string) => void;
+  onCloseToTheRight: (tabId: string) => void;
   onCloseAll: () => void;
 }
 
@@ -144,6 +145,7 @@ function TabContextMenu({
   onSplitDown,
   onCloseTab,
   onCloseOthers,
+  onCloseToTheRight,
   onCloseAll,
 }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
@@ -200,6 +202,13 @@ function TabContextMenu({
       label: "Close Others",
       action: () => {
         if (state.tabId) onCloseOthers(state.tabId);
+        onClose();
+      },
+    },
+    {
+      label: "Close to the Right",
+      action: () => {
+        if (state.tabId) onCloseToTheRight(state.tabId);
         onClose();
       },
     },
@@ -356,6 +365,7 @@ export function EditorTabs() {
   const markdownPreviewTabs = useEditorStore((s) => s.markdownPreviewTabs);
   const closeAllTabs = useEditorStore((s) => s.closeAllTabs);
   const closeOtherTabs = useEditorStore((s) => s.closeOtherTabs);
+  const closeTabsToTheRight = useEditorStore((s) => s.closeTabsToTheRight);
   const splitEditor = useEditorStore((s) => s.splitEditor);
   const popoutTabs = useEditorStore((s) => s.popoutTabs);
   const reorderTabs = useEditorStore((s) => s.reorderTabs);
@@ -546,6 +556,7 @@ export function EditorTabs() {
         onSplitDown={(tabId) => splitEditor(tabId, "vertical")}
         onCloseTab={safeCloseTab}
         onCloseOthers={closeOtherTabs}
+        onCloseToTheRight={closeTabsToTheRight}
         onCloseAll={closeAllTabs}
       />
 
