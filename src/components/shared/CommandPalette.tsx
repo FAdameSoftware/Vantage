@@ -26,6 +26,7 @@ import {
   Palette,
   BookOpen,
   Globe,
+  Keyboard,
 } from "lucide-react";
 import { useCommandPaletteStore } from "@/stores/commandPalette";
 import { useLayoutStore } from "@/stores/layout";
@@ -445,6 +446,16 @@ export function CommandPalette() {
         // Ensure panel is visible
         const state = useLayoutStore.getState();
         if (!state.panelVisible) state.togglePanel();
+      },
+    },
+    {
+      id: "open-keyboard-shortcuts",
+      label: "Open Keyboard Shortcuts",
+      icon: <Keyboard className="size-4 shrink-0 text-muted-foreground" />,
+      category: "Preferences",
+      action: () => {
+        setActiveActivityBarItem("settings");
+        window.dispatchEvent(new CustomEvent("vantage:open-keybindings"));
       },
     },
   ];

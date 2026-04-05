@@ -24,6 +24,8 @@ export interface SettingsState {
   planMode: boolean;
   /** Whether to auto-format files on save (via Prettier) */
   formatOnSave: boolean;
+  /** Custom keybinding overrides: keybinding ID -> shortcut string (e.g., "Ctrl+Shift+B") */
+  keybindingOverrides: Record<string, { key: string; ctrl?: boolean; shift?: boolean; alt?: boolean }>;
   setTheme: (theme: ThemeName) => void;
   setFontSizeEditor: (size: number) => void;
   setFontSizeUI: (size: number) => void;
@@ -40,6 +42,9 @@ export interface SettingsState {
   setEffortLevel: (level: "low" | "medium" | "high") => void;
   setPlanMode: (value: boolean) => void;
   setFormatOnSave: (value: boolean) => void;
+  setKeybindingOverride: (id: string, binding: { key: string; ctrl?: boolean; shift?: boolean; alt?: boolean }) => void;
+  removeKeybindingOverride: (id: string) => void;
+  resetAllKeybindings: () => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -61,6 +66,7 @@ export const useSettingsStore = create<SettingsState>()(
       effortLevel: "high",
       planMode: false,
       formatOnSave: false,
+      keybindingOverrides: {},
       setTheme: (theme) => set({ theme }),
       setFontSizeEditor: (size) => set({ fontSizeEditor: Math.max(8, Math.min(32, size)) }),
       setFontSizeUI: (size) => set({ fontSizeUI: Math.max(10, Math.min(24, size)) }),
@@ -77,6 +83,17 @@ export const useSettingsStore = create<SettingsState>()(
       setEffortLevel: (level) => set({ effortLevel: level }),
       setPlanMode: (value) => set({ planMode: value }),
       setFormatOnSave: (value) => set({ formatOnSave: value }),
+      setKeybindingOverride: (id, binding) =>
+        set((state) => ({
+          keybindingOverrides: { ...state.keybindingOverrides, [id]: binding },
+        })),
+      removeKeybindingOverride: (id) =>
+        set((state) => {
+          const next = { ...state.keybindingOverrides };
+          delete next[id];
+          return { keybindingOverrides: next };
+        }),
+      resetAllKeybindings: () => set({ keybindingOverrides: {} }),
     }),
     {
       name: "vantage-settings",
@@ -97,6 +114,7 @@ export const useSettingsStore = create<SettingsState>()(
         effortLevel: state.effortLevel,
         planMode: state.planMode,
         formatOnSave: state.formatOnSave,
+        keybindingOverrides: state.keybindingOverrides,
       }),
     }
   )

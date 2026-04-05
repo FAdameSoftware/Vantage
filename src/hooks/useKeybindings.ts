@@ -9,7 +9,7 @@ import { toast } from "sonner";
 
 const THEME_CYCLE: ThemeName[] = ["vantage-dark", "vantage-light", "vantage-high-contrast"];
 
-interface Keybinding {
+export interface Keybinding {
   key: string;
   ctrl?: boolean;
   shift?: boolean;
@@ -17,6 +17,61 @@ interface Keybinding {
   action: () => void;
   description: string;
 }
+
+/** Static keybinding definition (without the runtime action) for the keybindings viewer/editor */
+export interface KeybindingDefinition {
+  /** Unique ID derived from the shortcut string (e.g., "ctrl+shift+b") */
+  id: string;
+  /** The key (e.g., "b", "Tab", ",") */
+  key: string;
+  ctrl?: boolean;
+  shift?: boolean;
+  alt?: boolean;
+  /** Human-readable description of the action */
+  description: string;
+  /** Where this keybinding comes from */
+  source: "built-in" | "custom";
+}
+
+/** Format a keybinding definition into a human-readable shortcut string like "Ctrl+Shift+B" */
+export function formatShortcut(def: { key: string; ctrl?: boolean; shift?: boolean; alt?: boolean }): string {
+  const parts: string[] = [];
+  if (def.ctrl) parts.push("Ctrl");
+  if (def.shift) parts.push("Shift");
+  if (def.alt) parts.push("Alt");
+  parts.push(def.key === " " ? "Space" : def.key.length === 1 ? def.key.toUpperCase() : def.key);
+  return parts.join("+");
+}
+
+/** Generate a stable ID for a keybinding based on its modifiers and key */
+function makeKeybindingId(def: { key: string; ctrl?: boolean; shift?: boolean; alt?: boolean }): string {
+  return formatShortcut(def).toLowerCase().replace(/\+/g, "-");
+}
+
+/**
+ * The default set of keybinding definitions (without runtime actions).
+ * This is the canonical list used by both the keybindings viewer/editor
+ * and the runtime useKeybindings hook.
+ */
+export const DEFAULT_KEYBINDING_DEFINITIONS: Omit<KeybindingDefinition, "source">[] = [
+  { id: "ctrl-b", key: "b", ctrl: true, description: "Toggle Primary Sidebar" },
+  { id: "ctrl-j", key: "j", ctrl: true, description: "Toggle Panel" },
+  { id: "ctrl-backtick", key: "`", ctrl: true, description: "Toggle Terminal Panel" },
+  { id: "ctrl-shift-b", key: "b", ctrl: true, shift: true, description: "Toggle Secondary Sidebar (Chat)" },
+  { id: "ctrl-shift-p", key: "p", ctrl: true, shift: true, description: "Open Command Palette" },
+  { id: "ctrl-p", key: "p", ctrl: true, description: "Quick Open File" },
+  { id: "ctrl-g", key: "g", ctrl: true, description: "Go to Line" },
+  { id: "ctrl-shift-e", key: "e", ctrl: true, shift: true, description: "Focus File Explorer" },
+  { id: "ctrl-shift-f", key: "f", ctrl: true, shift: true, description: "Search in Files" },
+  { id: "ctrl-shift-g", key: "g", ctrl: true, shift: true, description: "Focus Source Control" },
+  { id: "ctrl-shift-a", key: "a", ctrl: true, shift: true, description: "Focus Agents" },
+  { id: "ctrl-comma", key: ",", ctrl: true, description: "Open Settings" },
+  { id: "ctrl-shift-alt-k", key: "k", ctrl: true, shift: true, alt: true, description: "Cycle Color Theme" },
+  { id: "ctrl-s", key: "s", ctrl: true, description: "Save Active File" },
+  { id: "ctrl-w", key: "w", ctrl: true, description: "Close Active Tab" },
+  { id: "ctrl-tab", key: "Tab", ctrl: true, description: "Next Tab" },
+  { id: "ctrl-shift-tab", key: "Tab", ctrl: true, shift: true, description: "Previous Tab" },
+].map((d) => ({ ...d, id: d.id || makeKeybindingId(d) }));
 
 export function useKeybindings() {
   const togglePrimarySidebar = useLayoutStore((s) => s.togglePrimarySidebar);

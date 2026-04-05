@@ -1,16 +1,18 @@
 import { useState, useEffect } from "react";
-import { FileText, Server, BookOpen, Puzzle, Zap, Settings } from "lucide-react";
+import { FileText, Server, BookOpen, Puzzle, Zap, Settings, Keyboard } from "lucide-react";
 import { ClaudeMdEditor } from "./ClaudeMdEditor";
 import { McpManager } from "./McpManager";
 import { PluginManager } from "./PluginManager";
 import { SpecViewer } from "./SpecViewer";
 import { HooksEditor } from "./HooksEditor";
 import { PreferencesEditor } from "./PreferencesEditor";
+import { KeybindingsEditor } from "./KeybindingsEditor";
 
-type SettingsTab = "preferences" | "claude-md" | "mcp-servers" | "plugins" | "hooks" | "spec-viewer";
+type SettingsTab = "preferences" | "keybindings" | "claude-md" | "mcp-servers" | "plugins" | "hooks" | "spec-viewer";
 
 const tabs: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
   { id: "preferences", label: "Preferences", icon: <Settings size={12} /> },
+  { id: "keybindings", label: "Keybindings", icon: <Keyboard size={12} /> },
   { id: "claude-md", label: "CLAUDE.md", icon: <FileText size={12} /> },
   { id: "mcp-servers", label: "MCP Servers", icon: <Server size={12} /> },
   { id: "plugins", label: "Plugins", icon: <Puzzle size={12} /> },
@@ -26,6 +28,13 @@ export function SettingsPanel() {
     const handler = () => setActiveTab("spec-viewer");
     window.addEventListener("vantage:open-spec-viewer", handler);
     return () => window.removeEventListener("vantage:open-spec-viewer", handler);
+  }, []);
+
+  // Listen for command palette "Open Keyboard Shortcuts" event
+  useEffect(() => {
+    const handler = () => setActiveTab("keybindings");
+    window.addEventListener("vantage:open-keybindings", handler);
+    return () => window.removeEventListener("vantage:open-keybindings", handler);
   }, []);
 
   return (
@@ -70,6 +79,8 @@ export function SettingsPanel() {
       <div className="flex-1 overflow-hidden">
         {activeTab === "preferences" ? (
           <PreferencesEditor />
+        ) : activeTab === "keybindings" ? (
+          <KeybindingsEditor />
         ) : activeTab === "claude-md" ? (
           <ClaudeMdEditor />
         ) : activeTab === "mcp-servers" ? (
