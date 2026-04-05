@@ -35,6 +35,8 @@ export interface CursorPosition {
   column: number;
 }
 
+export type SplitDirection = "none" | "horizontal" | "vertical";
+
 export interface EditorState {
   /** All open tabs in order */
   tabs: EditorTab[];
@@ -44,6 +46,12 @@ export interface EditorState {
   cursorPosition: CursorPosition;
   /** Current vim mode label (only meaningful when vim mode is enabled) */
   vimModeLabel: string;
+
+  // ── Split Editor ───────────────────────────────────────────────────
+  /** Direction of the editor split ("none" = no split) */
+  splitDirection: SplitDirection;
+  /** Tab ID shown in the secondary (split) pane */
+  secondaryActiveTabId: string | null;
 
   // ── Actions ─────────────────────────────────────────────────────
 
@@ -83,6 +91,14 @@ export interface EditorState {
   toggleMarkdownPreview: (tabId: string) => void;
   /** Check if a tab has markdown preview active */
   isMarkdownPreviewActive: (tabId: string) => boolean;
+
+  // ── Split Editor Actions ───────────────────────────────────────────
+  /** Open a tab in a split pane */
+  splitEditor: (tabId: string, direction: SplitDirection) => void;
+  /** Close the split pane */
+  closeSplit: () => void;
+  /** Set the active tab in the secondary pane */
+  setSecondaryActiveTab: (tabId: string) => void;
 
   // ── Popout Windows ─────────────────────────────────────────────────
 
@@ -169,6 +185,8 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
   activeTabId: null,
   cursorPosition: { line: 1, column: 1 },
   vimModeLabel: "NORMAL",
+  splitDirection: "none",
+  secondaryActiveTabId: null,
   markdownPreviewTabs: new Set<string>(),
   popoutTabs: new Set<string>(),
   pendingDiffs: new Map<string, PendingDiff>(),
@@ -213,7 +231,7 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
   },
 
   closeTab: (id) => {
-    const { tabs, activeTabId, markdownPreviewTabs, popoutTabs, pendingDiffs } = get();
+    const { tabs, activeTabId, secondaryActiveTabId, splitDirection, markdownPreviewTabs, popoutTabs, pendingDiffs } = get();
     const tabIndex = tabs.findIndex((t) => t.id === id);
     if (tabIndex === -1) return;
 
@@ -226,6 +244,14 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
       newActiveId = newTabs[newIndex].id;
     } else if (activeTabId !== id) {
       newActiveId = activeTabId;
+    }
+
+    // If the closed tab was the secondary split tab, close the split
+    let newSplitDirection = splitDirection;
+    let newSecondaryActiveTabId = secondaryActiveTabId;
+    if (secondaryActiveTabId === id) {
+      newSplitDirection = "none";
+      newSecondaryActiveTabId = null;
     }
 
     // Clean up associated Set/Map entries to prevent unbounded growth.
@@ -241,6 +267,8 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
     set({
       tabs: newTabs,
       activeTabId: newActiveId,
+      splitDirection: newSplitDirection,
+      secondaryActiveTabId: newSecondaryActiveTabId,
       markdownPreviewTabs: nextPreview,
       popoutTabs: nextPopout,
       pendingDiffs: nextDiffs,
@@ -307,6 +335,8 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
     set({
       tabs: [],
       activeTabId: null,
+      splitDirection: "none",
+      secondaryActiveTabId: null,
       markdownPreviewTabs: new Set<string>(),
       popoutTabs: new Set<string>(),
       pendingDiffs: new Map<string, PendingDiff>(),
@@ -367,6 +397,26 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
 
   isMarkdownPreviewActive: (tabId) => {
     return get().markdownPreviewTabs.has(tabId);
+  },
+
+  splitEditor: (tabId, direction) => {
+    if (direction === "none") {
+      set({ splitDirection: "none", secondaryActiveTabId: null });
+      return;
+    }
+    // Only split if the tab exists
+    const { tabs } = get();
+    if (tabs.find((t) => t.id === tabId)) {
+      set({ splitDirection: direction, secondaryActiveTabId: tabId });
+    }
+  },
+
+  closeSplit: () => {
+    set({ splitDirection: "none", secondaryActiveTabId: null });
+  },
+
+  setSecondaryActiveTab: (tabId) => {
+    set({ secondaryActiveTabId: tabId });
   },
 
   setPendingDiff: (tabId, original, modified, description) => {
@@ -434,6 +484,8 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
       activeTabId: null,
       cursorPosition: { line: 1, column: 1 },
       vimModeLabel: "NORMAL",
+      splitDirection: "none",
+      secondaryActiveTabId: null,
       markdownPreviewTabs: new Set<string>(),
       popoutTabs: new Set<string>(),
       pendingDiffs: new Map<string, PendingDiff>(),

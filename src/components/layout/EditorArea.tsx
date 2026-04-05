@@ -5,6 +5,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { useEditorStore, selectActiveTab } from "@/stores/editor";
 import { useLayoutStore } from "@/stores/layout";
 import { useWorkspaceStore } from "@/stores/workspace";
+import { useSettingsStore } from "@/stores/settings";
 import { MonacoEditor } from "@/components/editor/MonacoEditor";
 import { DiffViewer } from "@/components/editor/DiffViewer";
 import { EditorTabs } from "@/components/editor/EditorTabs";
@@ -209,10 +210,20 @@ function KeyboardHint({ keys, label }: { keys: string; label: string }) {
 export function EditorArea() {
   const updateContent = useEditorStore((s) => s.updateContent);
   const markSaved = useEditorStore((s) => s.markSaved);
+  const reloadTab = useEditorStore((s) => s.reloadTab);
   const markdownPreviewTabs = useEditorStore((s) => s.markdownPreviewTabs);
   const pendingDiffs = useEditorStore((s) => s.pendingDiffs);
+  const formatOnSave = useSettingsStore((s) => s.formatOnSave);
 
   const activeTab = useEditorStore(selectActiveTab);
+  const splitDirection = useEditorStore((s) => s.splitDirection);
+  const secondaryActiveTabId = useEditorStore((s) => s.secondaryActiveTabId);
+  const tabs = useEditorStore((s) => s.tabs);
+
+  // Resolve the secondary tab for split view
+  const secondaryTab = secondaryActiveTabId
+    ? tabs.find((t) => t.id === secondaryActiveTabId) ?? null
+    : null;
 
   // If the active tab has a pending diff, show the diff viewer instead of the editor.
   // setPendingDiff is wired in useClaude hook — it captures before/after content
@@ -221,10 +232,13 @@ export function EditorArea() {
 
   const isSpecialTab = activeTab?.path.startsWith("__vantage://") ?? false;
 
+  const isSplit = splitDirection !== "none" && secondaryTab !== null;
+
   const isMarkdownPreview =
     activeTab !== null &&
     !activeDiff &&
     !isSpecialTab &&
+    !isSplit &&
     activeTab.language === "markdown" &&
     markdownPreviewTabs.has(activeTab.id);
 
@@ -237,10 +251,26 @@ export function EditorArea() {
         content: activeTab.content,
       });
       markSaved(activeTab.id, activeTab.content);
+
+      // Format on save: run Prettier then reload the formatted content
+      if (formatOnSave) {
+        try {
+          const formatted = await invoke<string>("format_file", {
+            path: activeTab.path,
+          });
+          // Only update if content actually changed after formatting
+          if (formatted !== activeTab.content) {
+            reloadTab(activeTab.id, formatted);
+          }
+        } catch (formatErr) {
+          // Formatting failure is non-fatal — file is already saved
+          console.warn("Format on save failed:", formatErr);
+        }
+      }
     } catch (e) {
       console.error("Failed to save file:", e);
     }
-  }, [activeTab, markSaved]);
+  }, [activeTab, markSaved, reloadTab, formatOnSave]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -294,11 +324,23 @@ export function EditorArea() {
             </ErrorBoundary>
           </div>
         ) : (
-          <div className="flex-1 overflow-hidden flex">
-            {/* Monaco editor — full width or left half */}
+          <div
+            className="flex-1 overflow-hidden flex"
+            style={{
+              flexDirection:
+                isSplit && splitDirection === "vertical" ? "column" : "row",
+            }}
+          >
+            {/* Primary Monaco editor pane */}
             <div
-              className={isMarkdownPreview ? "w-1/2" : "w-full"}
-              style={{ overflow: "hidden" }}
+              className={
+                isMarkdownPreview || isSplit ? "flex-1" : "w-full"
+              }
+              style={{
+                overflow: "hidden",
+                minWidth: 0,
+                minHeight: 0,
+              }}
             >
               <ErrorBoundary>
                 <MonacoEditor
@@ -311,10 +353,42 @@ export function EditorArea() {
               </ErrorBoundary>
             </div>
 
-            {/* Markdown preview — right half, only when toggled */}
+            {/* Split pane — secondary editor */}
+            {isSplit && secondaryTab && (
+              <div
+                className="flex-1"
+                style={{
+                  overflow: "hidden",
+                  minWidth: 0,
+                  minHeight: 0,
+                  borderLeft:
+                    splitDirection === "horizontal"
+                      ? "1px solid var(--color-surface-0)"
+                      : undefined,
+                  borderTop:
+                    splitDirection === "vertical"
+                      ? "1px solid var(--color-surface-0)"
+                      : undefined,
+                }}
+              >
+                <ErrorBoundary>
+                  <MonacoEditor
+                    key={`split-${secondaryTab.id}`}
+                    filePath={secondaryTab.path}
+                    language={secondaryTab.language}
+                    value={secondaryTab.content}
+                    onChange={(newValue) =>
+                      updateContent(secondaryTab.id, newValue)
+                    }
+                  />
+                </ErrorBoundary>
+              </div>
+            )}
+
+            {/* Markdown preview — right half, only when toggled (not in split mode) */}
             {isMarkdownPreview && (
               <div
-                className="w-1/2 overflow-hidden"
+                className="flex-1 overflow-hidden"
                 style={{ borderLeft: "1px solid var(--color-surface-0)" }}
               >
                 <MarkdownPreview content={activeTab.content} />

@@ -122,4 +122,62 @@ describe("editorStore", () => {
     expect(state.tabs).toHaveLength(0);
     expect(state.activeTabId).toBeNull();
   });
+
+  // ── Split editor tests ──────────────────────────────────────────
+
+  it("splitEditor sets direction and secondary tab", () => {
+    const store = useEditorStore.getState();
+    store.openFile("C:/project/a.ts", "a.ts", "typescript", "a");
+    store.openFile("C:/project/b.ts", "b.ts", "typescript", "b");
+    store.splitEditor("c:/project/a.ts", "horizontal");
+
+    const state = useEditorStore.getState();
+    expect(state.splitDirection).toBe("horizontal");
+    expect(state.secondaryActiveTabId).toBe("c:/project/a.ts");
+  });
+
+  it("closeSplit resets split state", () => {
+    const store = useEditorStore.getState();
+    store.openFile("C:/project/a.ts", "a.ts", "typescript", "a");
+    store.splitEditor("c:/project/a.ts", "horizontal");
+    store.closeSplit();
+
+    const state = useEditorStore.getState();
+    expect(state.splitDirection).toBe("none");
+    expect(state.secondaryActiveTabId).toBeNull();
+  });
+
+  it("closing the secondary split tab closes the split", () => {
+    const store = useEditorStore.getState();
+    store.openFile("C:/project/a.ts", "a.ts", "typescript", "a");
+    store.openFile("C:/project/b.ts", "b.ts", "typescript", "b");
+    store.splitEditor("c:/project/a.ts", "vertical");
+    store.closeTab("c:/project/a.ts");
+
+    const state = useEditorStore.getState();
+    expect(state.splitDirection).toBe("none");
+    expect(state.secondaryActiveTabId).toBeNull();
+  });
+
+  it("splitEditor with none direction closes the split", () => {
+    const store = useEditorStore.getState();
+    store.openFile("C:/project/a.ts", "a.ts", "typescript", "a");
+    store.splitEditor("c:/project/a.ts", "horizontal");
+    store.splitEditor("c:/project/a.ts", "none");
+
+    const state = useEditorStore.getState();
+    expect(state.splitDirection).toBe("none");
+    expect(state.secondaryActiveTabId).toBeNull();
+  });
+
+  it("setSecondaryActiveTab changes the split pane tab", () => {
+    const store = useEditorStore.getState();
+    store.openFile("C:/project/a.ts", "a.ts", "typescript", "a");
+    store.openFile("C:/project/b.ts", "b.ts", "typescript", "b");
+    store.splitEditor("c:/project/a.ts", "horizontal");
+    store.setSecondaryActiveTab("c:/project/b.ts");
+
+    const state = useEditorStore.getState();
+    expect(state.secondaryActiveTabId).toBe("c:/project/b.ts");
+  });
 });

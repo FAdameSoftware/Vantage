@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { X, FileCode, Eye, EyeOff, ExternalLink } from "lucide-react";
+import { X, FileCode, Eye, EyeOff, ExternalLink, Columns2, Rows2 } from "lucide-react";
 import { useEditorStore, type EditorTab } from "@/stores/editor";
 import { useFloatingWindow } from "@/hooks/useFloatingWindow";
 
@@ -115,6 +115,8 @@ interface ContextMenuProps {
   state: ContextMenuState;
   onClose: () => void;
   onPopOut: (tabId: string) => void;
+  onSplitRight: (tabId: string) => void;
+  onSplitDown: (tabId: string) => void;
   onCloseTab: (tabId: string) => void;
   onCloseOthers: (tabId: string) => void;
   onCloseAll: () => void;
@@ -124,6 +126,8 @@ function TabContextMenu({
   state,
   onClose,
   onPopOut,
+  onSplitRight,
+  onSplitDown,
   onCloseTab,
   onCloseOthers,
   onCloseAll,
@@ -150,6 +154,23 @@ function TabContextMenu({
       icon: <ExternalLink size={12} />,
       action: () => {
         if (state.tabId) onPopOut(state.tabId);
+        onClose();
+      },
+    },
+    { separator: true as const },
+    {
+      label: "Split Right",
+      icon: <Columns2 size={12} />,
+      action: () => {
+        if (state.tabId) onSplitRight(state.tabId);
+        onClose();
+      },
+    },
+    {
+      label: "Split Down",
+      icon: <Rows2 size={12} />,
+      action: () => {
+        if (state.tabId) onSplitDown(state.tabId);
         onClose();
       },
     },
@@ -224,6 +245,7 @@ export function EditorTabs() {
   const markdownPreviewTabs = useEditorStore((s) => s.markdownPreviewTabs);
   const closeAllTabs = useEditorStore((s) => s.closeAllTabs);
   const closeOtherTabs = useEditorStore((s) => s.closeOtherTabs);
+  const splitEditor = useEditorStore((s) => s.splitEditor);
   const popoutTabs = useEditorStore((s) => s.popoutTabs);
 
   const { popOut, focusPopout } = useFloatingWindow();
@@ -425,6 +447,8 @@ export function EditorTabs() {
         state={contextMenu}
         onClose={handleCloseContextMenu}
         onPopOut={handlePopOut}
+        onSplitRight={(tabId) => splitEditor(tabId, "horizontal")}
+        onSplitDown={(tabId) => splitEditor(tabId, "vertical")}
         onCloseTab={safeCloseTab}
         onCloseOthers={closeOtherTabs}
         onCloseAll={closeAllTabs}
