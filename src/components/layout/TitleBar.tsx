@@ -4,6 +4,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
 import { useEditorStore } from "@/stores/editor";
 import { useWorkspaceStore } from "@/stores/workspace";
+import { MenuBar } from "./MenuBar";
 
 function WindowControls() {
   const [isMaximized, setIsMaximized] = useState(false);
@@ -204,14 +205,41 @@ export function TitleBar() {
 
   return (
     <div
-      className="flex items-center h-8 shrink-0 select-none"
+      className="flex items-center h-9 shrink-0 select-none"
       style={{
         backgroundColor: "var(--color-crust)",
         borderBottom: "1px solid var(--color-surface-0)",
       }}
     >
+      {/* App icon */}
       <div
-        className="flex items-center flex-1 h-full px-3"
+        className="flex items-center justify-center shrink-0 w-10 h-full"
+        style={{ color: "var(--color-blue)" }}
+      >
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 16 16"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          aria-label="Vantage"
+        >
+          <path
+            d="M2 3L8 13L14 3"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </div>
+
+      {/* Menu bar */}
+      <MenuBar />
+
+      {/* Drag region fills remaining space */}
+      <div
+        className="flex items-center justify-center flex-1 h-full"
         data-tauri-drag-region
       >
         <span
