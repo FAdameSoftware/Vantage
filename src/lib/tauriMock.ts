@@ -239,6 +239,8 @@ const mockInvokeHandlers: Record<string, MockInvokeHandler> = {
   git_push: () => "Everything up-to-date",
   git_pull: () => "Already up to date.",
   git_create_branch: () => "Switched to a new branch 'feature/new'",
+  git_list_branches: () => ["main", "develop", "feature/auth", "feature/dashboard", "bugfix/login-fix"],
+  git_checkout_branch: () => "Switched to branch 'develop'",
   get_worktree_changes: () => [],
   rebase_branch: () => true,
 

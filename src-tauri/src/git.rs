@@ -893,6 +893,46 @@ pub fn git_create_branch(cwd: &str, name: &str) -> Result<String, String> {
     }
 }
 
+/// List local branches: `git branch --format="%(refname:short)"`.
+pub fn git_list_branches(cwd: &str) -> Result<Vec<String>, String> {
+    let mut cmd = Command::new("git");
+    cmd.args(["branch", "--format=%(refname:short)"])
+        .current_dir(cwd);
+
+    let output = run_git_with_timeout(&mut cmd)?;
+
+    if output.status.success() {
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let branches: Vec<String> = stdout
+            .lines()
+            .map(|l| l.trim().to_string())
+            .filter(|l| !l.is_empty())
+            .collect();
+        Ok(branches)
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        Err(format!("git branch failed: {}", stderr.trim()))
+    }
+}
+
+/// Checkout an existing branch: `git checkout <branch>`.
+pub fn git_checkout_branch(cwd: &str, name: &str) -> Result<String, String> {
+    validate_branch_name(name)?;
+
+    let mut cmd = Command::new("git");
+    cmd.args(["checkout", name]).current_dir(cwd);
+
+    let output = run_git_with_timeout(&mut cmd)?;
+
+    if output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        Ok(stderr.trim().to_string())
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        Err(format!("git checkout failed: {}", stderr.trim()))
+    }
+}
+
 /// Get the working-tree diff (unstaged changes only): `git diff`.
 pub fn git_diff_working(cwd: &str) -> Result<String, String> {
     let mut cmd = Command::new("git");

@@ -10,6 +10,7 @@ import { CommandPalette } from "@/components/shared/CommandPalette";
 import { NotificationCenter } from "@/components/shared/NotificationCenter";
 import { PrerequisiteCheck } from "@/components/shared/PrerequisiteCheck";
 import { PopoutEditor } from "@/components/editor/PopoutEditor";
+import { TabSwitcher } from "@/components/editor/TabSwitcher";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 import { DevPanel } from "@/components/dev/DevPanel";
 import { useSettingsStore } from "@/stores/settings";
@@ -83,6 +84,7 @@ function App() {
     <ErrorBoundary>
       <IDELayout />
       <CommandPalette />
+      <TabSwitcher />
       <PermissionDialog />
       <NotificationCenter />
       <PrerequisiteCheck />

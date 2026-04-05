@@ -342,6 +342,7 @@ function SortableTab({
           style={{ color: "var(--color-overlay-1)" }}
           onClick={(e) => onTabClose(e, tab)}
           aria-label={`Close ${tab.name}`}
+          title="Close (Ctrl+W)"
           // Prevent dnd-kit drag from triggering on close button click
           onPointerDown={(e) => e.stopPropagation()}
         >

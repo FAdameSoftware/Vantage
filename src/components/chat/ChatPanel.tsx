@@ -419,6 +419,7 @@ export function ChatPanel() {
               style={{ color: "var(--color-overlay-1)" }}
               onClick={handleNewSession}
               aria-label="New session"
+              title="New Session"
             >
               <Plus size={14} />
             </button>

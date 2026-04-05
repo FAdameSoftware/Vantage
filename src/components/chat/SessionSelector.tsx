@@ -223,6 +223,7 @@ export function SessionSelector({ cwd, onNewSession, onResumeSession }: SessionS
           backgroundColor: open ? "var(--color-surface-0)" : "transparent",
         }}
         aria-label="Browse sessions"
+        title="Browse past sessions"
       >
         <History size={13} />
         <span className="font-medium">Sessions</span>

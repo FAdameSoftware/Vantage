@@ -455,6 +455,18 @@ fn git_create_branch(cwd: String, name: String) -> Result<String, String> {
 
 #[tauri::command]
 #[specta::specta]
+fn git_list_branches(cwd: String) -> Result<Vec<String>, String> {
+    git::git_list_branches(&cwd)
+}
+
+#[tauri::command]
+#[specta::specta]
+fn git_checkout_branch(cwd: String, name: String) -> Result<String, String> {
+    git::git_checkout_branch(&cwd, &name)
+}
+
+#[tauri::command]
+#[specta::specta]
 fn git_diff_staged(cwd: String) -> Result<String, String> {
     git::git_diff_staged(&cwd)
 }
@@ -695,6 +707,8 @@ pub fn run() {
             git_push,
             git_pull,
             git_create_branch,
+            git_list_branches,
+            git_checkout_branch,
             get_pr_list,
             get_analytics,
             read_theme_file,

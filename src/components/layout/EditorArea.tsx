@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { FileCode, FolderOpen, Clock, Pin, ChevronRight } from "lucide-react";
+import { FileCode, FolderOpen, Clock, ChevronRight, Star, X, GitBranch } from "lucide-react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { useEditorStore, selectActiveTab } from "@/stores/editor";
 import { useLayoutStore } from "@/stores/layout";
@@ -245,17 +245,89 @@ function Breadcrumbs() {
   );
 }
 
+/** Format a relative time string from an ISO 8601 timestamp. */
+function formatRelativeTime(isoTimestamp: string): string {
+  const date = new Date(isoTimestamp);
+  const now = Date.now();
+  const diffMs = now - date.getTime();
+  if (diffMs < 0) return "just now";
+  const diffSec = Math.floor(diffMs / 1000);
+  if (diffSec < 60) return "just now";
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHour = Math.floor(diffMin / 60);
+  if (diffHour < 24) return `${diffHour}h ago`;
+  const diffDay = Math.floor(diffHour / 24);
+  if (diffDay < 7) return `${diffDay}d ago`;
+  if (diffDay < 30) return `${Math.floor(diffDay / 7)}w ago`;
+  return date.toLocaleDateString();
+}
+
+/** Extract a color from the project name for the project icon. */
+function projectIconColor(name: string): string {
+  const colors = [
+    "var(--color-blue)",
+    "var(--color-mauve)",
+    "var(--color-green)",
+    "var(--color-peach)",
+    "var(--color-red)",
+    "var(--color-teal)",
+    "var(--color-yellow)",
+    "var(--color-pink)",
+  ];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return colors[Math.abs(hash) % colors.length];
+}
+
 function WelcomeScreen() {
   const openProject = useWorkspaceStore((s) => s.openProject);
   const recentProjects = useWorkspaceStore((s) => s.recentProjects);
   const loadRecentProjectsList = useWorkspaceStore((s) => s.loadRecentProjectsList);
+  const togglePinProject = useWorkspaceStore((s) => s.togglePinProject);
+  const removeRecentProject = useWorkspaceStore((s) => s.removeRecentProject);
   const isLoading = useWorkspaceStore((s) => s.isLoading);
   const setActiveActivityBarItem = useLayoutStore((s) => s.setActiveActivityBarItem);
+
+  // Track which project card is hovered for showing remove button
+  const [hoveredPath, setHoveredPath] = useState<string | null>(null);
+
+  // Track git branch per project (lazy-loaded)
+  const [projectBranches, setProjectBranches] = useState<Map<string, string>>(new Map());
 
   // Load recent projects on mount
   useEffect(() => {
     loadRecentProjectsList();
   }, [loadRecentProjectsList]);
+
+  // Fetch git branch for each recent project
+  useEffect(() => {
+    if (recentProjects.length === 0) return;
+    let cancelled = false;
+    const fetchBranches = async () => {
+      const branchMap = new Map<string, string>();
+      for (const project of recentProjects.slice(0, 8)) {
+        try {
+          const info = await invoke<{ branch: string | null; is_detached: boolean }>(
+            "get_git_branch",
+            { cwd: project.path },
+          );
+          if (!cancelled && info.branch) {
+            branchMap.set(project.path, info.branch);
+          }
+        } catch {
+          // Not a git repo or path doesn't exist — skip
+        }
+      }
+      if (!cancelled) {
+        setProjectBranches(branchMap);
+      }
+    };
+    fetchBranches();
+    return () => { cancelled = true; };
+  }, [recentProjects]);
 
   const handleOpenFolder = async () => {
     try {
@@ -276,6 +348,16 @@ function WelcomeScreen() {
     } catch (e) {
       console.error("Failed to open recent project:", e);
     }
+  };
+
+  const handleTogglePin = (e: React.MouseEvent, projectPath: string) => {
+    e.stopPropagation();
+    togglePinProject(projectPath);
+  };
+
+  const handleRemove = (e: React.MouseEvent, projectPath: string) => {
+    e.stopPropagation();
+    removeRecentProject(projectPath);
   };
 
   // Separate pinned and unpinned, pinned first
@@ -335,37 +417,113 @@ function WelcomeScreen() {
               backgroundColor: "var(--color-mantle)",
             }}
           >
-            {sortedProjects.slice(0, 8).map((project) => (
-              <button
-                key={project.path}
-                onClick={() => handleOpenRecent(project.path)}
-                disabled={isLoading}
-                className="w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-[var(--color-surface-0)] disabled:opacity-50"
-                style={{
-                  borderBottom: "1px solid var(--color-surface-0)",
-                }}
-              >
-                {project.pinned ? (
-                  <Pin size={14} style={{ color: "var(--color-yellow)" }} />
-                ) : (
-                  <Clock size={14} style={{ color: "var(--color-overlay-0)" }} />
-                )}
-                <div className="flex-1 min-w-0">
+            {sortedProjects.slice(0, 8).map((project) => {
+              const firstLetter = (project.name[0] ?? "?").toUpperCase();
+              const iconColor = projectIconColor(project.name);
+              const branchName = projectBranches.get(project.path);
+              const isHovered = hoveredPath === project.path;
+
+              return (
+                <div
+                  key={project.path}
+                  className="relative flex items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-[var(--color-surface-0)] cursor-pointer group"
+                  style={{
+                    borderBottom: "1px solid var(--color-surface-0)",
+                    opacity: isLoading ? 0.5 : 1,
+                  }}
+                  onClick={() => !isLoading && handleOpenRecent(project.path)}
+                  onMouseEnter={() => setHoveredPath(project.path)}
+                  onMouseLeave={() => setHoveredPath(null)}
+                >
+                  {/* Project icon: folder with first letter */}
                   <div
-                    className="text-sm font-medium truncate"
-                    style={{ color: "var(--color-text)" }}
+                    className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 relative"
+                    style={{ backgroundColor: `color-mix(in srgb, ${iconColor} 20%, transparent)` }}
                   >
-                    {project.name}
+                    <FolderOpen size={14} style={{ color: iconColor, position: "absolute", top: 3, left: 3, opacity: 0.5 }} />
+                    <span
+                      className="text-sm font-bold"
+                      style={{ color: iconColor }}
+                    >
+                      {firstLetter}
+                    </span>
                   </div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className="text-sm font-medium truncate"
+                        style={{ color: "var(--color-text)" }}
+                      >
+                        {project.name}
+                      </span>
+                      {project.pinned && (
+                        <Star
+                          size={10}
+                          fill="var(--color-yellow)"
+                          style={{ color: "var(--color-yellow)", flexShrink: 0 }}
+                        />
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span
+                        className="text-xs truncate"
+                        style={{ color: "var(--color-overlay-0)" }}
+                      >
+                        {project.path}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3 mt-0.5">
+                      {/* Relative time */}
+                      <span
+                        className="text-[10px] flex items-center gap-0.5"
+                        style={{ color: "var(--color-overlay-0)" }}
+                      >
+                        <Clock size={9} />
+                        {formatRelativeTime(project.lastOpenedAt)}
+                      </span>
+                      {/* Git branch */}
+                      {branchName && (
+                        <span
+                          className="text-[10px] flex items-center gap-0.5"
+                          style={{ color: "var(--color-overlay-0)" }}
+                        >
+                          <GitBranch size={9} />
+                          {branchName}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Action buttons: pin/unpin and remove — visible on hover */}
                   <div
-                    className="text-xs truncate"
-                    style={{ color: "var(--color-overlay-0)" }}
+                    className="flex items-center gap-0.5 shrink-0 transition-opacity"
+                    style={{ opacity: isHovered ? 1 : 0 }}
                   >
-                    {project.path}
+                    <button
+                      onClick={(e) => handleTogglePin(e, project.path)}
+                      className="p-1 rounded hover:bg-[var(--color-surface-1)] transition-colors"
+                      title={project.pinned ? "Unpin project" : "Pin project"}
+                      aria-label={project.pinned ? "Unpin project" : "Pin project"}
+                    >
+                      <Star
+                        size={12}
+                        fill={project.pinned ? "var(--color-yellow)" : "none"}
+                        style={{ color: project.pinned ? "var(--color-yellow)" : "var(--color-overlay-1)" }}
+                      />
+                    </button>
+                    <button
+                      onClick={(e) => handleRemove(e, project.path)}
+                      className="p-1 rounded hover:bg-[var(--color-surface-1)] transition-colors"
+                      title="Remove from recents"
+                      aria-label="Remove from recents"
+                    >
+                      <X size={12} style={{ color: "var(--color-overlay-1)" }} />
+                    </button>
                   </div>
                 </div>
-              </button>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

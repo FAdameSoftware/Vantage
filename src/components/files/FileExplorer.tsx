@@ -1,6 +1,6 @@
-import { useCallback, useState, useRef, useEffect } from "react";
+import { useCallback, useState, useRef, useEffect, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { FolderOpen, RefreshCw } from "lucide-react";
+import { FolderOpen, RefreshCw, Search, X } from "lucide-react";
 import { useFileTree } from "@/hooks/useFileTree";
 import { useGitStatus } from "@/hooks/useGitStatus";
 import { FileTreeNode } from "./FileTreeNode";
@@ -192,6 +192,41 @@ function InlineDialog({
   );
 }
 
+/** Collect all directory paths from a tree (used to auto-expand filtered results). */
+function getAllDirPaths(nodes: FileNode[]): string[] {
+  const result: string[] = [];
+  for (const node of nodes) {
+    if (node.is_dir) {
+      result.push(node.path);
+      if (node.children) {
+        result.push(...getAllDirPaths(node.children));
+      }
+    }
+  }
+  return result;
+}
+
+/**
+ * Recursively filter a tree to only include nodes whose name matches the query,
+ * or directories that have matching descendants.
+ */
+function filterTree(nodes: FileNode[], query: string): FileNode[] {
+  const lower = query.toLowerCase();
+  const result: FileNode[] = [];
+  for (const node of nodes) {
+    const nameMatch = node.name.toLowerCase().includes(lower);
+    if (node.is_dir && node.children) {
+      const filteredChildren = filterTree(node.children, query);
+      if (filteredChildren.length > 0 || nameMatch) {
+        result.push({ ...node, children: filteredChildren.length > 0 ? filteredChildren : node.children });
+      }
+    } else if (nameMatch) {
+      result.push(node);
+    }
+  }
+  return result;
+}
+
 export function FileExplorer() {
   const {
     tree,
@@ -203,6 +238,9 @@ export function FileExplorer() {
     rootPath,
     setRootPath,
   } = useFileTree();
+
+  const [filterQuery, setFilterQuery] = useState("");
+  const filterInputRef = useRef<HTMLInputElement>(null);
 
   const openFile = useEditorStore((s) => s.openFile);
   const { fileStatuses } = useGitStatus(rootPath);
@@ -399,6 +437,12 @@ export function FileExplorer() {
     }
   }, [contextNode, rootPath]);
 
+  // Filtered tree for display when a filter query is active
+  const filteredTree = useMemo(() => {
+    if (!filterQuery.trim()) return tree;
+    return filterTree(tree, filterQuery.trim());
+  }, [tree, filterQuery]);
+
   const handleOpenFolder = useCallback(async () => {
     try {
       // Use Tauri's file dialog to pick a folder
@@ -459,15 +503,63 @@ export function FileExplorer() {
         >
           {rootPath.split("/").pop() ?? "Project"}
         </span>
-        <button
-          onClick={refresh}
-          className="flex items-center justify-center w-5 h-5 rounded hover:bg-[var(--color-surface-1)] transition-colors"
-          style={{ color: "var(--color-overlay-1)" }}
-          aria-label="Refresh file tree"
-          title="Refresh"
-        >
-          <RefreshCw size={12} />
-        </button>
+        <div className="flex items-center gap-0.5">
+          <button
+            onClick={() => {
+              setFilterQuery("");
+              setTimeout(() => filterInputRef.current?.focus(), 0);
+            }}
+            className="flex items-center justify-center w-5 h-5 rounded hover:bg-[var(--color-surface-1)] transition-colors"
+            style={{ color: "var(--color-overlay-1)" }}
+            aria-label="Filter files"
+            title="Filter files"
+          >
+            <Search size={12} />
+          </button>
+          <button
+            onClick={refresh}
+            className="flex items-center justify-center w-5 h-5 rounded hover:bg-[var(--color-surface-1)] transition-colors"
+            style={{ color: "var(--color-overlay-1)" }}
+            aria-label="Refresh file tree"
+            title="Refresh"
+          >
+            <RefreshCw size={12} />
+          </button>
+        </div>
+      </div>
+
+      {/* Filter input */}
+      <div
+        className="flex items-center gap-1 px-2 shrink-0"
+        style={{ borderBottom: "1px solid var(--color-surface-0)" }}
+      >
+        <Search size={11} style={{ color: "var(--color-overlay-0)" }} />
+        <input
+          ref={filterInputRef}
+          type="text"
+          value={filterQuery}
+          onChange={(e) => setFilterQuery(e.target.value)}
+          placeholder="Filter files..."
+          className="flex-1 bg-transparent text-xs outline-none py-1 placeholder:text-[var(--color-overlay-0)]"
+          style={{ color: "var(--color-text)", minWidth: 0 }}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              setFilterQuery("");
+              (e.target as HTMLInputElement).blur();
+            }
+          }}
+        />
+        {filterQuery && (
+          <button
+            onClick={() => setFilterQuery("")}
+            className="p-0.5 rounded hover:bg-[var(--color-surface-1)] transition-colors"
+            style={{ color: "var(--color-overlay-1)" }}
+            aria-label="Clear filter"
+            title="Clear filter"
+          >
+            <X size={11} />
+          </button>
+        )}
       </div>
 
       {/* Conflict banner */}
@@ -498,17 +590,18 @@ export function FileExplorer() {
             role="tree"
             aria-label="File Explorer"
           >
-            {tree.map((node) => (
+            {filteredTree.map((node) => (
               <FileTreeNode
                 key={node.path}
                 node={node}
                 depth={0}
-                expandedPaths={expandedPaths}
+                expandedPaths={filterQuery ? new Set([...expandedPaths, ...getAllDirPaths(filteredTree)]) : expandedPaths}
                 onToggleExpand={toggleExpand}
                 onFileClick={handleFileClick}
                 onFileDoubleClick={handleFileDoubleClick}
                 onContextMenu={handleContextMenu}
                 gitStatuses={fileStatuses}
+                filterQuery={filterQuery}
               />
             ))}
 

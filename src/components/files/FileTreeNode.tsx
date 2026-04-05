@@ -14,6 +14,31 @@ interface FileTreeNodeProps {
   onFileDoubleClick: (node: FileNode) => void;
   onContextMenu: (e: React.MouseEvent, node: FileNode) => void;
   gitStatuses?: Map<string, GitFileStatus>;
+  /** When set, matching portions of the file name are highlighted. */
+  filterQuery?: string;
+}
+
+/** Render a file name with the filter query portion highlighted. */
+function HighlightedName({ name, query }: { name: string; query: string }) {
+  if (!query) return <>{name}</>;
+  const lower = name.toLowerCase();
+  const qLower = query.toLowerCase();
+  const idx = lower.indexOf(qLower);
+  if (idx === -1) return <>{name}</>;
+  return (
+    <>
+      {name.slice(0, idx)}
+      <span
+        style={{
+          backgroundColor: "color-mix(in srgb, var(--color-yellow) 35%, transparent)",
+          borderRadius: "2px",
+        }}
+      >
+        {name.slice(idx, idx + query.length)}
+      </span>
+      {name.slice(idx + query.length)}
+    </>
+  );
 }
 
 export function FileTreeNode({
@@ -25,6 +50,7 @@ export function FileTreeNode({
   onFileDoubleClick,
   onContextMenu,
   gitStatuses,
+  filterQuery,
 }: FileTreeNodeProps) {
   const paddingLeft = 8 + depth * 16;
   const isExpanded = expandedPaths.has(node.path);
@@ -167,7 +193,7 @@ export function FileTreeNode({
               : "var(--color-text)",
           }}
         >
-          {node.name}
+          <HighlightedName name={node.name} query={filterQuery ?? ""} />
         </span>
 
         {/* Agent ownership indicator */}
@@ -222,6 +248,7 @@ export function FileTreeNode({
               onFileDoubleClick={onFileDoubleClick}
               onContextMenu={onContextMenu}
               gitStatuses={gitStatuses}
+              filterQuery={filterQuery}
             />
           ))}
         </div>

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import {
   Terminal as TerminalIcon,
@@ -36,6 +36,10 @@ export function TerminalPanel() {
   const [showShellPicker, setShowShellPicker] = useState(false);
   /** ID of the terminal shown in the right split pane (null = no split) */
   const [splitTabId, setSplitTabId] = useState<string | null>(null);
+  /** ID of the terminal tab currently being renamed (null = none) */
+  const [renamingTabId, setRenamingTabId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const renameInputRef = useRef<HTMLInputElement>(null);
 
   const createTerminal = useCallback(
     (shell: ShellInfo, cwd?: string) => {
@@ -99,6 +103,31 @@ export function TerminalPanel() {
     [activeTabId, splitTabId]
   );
 
+  const startRenaming = useCallback((tabId: string) => {
+    const tab = tabs.find((t) => t.id === tabId);
+    if (!tab) return;
+    setRenamingTabId(tabId);
+    setRenameValue(tab.label);
+    setTimeout(() => renameInputRef.current?.select(), 0);
+  }, [tabs]);
+
+  const confirmRename = useCallback(() => {
+    if (renamingTabId && renameValue.trim()) {
+      setTabs((prev) =>
+        prev.map((t) =>
+          t.id === renamingTabId ? { ...t, label: renameValue.trim() } : t,
+        ),
+      );
+    }
+    setRenamingTabId(null);
+    setRenameValue("");
+  }, [renamingTabId, renameValue]);
+
+  const cancelRename = useCallback(() => {
+    setRenamingTabId(null);
+    setRenameValue("");
+  }, []);
+
   const handleNewTerminal = useCallback(() => {
     if (shells.length > 1) {
       setShowShellPicker((prev) => !prev);
@@ -156,15 +185,51 @@ export function TerminalPanel() {
               role="tab"
               aria-selected={tab.id === activeTabId}
               onClick={() => setActiveTabId(tab.id)}
+              onDoubleClick={(e) => {
+                e.stopPropagation();
+                startRenaming(tab.id);
+              }}
             >
               <TerminalIcon size={12} />
-              <span>{tab.label}</span>
-              <span
-                className="text-xs"
-                style={{ color: "var(--color-overlay-0)" }}
-              >
-                ({tab.shellName})
-              </span>
+              {renamingTabId === tab.id ? (
+                <input
+                  ref={renameInputRef}
+                  type="text"
+                  value={renameValue}
+                  onChange={(e) => setRenameValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      confirmRename();
+                    } else if (e.key === "Escape") {
+                      e.preventDefault();
+                      cancelRename();
+                    }
+                    e.stopPropagation();
+                  }}
+                  onBlur={confirmRename}
+                  onClick={(e) => e.stopPropagation()}
+                  className="bg-transparent text-[11px] outline-none rounded px-0.5"
+                  style={{
+                    color: "var(--color-text)",
+                    border: "1px solid var(--color-blue)",
+                    width: `${Math.max(renameValue.length * 6.5, 40)}px`,
+                    maxWidth: "120px",
+                  }}
+                  spellCheck={false}
+                  autoComplete="off"
+                />
+              ) : (
+                <span>{tab.label}</span>
+              )}
+              {renamingTabId !== tab.id && (
+                <span
+                  className="text-xs"
+                  style={{ color: "var(--color-overlay-0)" }}
+                >
+                  ({tab.shellName})
+                </span>
+              )}
               {/* aria-roledescription tells AT this is a closeable tab; the
                   button is visually hidden until hover to reduce clutter */}
               <button
@@ -245,6 +310,7 @@ export function TerminalPanel() {
             className="flex items-center justify-center w-6 h-6 rounded hover:bg-[var(--color-surface-1)] transition-colors"
             style={{ color: "var(--color-overlay-1)" }}
             aria-label="Maximize Panel"
+            title="Maximize Panel"
           >
             <Maximize2 size={12} />
           </button>
