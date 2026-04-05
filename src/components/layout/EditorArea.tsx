@@ -1,6 +1,6 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { FileCode, FolderOpen, Clock, Pin } from "lucide-react";
+import { FileCode, FolderOpen, Clock, Pin, ChevronRight } from "lucide-react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { useEditorStore, selectActiveTab } from "@/stores/editor";
 import { useLayoutStore } from "@/stores/layout";
@@ -12,16 +12,173 @@ import { EditorTabs } from "@/components/editor/EditorTabs";
 import { MarkdownPreview } from "@/components/editor/MarkdownPreview";
 import { UsageDashboard } from "@/components/analytics/UsageDashboard";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
+import { FileIcon } from "@/components/files/FileIcon";
+import { useCrossFileIntelligence } from "@/hooks/useCrossFileIntelligence";
+
+interface SiblingEntry {
+  name: string;
+  path: string;
+  is_dir: boolean;
+  is_file: boolean;
+  extension: string | null;
+  children: unknown[] | null;
+  is_symlink: boolean;
+}
+
+function BreadcrumbDropdown({
+  dirPath,
+  onClose,
+}: {
+  dirPath: string;
+  onClose: () => void;
+}) {
+  const [siblings, setSiblings] = useState<SiblingEntry[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const openFile = useEditorStore((s) => s.openFile);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setIsLoading(true);
+    invoke<SiblingEntry[]>("get_directory_children", { path: dirPath })
+      .then((result) => {
+        if (!cancelled) {
+          setSiblings(result);
+          setIsLoading(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setSiblings([]);
+          setIsLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [dirPath]);
+
+  // Close on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target as Node)
+      ) {
+        onClose();
+      }
+    };
+    // Use a short delay so the click that opened the dropdown doesn't immediately close it
+    const timer = setTimeout(() => {
+      document.addEventListener("mousedown", handleClickOutside);
+    }, 50);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [onClose]);
+
+  const handleItemClick = async (entry: SiblingEntry) => {
+    if (entry.is_file) {
+      try {
+        const result = await invoke<{
+          path: string;
+          content: string;
+          language: string;
+        }>("read_file", { path: entry.path });
+        openFile(result.path, entry.name, result.language, result.content, false);
+      } catch (e) {
+        console.error("Failed to open file from breadcrumb:", e);
+      }
+    }
+    onClose();
+  };
+
+  return (
+    <div
+      ref={dropdownRef}
+      className="absolute top-full left-0 z-50 mt-0.5 py-1 rounded shadow-lg max-h-64 overflow-y-auto min-w-[180px]"
+      style={{
+        backgroundColor: "var(--color-surface-0)",
+        border: "1px solid var(--color-surface-1)",
+      }}
+    >
+      {isLoading ? (
+        <div
+          className="px-3 py-2 text-xs"
+          style={{ color: "var(--color-overlay-1)" }}
+        >
+          Loading...
+        </div>
+      ) : siblings.length === 0 ? (
+        <div
+          className="px-3 py-2 text-xs"
+          style={{ color: "var(--color-overlay-1)" }}
+        >
+          Empty directory
+        </div>
+      ) : (
+        siblings.map((entry) => (
+          <button
+            key={entry.path}
+            onClick={() => handleItemClick(entry)}
+            className="w-full flex items-center gap-2 px-3 py-1 text-xs text-left hover:bg-[var(--color-surface-1)] transition-colors"
+            style={{
+              color: entry.is_file
+                ? "var(--color-text)"
+                : "var(--color-subtext-0)",
+              cursor: entry.is_file ? "pointer" : "default",
+              opacity: entry.is_dir ? 0.7 : 1,
+            }}
+          >
+            <FileIcon
+              name={entry.name}
+              extension={entry.extension}
+              isDir={entry.is_dir}
+              size={14}
+            />
+            <span className="truncate">{entry.name}</span>
+          </button>
+        ))
+      )}
+    </div>
+  );
+}
 
 function Breadcrumbs() {
   const activeTab = useEditorStore((s) => {
     const tab = s.tabs.find((t) => t.id === s.activeTabId);
     return tab ?? null;
   });
+  const [openDropdownIndex, setOpenDropdownIndex] = useState<number | null>(
+    null
+  );
+
+  // Close dropdown when active tab changes
+  useEffect(() => {
+    setOpenDropdownIndex(null);
+  }, [activeTab?.id]);
 
   if (!activeTab) return null;
 
   const segments = activeTab.path.split("/");
+
+  // Build the directory path for each segment (the parent directory containing its siblings)
+  const getDirectoryPath = (segmentIndex: number): string => {
+    // For a segment at index i, the containing directory is segments[0..i] joined
+    // E.g., for path "C:/Projects/src/main.tsx", clicking "src" (index 2)
+    // should show siblings in "C:/Projects/src"
+    const parts = segments.slice(0, segmentIndex + 1);
+    return parts.join("/");
+  };
+
+  const handleSegmentClick = (index: number) => {
+    // Last segment is the file name -- no dropdown needed
+    if (index === segments.length - 1) return;
+
+    // Toggle dropdown
+    setOpenDropdownIndex((prev) => (prev === index ? null : index));
+  };
 
   return (
     <div
@@ -32,25 +189,58 @@ function Breadcrumbs() {
         borderBottom: "1px solid var(--color-surface-0)",
       }}
     >
-      {segments.map((segment, i) => (
-        <span key={i} className="flex items-center shrink-0">
-          {i > 0 && (
-            <span className="mx-1" style={{ color: "var(--color-overlay-0)" }}>
-              /
-            </span>
-          )}
-          <span
-            style={{
-              color:
-                i === segments.length - 1
-                  ? "var(--color-text)"
-                  : "var(--color-subtext-0)",
-            }}
-          >
-            {segment}
+      {segments.map((segment, i) => {
+        const isLast = i === segments.length - 1;
+        const isOpen = openDropdownIndex === i;
+
+        return (
+          <span key={i} className="flex items-center shrink-0 relative">
+            {i > 0 && (
+              <ChevronRight
+                size={10}
+                className="mx-0.5"
+                style={{ color: "var(--color-overlay-0)" }}
+              />
+            )}
+            {isLast ? (
+              <span
+                className="flex items-center gap-1"
+                style={{ color: "var(--color-text)" }}
+              >
+                <FileIcon
+                  name={segment}
+                  extension={
+                    segment.includes(".")
+                      ? segment.split(".").pop() ?? null
+                      : null
+                  }
+                  isDir={false}
+                  size={12}
+                />
+                {segment}
+              </span>
+            ) : (
+              <button
+                onClick={() => handleSegmentClick(i)}
+                className="px-1 py-0.5 rounded transition-colors hover:bg-[var(--color-surface-0)]"
+                style={{
+                  color: isOpen
+                    ? "var(--color-text)"
+                    : "var(--color-subtext-0)",
+                }}
+              >
+                {segment}
+              </button>
+            )}
+            {isOpen && (
+              <BreadcrumbDropdown
+                dirPath={getDirectoryPath(i)}
+                onClose={() => setOpenDropdownIndex(null)}
+              />
+            )}
           </span>
-        </span>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -208,6 +398,9 @@ function KeyboardHint({ keys, label }: { keys: string; label: string }) {
 }
 
 export function EditorArea() {
+  // Enable cross-file TypeScript intelligence (registers project files with Monaco TS worker)
+  useCrossFileIntelligence();
+
   const updateContent = useEditorStore((s) => s.updateContent);
   const markSaved = useEditorStore((s) => s.markSaved);
   const reloadTab = useEditorStore((s) => s.reloadTab);
