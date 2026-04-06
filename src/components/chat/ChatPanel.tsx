@@ -1,11 +1,10 @@
-import { useEffect, useRef, useCallback, useState } from "react";
+import { useEffect, useRef, useCallback, useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageSquare, Plus, Search, X, ChevronUp, ChevronDown, GitBranch, ArrowDown, Pin, Info, Download } from "lucide-react";
 import { useConversationStore } from "@/stores/conversation";
 import { useLayoutStore } from "@/stores/layout";
 import { useSettingsStore } from "@/stores/settings";
 import { useClaude } from "@/hooks/useClaude";
-import { MessageBubble } from "./MessageBubble";
 import { ChatInput, type ChatInputHandle } from "./ChatInput";
 import { ThinkingIndicator } from "./ThinkingIndicator";
 import { SessionSelector } from "./SessionSelector";
@@ -19,6 +18,7 @@ import { SessionTimeline } from "./SessionTimeline";
 import { ExecutionMap } from "./ExecutionMap";
 import { EXPORT_FORMATS } from "@/lib/slashHandlers";
 import { normalizeModelName } from "@/lib/pricing";
+import { VirtualMessageList, type VirtualMessageListHandle } from "./VirtualMessageList";
 
 // ─── Session Info Badge (Feature 2) ─────────────────────────────────────────
 
@@ -264,9 +264,11 @@ function StreamingPreview() {
 
 interface ChatSearchBarProps {
   onClose: () => void;
+  /** Callback to scroll the (virtualized) message list to a specific original-index message */
+  onScrollToMessage?: (index: number) => void;
 }
 
-function ChatSearchBar({ onClose }: ChatSearchBarProps) {
+function ChatSearchBar({ onClose, onScrollToMessage }: ChatSearchBarProps) {
   const messages = useConversationStore(selectMessages);
   const [query, setQuery] = useState("");
   const [matchIndices, setMatchIndices] = useState<number[]>([]);
@@ -299,9 +301,14 @@ function ChatSearchBar({ onClose }: ChatSearchBarProps) {
   }, [query, messages]);
 
   const scrollToMessage = (idx: number) => {
-    const el = document.querySelector(`[data-message-index="${idx}"]`);
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (onScrollToMessage) {
+      onScrollToMessage(idx);
+    } else {
+      // Fallback: DOM-based scroll (for non-virtualized contexts)
+      const el = document.querySelector(`[data-message-index="${idx}"]`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
     }
   };
 
@@ -468,15 +475,17 @@ export function ChatPanel({ mode = "sidebar" }: ChatPanelProps) {
     setInstalledSkills([]);
   }, []);
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const autoScrollRef = useRef(true);
+  const virtualListRef = useRef<VirtualMessageListHandle>(null);
   const chatInputRef = useRef<ChatInputHandle | null>(null);
 
-  // ── Scroll-to-bottom button state (Feature 4) ──
+  // ── Scroll-to-bottom button state (driven by VirtualMessageList callback) ──
   const [isScrolledUp, setIsScrolledUp] = useState(false);
   const [newMessageCount, setNewMessageCount] = useState(0);
-  const prevMessageCountRef = useRef(messages.length);
+
+  const handleScrollStateChange = useCallback((scrolledUp: boolean, count: number) => {
+    setIsScrolledUp(scrolledUp);
+    setNewMessageCount(count);
+  }, []);
 
   // ── Keyboard shortcut: Ctrl+Shift+F for search ──
 
@@ -491,44 +500,14 @@ export function ChatPanel({ mode = "sidebar" }: ChatPanelProps) {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  // ── Auto-scroll to bottom on new messages / streaming ──
-
-  useEffect(() => {
-    if (autoScrollRef.current) {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-      setNewMessageCount(0);
-    } else {
-      // User is scrolled up — count new messages since they scrolled away
-      const added = messages.length - prevMessageCountRef.current;
-      if (added > 0) {
-        setNewMessageCount((prev) => prev + added);
-      }
-    }
-    prevMessageCountRef.current = messages.length;
-  }, [messages, isStreaming, isThinking]);
-
-  // ── Detect user scrolling away from bottom ──
-
-  const handleScroll = useCallback(() => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
-    const distanceFromBottom =
-      container.scrollHeight - container.scrollTop - container.clientHeight;
-    // If within 50px of bottom, resume auto-scroll
-    const atBottom = distanceFromBottom < 50;
-    autoScrollRef.current = atBottom;
-    setIsScrolledUp(!atBottom);
-    if (atBottom) {
-      setNewMessageCount(0);
-    }
+  // ── Scroll to bottom button handler (Feature 4) — delegates to VirtualMessageList ──
+  const handleScrollToBottom = useCallback(() => {
+    virtualListRef.current?.scrollToBottom();
   }, []);
 
-  // ── Scroll to bottom button handler (Feature 4) ──
-  const handleScrollToBottom = useCallback(() => {
-    autoScrollRef.current = true;
-    setIsScrolledUp(false);
-    setNewMessageCount(0);
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  // ── Search: scroll to a specific message index in the virtualized list ──
+  const handleScrollToMessage = useCallback((index: number) => {
+    virtualListRef.current?.scrollToIndex(index);
   }, []);
 
   // ── New session ──
@@ -556,7 +535,7 @@ export function ChatPanel({ mode = "sidebar" }: ChatPanelProps) {
       if (content.startsWith("/btw ")) {
         useQuickQuestionStore.getState().ask(content.slice(5));
       }
-      autoScrollRef.current = true;
+      virtualListRef.current?.scrollToBottom();
       const cwd = session?.cwd ?? useLayoutStore.getState().projectRootPath ?? ".";
       sendMessage(content, cwd);
     },
@@ -578,7 +557,7 @@ export function ChatPanel({ mode = "sidebar" }: ChatPanelProps) {
     // Find the last user message
     const lastUserMsg = [...messages].reverse().find((m) => m.role === "user");
     if (!lastUserMsg) return;
-    autoScrollRef.current = true;
+    virtualListRef.current?.scrollToBottom();
     const cwd = session?.cwd ?? useLayoutStore.getState().projectRootPath ?? ".";
     sendMessage(lastUserMsg.text, cwd);
   }, [messages, sendMessage, session?.cwd]);
@@ -600,6 +579,63 @@ export function ChatPanel({ mode = "sidebar" }: ChatPanelProps) {
   const lastAssistantMsgId = messages.length > 0 && messages[messages.length - 1].role === "assistant"
     ? messages[messages.length - 1].id
     : null;
+
+  // ── Footer content rendered as the last virtual row ──
+  // Memoized so the virtualizer only re-measures when inputs change.
+  const footerContent = useMemo(() => {
+    const hasContent =
+      (isThinking && thinkingStartedAt !== null) ||
+      (isStreaming && !isThinking) ||
+      (totalCost > 0 && !isStreaming) ||
+      showPinnedOnly;
+
+    if (!hasContent) return null;
+
+    return (
+      <div>
+        {/* Pinned filter notice */}
+        {showPinnedOnly && (
+          <div
+            className="flex items-center justify-center gap-1.5 py-1.5 mb-2 rounded text-[10px]"
+            style={{
+              backgroundColor: "var(--color-surface-0)",
+              color: "var(--color-yellow)",
+              border: "1px solid var(--color-surface-1)",
+            }}
+          >
+            <Pin size={10} />
+            Showing {pinnedMessageIds.size} pinned message{pinnedMessageIds.size !== 1 ? "s" : ""}
+          </div>
+        )}
+
+        {/* Thinking indicator (during active thinking) */}
+        {isThinking && thinkingStartedAt !== null && (
+          <ThinkingIndicator startedAt={thinkingStartedAt} />
+        )}
+
+        {/* Typing indicator (streaming but not yet producing text) */}
+        {isStreaming && !isThinking && <TypingDots />}
+
+        {/* Streaming preview */}
+        {isStreaming && !isThinking && <StreamingPreview />}
+
+        {/* Cost display */}
+        {totalCost > 0 && !isStreaming && (
+          <div className="flex justify-center my-2">
+            <span
+              className="text-xs px-2 py-0.5 rounded-full"
+              style={{
+                backgroundColor: "var(--color-surface-0)",
+                color: "var(--color-overlay-0)",
+              }}
+            >
+              Session cost: ${totalCost.toFixed(4)}
+            </span>
+          </div>
+        )}
+      </div>
+    );
+  }, [isThinking, thinkingStartedAt, isStreaming, totalCost, showPinnedOnly, pinnedMessageIds.size]);
 
   return (
     <div
@@ -712,7 +748,7 @@ export function ChatPanel({ mode = "sidebar" }: ChatPanelProps) {
       </div>
 
       {/* Search bar */}
-      {searchOpen && <ChatSearchBar onClose={() => setSearchOpen(false)} />}
+      {searchOpen && <ChatSearchBar onClose={() => setSearchOpen(false)} onScrollToMessage={handleScrollToMessage} />}
 
       {/* Session info badge */}
       <SessionInfoBadge />
@@ -727,138 +763,79 @@ export function ChatPanel({ mode = "sidebar" }: ChatPanelProps) {
         <>
           {/* Message list (relative so scroll-to-bottom btn can be positioned) */}
           <div className="flex-1 relative overflow-hidden">
-          <div
-            ref={scrollContainerRef}
-            className={`h-full overflow-y-auto scrollbar-thin ${mode === "full" ? "flex justify-center px-6 py-5" : "p-4"}`}
-            onScroll={handleScroll}
-            aria-live="polite"
-            aria-atomic="false"
-          >
-          <div className={mode === "full" ? "w-full max-w-4xl chat-full-mode" : "w-full"}>
-            {/* Empty state */}
-            {messages.length === 0 && !isStreaming && (
-              <div className="flex flex-col items-center justify-center h-full">
-                <div
-                  className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3"
-                  style={{ backgroundColor: "var(--color-surface-0)" }}
-                >
-                  <MessageSquare
-                    size={20}
-                    style={{ color: "var(--color-mauve)" }}
-                  />
-                </div>
-                <p
-                  className="text-xs leading-relaxed max-w-48 text-center"
-                  style={{ color: "var(--color-overlay-1)" }}
-                >
-                  {isDisconnected
-                    ? "Type a message below to start a Claude Code session."
-                    : "Ask Claude anything about your codebase."}
-                </p>
-              </div>
-            )}
-
-            {/* Pinned filter notice */}
-            {showPinnedOnly && (
+            {/* Empty state — shown outside virtualizer when no messages */}
+            {messages.length === 0 && !isStreaming ? (
               <div
-                className="flex items-center justify-center gap-1.5 py-1.5 mb-2 rounded text-[10px]"
-                style={{
-                  backgroundColor: "var(--color-surface-0)",
-                  color: "var(--color-yellow)",
-                  border: "1px solid var(--color-surface-1)",
-                }}
+                className={`h-full overflow-y-auto scrollbar-thin ${mode === "full" ? "flex justify-center px-6 py-5" : "p-4"}`}
+                aria-live="polite"
+                aria-atomic="false"
               >
-                <Pin size={10} />
-                Showing {pinnedMessageIds.size} pinned message{pinnedMessageIds.size !== 1 ? "s" : ""}
-              </div>
-            )}
-
-            {/* Messages */}
-            {messages.map((msg, idx) => {
-              // Filter to pinned only when active
-              if (showPinnedOnly && !pinnedMessageIds.has(msg.id)) return null;
-
-              // isGroupFirst: true if this is the first message or previous message has a different role
-              const prevMsg = idx > 0 ? messages[idx - 1] : null;
-              const isGroupFirst = !prevMsg || prevMsg.role !== msg.role;
-              // isForked: true if this assistant message immediately follows another assistant message
-              // (indicates a regeneration/fork rather than a natural continuation)
-              const isForked = msg.role === "assistant" && prevMsg?.role === "assistant";
-              return (
-                <div key={msg.id} data-message-index={idx}>
-                  <MessageBubble
-                    message={msg}
-                    isGroupFirst={isGroupFirst}
-                    isForked={isForked}
-                    onEdit={msg.role === "user" ? handleEditMessage : undefined}
-                    showRegenerate={msg.id === lastAssistantMsgId && !isStreaming}
-                    onRegenerate={msg.id === lastAssistantMsgId ? handleRegenerate : undefined}
-                  />
+                <div className={mode === "full" ? "w-full max-w-4xl chat-full-mode" : "w-full"}>
+                  <div className="flex flex-col items-center justify-center h-full">
+                    <div
+                      className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3"
+                      style={{ backgroundColor: "var(--color-surface-0)" }}
+                    >
+                      <MessageSquare
+                        size={20}
+                        style={{ color: "var(--color-mauve)" }}
+                      />
+                    </div>
+                    <p
+                      className="text-xs leading-relaxed max-w-48 text-center"
+                      style={{ color: "var(--color-overlay-1)" }}
+                    >
+                      {isDisconnected
+                        ? "Type a message below to start a Claude Code session."
+                        : "Ask Claude anything about your codebase."}
+                    </p>
+                  </div>
                 </div>
-              );
-            })}
-
-            {/* Thinking indicator (during active thinking) */}
-            {isThinking && thinkingStartedAt !== null && (
-              <ThinkingIndicator startedAt={thinkingStartedAt} />
+              </div>
+            ) : (
+              <VirtualMessageList
+                ref={virtualListRef}
+                messages={messages}
+                mode={mode}
+                pinnedMessageIds={pinnedMessageIds}
+                showPinnedOnly={showPinnedOnly}
+                isStreaming={isStreaming}
+                lastAssistantMsgId={lastAssistantMsgId}
+                onEditMessage={handleEditMessage}
+                onRegenerate={handleRegenerate}
+                footerContent={footerContent}
+                onScrollStateChange={handleScrollStateChange}
+              />
             )}
 
-            {/* Typing indicator (streaming but not yet producing text) */}
-            {isStreaming && !isThinking && <TypingDots />}
-
-            {/* Streaming preview */}
-            {isStreaming && !isThinking && <StreamingPreview />}
-
-            {/* Cost display */}
-            {totalCost > 0 && !isStreaming && (
-              <div
-                className="flex justify-center my-2"
-              >
-                <span
-                  className="text-xs px-2 py-0.5 rounded-full"
+            {/* Scroll to bottom button (Feature 4) */}
+            <AnimatePresence>
+              {isScrolledUp && (
+                <motion.button
+                  type="button"
+                  onClick={handleScrollToBottom}
+                  className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs shadow-lg hover:scale-105 z-20"
                   style={{
-                    backgroundColor: "var(--color-surface-0)",
-                    color: "var(--color-overlay-0)",
+                    backgroundColor: "var(--color-blue)",
+                    color: "var(--color-base)",
                   }}
+                  aria-label="Scroll to latest messages"
+                  initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                  transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
                 >
-                  Session cost: ${totalCost.toFixed(4)}
-                </span>
-              </div>
-            )}
-
-            {/* Scroll anchor */}
-            <div ref={messagesEndRef} />
-          </div>
-          </div>
-
-          {/* Scroll to bottom button (Feature 4) */}
-          <AnimatePresence>
-            {isScrolledUp && (
-              <motion.button
-                type="button"
-                onClick={handleScrollToBottom}
-                className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs shadow-lg hover:scale-105 z-20"
-                style={{
-                  backgroundColor: "var(--color-blue)",
-                  color: "var(--color-base)",
-                }}
-                aria-label="Scroll to latest messages"
-                initial={{ opacity: 0, y: 8, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
-              >
-                <ArrowDown size={12} />
-                {newMessageCount > 0 ? (
-                  <span>
-                    {newMessageCount} new message{newMessageCount !== 1 ? "s" : ""}
-                  </span>
-                ) : (
-                  <span>Latest</span>
-                )}
-              </motion.button>
-            )}
-          </AnimatePresence>
+                  <ArrowDown size={12} />
+                  {newMessageCount > 0 ? (
+                    <span>
+                      {newMessageCount} new message{newMessageCount !== 1 ? "s" : ""}
+                    </span>
+                  ) : (
+                    <span>Latest</span>
+                  )}
+                </motion.button>
+              )}
+            </AnimatePresence>
           </div>
 
           {/* Activity Trail — live sidebar of files Claude touched */}
