@@ -249,6 +249,7 @@ export function TitleBar() {
 
   return (
     <div
+      role="banner"
       className="flex items-center h-9 shrink-0 select-none"
       style={{
         backgroundColor: "var(--color-crust)",

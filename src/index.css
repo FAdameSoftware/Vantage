@@ -515,10 +515,25 @@ button, a, [role="button"], [role="menuitem"], [role="tab"] {
               transform 150ms var(--ease-smooth);
 }
 
+/* Tactile press feedback on all buttons */
+button:active:not(:disabled), [role="button"]:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
 /* Focus ring */
 *:focus-visible {
   outline: 1px solid var(--color-blue);
   outline-offset: -1px;
+}
+
+/* ===== Reduced Motion Accessibility ===== */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* ===== Chat Full Mode (Claude View) ===== */

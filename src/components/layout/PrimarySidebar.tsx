@@ -182,11 +182,11 @@ export function PrimarySidebar() {
             <SearchPanel />
           </ErrorBoundary>
         ) : activeItem === "git" ? (
-          <GitPanel />
+          <ErrorBoundary><GitPanel /></ErrorBoundary>
         ) : activeItem === "agents" ? (
-          <AgentsPanel />
+          <ErrorBoundary><AgentsPanel /></ErrorBoundary>
         ) : activeItem === "settings" ? (
-          <SettingsPanel />
+          <ErrorBoundary><SettingsPanel /></ErrorBoundary>
         ) : (
           <div className="flex items-center justify-center h-full p-4">
             <p

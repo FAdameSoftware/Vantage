@@ -478,6 +478,9 @@ export function EditorTabs() {
     setUnsavedDialog({ visible: false, tabId: null, tabName: "" });
   }, []);
 
+  const projectRootPath = useLayoutStore((s) => s.projectRootPath);
+  const setActiveActivityBarItem = useLayoutStore((s) => s.setActiveActivityBarItem);
+
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
       const { active, over } = event;
@@ -490,56 +493,6 @@ export function EditorTabs() {
     },
     [tabs, reorderTabs],
   );
-
-  if (tabs.length === 0) return null;
-
-  const activeTab = tabs.find((t) => t.id === activeTabId);
-  const isMarkdown = activeTab?.language === "markdown";
-  const isPreviewActive = activeTab ? markdownPreviewTabs.has(activeTab.id) : false;
-  const tabIds = tabs.map((t) => t.id);
-
-  const handleTabClick = (tab: EditorTab) => {
-    if (popoutTabs.has(tab.id)) {
-      focusPopout(tab.id);
-      return;
-    }
-    setActiveTab(tab.id);
-  };
-
-  const handleTabClose = (e: React.MouseEvent, tab: EditorTab) => {
-    e.stopPropagation();
-    safeCloseTab(tab.id);
-  };
-
-  const handleTabDoubleClick = (tab: EditorTab) => {
-    if (tab.isPreview) {
-      pinTab(tab.id);
-    }
-  };
-
-  const handleMiddleClick = (e: React.MouseEvent, tab: EditorTab) => {
-    if (e.button === 1) {
-      e.preventDefault();
-      safeCloseTab(tab.id);
-    }
-  };
-
-  const handleContextMenu = (e: React.MouseEvent, tab: EditorTab) => {
-    e.preventDefault();
-    setContextMenu({
-      visible: true,
-      x: e.clientX,
-      y: e.clientY,
-      tabId: tab.id,
-    });
-  };
-
-  const handlePopOut = (tabId: string) => {
-    popOut(tabId);
-  };
-
-  const projectRootPath = useLayoutStore((s) => s.projectRootPath);
-  const setActiveActivityBarItem = useLayoutStore((s) => s.setActiveActivityBarItem);
 
   const handleCopyPath = useCallback(
     async (tabId: string) => {
@@ -601,6 +554,53 @@ export function EditorTabs() {
     },
     [tabs],
   );
+
+  if (tabs.length === 0) return null;
+
+  const activeTab = tabs.find((t) => t.id === activeTabId);
+  const isMarkdown = activeTab?.language === "markdown";
+  const isPreviewActive = activeTab ? markdownPreviewTabs.has(activeTab.id) : false;
+  const tabIds = tabs.map((t) => t.id);
+
+  const handleTabClick = (tab: EditorTab) => {
+    if (popoutTabs.has(tab.id)) {
+      focusPopout(tab.id);
+      return;
+    }
+    setActiveTab(tab.id);
+  };
+
+  const handleTabClose = (e: React.MouseEvent, tab: EditorTab) => {
+    e.stopPropagation();
+    safeCloseTab(tab.id);
+  };
+
+  const handleTabDoubleClick = (tab: EditorTab) => {
+    if (tab.isPreview) {
+      pinTab(tab.id);
+    }
+  };
+
+  const handleMiddleClick = (e: React.MouseEvent, tab: EditorTab) => {
+    if (e.button === 1) {
+      e.preventDefault();
+      safeCloseTab(tab.id);
+    }
+  };
+
+  const handleContextMenu = (e: React.MouseEvent, tab: EditorTab) => {
+    e.preventDefault();
+    setContextMenu({
+      visible: true,
+      x: e.clientX,
+      y: e.clientY,
+      tabId: tab.id,
+    });
+  };
+
+  const handlePopOut = (tabId: string) => {
+    popOut(tabId);
+  };
 
   return (
     <>

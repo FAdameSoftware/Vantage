@@ -665,6 +665,7 @@ export function ChatPanel({ mode = "sidebar" }: ChatPanelProps) {
               style={{ color: showPinnedOnly ? "var(--color-yellow)" : "var(--color-overlay-1)" }}
               onClick={() => setShowPinnedOnly((prev) => !prev)}
               title={showPinnedOnly ? "Show all messages" : `Pinned (${pinnedMessageIds.size})`}
+              aria-label={showPinnedOnly ? "Show all messages" : `Show pinned messages (${pinnedMessageIds.size})`}
             >
               <Pin size={13} />
             </button>
@@ -675,6 +676,7 @@ export function ChatPanel({ mode = "sidebar" }: ChatPanelProps) {
             style={{ color: searchOpen ? "var(--color-blue)" : "var(--color-overlay-1)" }}
             onClick={() => setSearchOpen((prev) => !prev)}
             title="Search (Ctrl+Shift+F)"
+            aria-label={searchOpen ? "Close search" : "Search messages"}
           >
             <Search size={13} />
           </button>
@@ -684,6 +686,7 @@ export function ChatPanel({ mode = "sidebar" }: ChatPanelProps) {
             style={{ color: showMap ? "var(--color-blue)" : "var(--color-overlay-1)" }}
             onClick={() => setShowMap((prev) => !prev)}
             title="Execution map"
+            aria-label={showMap ? "Hide execution map" : "Show execution map"}
           >
             <GitBranch size={13} />
           </button>
@@ -734,6 +737,8 @@ export function ChatPanel({ mode = "sidebar" }: ChatPanelProps) {
             ref={scrollContainerRef}
             className={`h-full overflow-y-auto scrollbar-thin ${mode === "full" ? "flex justify-center px-6 py-5" : "p-4"}`}
             onScroll={handleScroll}
+            aria-live="polite"
+            aria-atomic="false"
           >
           <div className={mode === "full" ? "w-full max-w-4xl chat-full-mode" : "w-full"}>
             {/* Empty state */}

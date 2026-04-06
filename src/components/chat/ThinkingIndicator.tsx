@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Brain } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface ThinkingIndicatorProps {
   startedAt: number;
@@ -27,6 +28,7 @@ export function ThinkingIndicator({ startedAt, thinkingText }: ThinkingIndicator
           if (thinkingText) setExpanded(!expanded);
         }}
         disabled={!thinkingText}
+        aria-expanded={thinkingText ? expanded : undefined}
       >
         <Brain
           size={14}
@@ -37,17 +39,27 @@ export function ThinkingIndicator({ startedAt, thinkingText }: ThinkingIndicator
         <span className="tabular-nums">{elapsed}s</span>
       </button>
 
-      {expanded && thinkingText && (
-        <div
-          className="text-xs italic ml-5 pl-3 whitespace-pre-wrap break-words"
-          style={{
-            color: "var(--color-overlay-1)",
-            borderLeft: "2px solid var(--color-mauve)",
-          }}
-        >
-          {thinkingText}
-        </div>
-      )}
+      <AnimatePresence>
+        {expanded && thinkingText && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
+            className="overflow-hidden"
+          >
+            <div
+              className="text-xs italic ml-5 pl-3 whitespace-pre-wrap break-words"
+              style={{
+                color: "var(--color-overlay-1)",
+                borderLeft: "2px solid var(--color-mauve)",
+              }}
+            >
+              {thinkingText}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

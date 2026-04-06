@@ -405,6 +405,9 @@ export function PermissionDialog() {
     >
       {/* Dialog panel */}
       <motion.div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="permission-dialog-title"
         className="relative w-full max-w-lg mx-4 rounded-xl overflow-hidden flex flex-col"
         initial={{ opacity: 0, scale: 0.95, y: 8 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -439,6 +442,7 @@ export function PermissionDialog() {
           <div className="flex flex-col gap-0.5 min-w-0">
             <div className="flex items-center gap-2">
               <code
+                id="permission-dialog-title"
                 className="text-sm font-semibold"
                 style={{
                   fontFamily: "var(--font-mono)",

@@ -8,7 +8,8 @@ import App from "./App";
 import "./index.css";
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
+  // StrictMode disabled: double mount/unmount causes PTY handle corruption
+  // and terminal resource leaks during view transitions. Re-enable after
+  // fixing cleanup in useTerminal and Monaco editor lifecycle.
+  <App />,
 );
