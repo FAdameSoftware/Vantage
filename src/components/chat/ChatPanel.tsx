@@ -1,149 +1,24 @@
 import { useEffect, useRef, useCallback, useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageSquare, Plus, Search, X, ChevronUp, ChevronDown, GitBranch, ArrowDown, Pin, Info, Download } from "lucide-react";
+import { ArrowDown, Pin } from "lucide-react";
 import { useConversationStore } from "@/stores/conversation";
 import { useLayoutStore } from "@/stores/layout";
-import { useSettingsStore } from "@/stores/settings";
 import { useClaude } from "@/hooks/useClaude";
 import { ChatInput, type ChatInputHandle } from "./ChatInput";
 import { ThinkingIndicator } from "./ThinkingIndicator";
-import { SessionSelector } from "./SessionSelector";
 import { QuickQuestionOverlay } from "./QuickQuestionOverlay";
 import { useQuickQuestionStore } from "@/stores/quickQuestion";
-import { CompactDialog } from "./CompactDialog";
-import { PlanModeToggle } from "./PlanModeToggle";
-import { WriterReviewerLauncher } from "@/components/agents/WriterReviewerLauncher";
 import { ActivityTrail } from "./ActivityTrail";
 import { SessionTimeline } from "./SessionTimeline";
 import { ExecutionMap } from "./ExecutionMap";
-import { EXPORT_FORMATS } from "@/lib/slashHandlers";
-import { normalizeModelName } from "@/lib/pricing";
 import { VirtualMessageList, type VirtualMessageListHandle } from "./VirtualMessageList";
+import { SessionInfoBadge } from "./SessionInfoBadge";
+import { ChatHeader } from "./ChatHeader";
+import { StreamingPreview } from "./StreamingPreview";
+import { ChatSearchBar } from "./ChatSearchBar";
+import { ChatEmptyState } from "./ChatEmptyState";
 
-// ─── Session Info Badge (Feature 2) ─────────────────────────────────────────
-
-function SessionInfoBadge() {
-  const session = useConversationStore(selectSession);
-  const totalCost = useConversationStore(selectTotalCost);
-  const connectionStatus = useConversationStore(selectConnectionStatus);
-  const [elapsed, setElapsed] = useState("");
-  const [expanded, setExpanded] = useState(false);
-  const sessionStartRef = useRef<number>(Date.now());
-
-  // Reset start time when session changes
-  useEffect(() => {
-    if (session) {
-      sessionStartRef.current = Date.now();
-    }
-  }, [session?.sessionId]);
-
-  // Update elapsed timer every second
-  useEffect(() => {
-    if (!session) return;
-    const interval = setInterval(() => {
-      const diffMs = Date.now() - sessionStartRef.current;
-      const mins = Math.floor(diffMs / 60000);
-      const secs = Math.floor((diffMs % 60000) / 1000);
-      if (mins > 0) {
-        setElapsed(`${mins}m ${secs}s`);
-      } else {
-        setElapsed(`${secs}s`);
-      }
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [session?.sessionId]);
-
-  const isConnected = connectionStatus === "ready" || connectionStatus === "streaming";
-  if (!session || !isConnected) return null;
-
-  const truncatedId = session.sessionId
-    ? session.sessionId.slice(0, 8) + "..."
-    : "unknown";
-  const modelName = session.model ? normalizeModelName(session.model) : "unknown";
-
-  return (
-    <div
-      className="shrink-0 px-3 py-1"
-      style={{
-        backgroundColor: "var(--color-surface-0)",
-        borderBottom: "1px solid var(--color-surface-1)",
-      }}
-    >
-      <button
-        type="button"
-        className="flex items-center gap-2 w-full text-left"
-        onClick={() => setExpanded((e) => !e)}
-        aria-label="Toggle session details"
-      >
-        <Info size={11} style={{ color: "var(--color-blue)" }} />
-        <span
-          className="text-[10px] font-mono"
-          style={{ color: "var(--color-subtext-0)" }}
-          title={`Session: ${session.sessionId}`}
-        >
-          {truncatedId}
-        </span>
-        <span className="text-[10px]" style={{ color: "var(--color-overlay-0)" }}>
-          {elapsed}
-        </span>
-        {totalCost > 0 && (
-          <span className="text-[10px]" style={{ color: "var(--color-green)" }}>
-            ${totalCost.toFixed(4)}
-          </span>
-        )}
-        <span className="text-[10px]" style={{ color: "var(--color-overlay-1)" }}>
-          {modelName}
-        </span>
-      </button>
-      <AnimatePresence>
-        {expanded && (
-        <motion.div
-          className="mt-1 pt-1 text-[10px] space-y-0.5"
-          style={{
-            borderTop: "1px solid var(--color-surface-1)",
-            color: "var(--color-overlay-1)",
-          }}
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: "auto" }}
-          exit={{ opacity: 0, height: 0 }}
-          transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
-        >
-          <div>
-            <span style={{ color: "var(--color-overlay-0)" }}>Session ID: </span>
-            <span className="font-mono">{session.sessionId}</span>
-          </div>
-          {session.cwd && (
-            <div>
-              <span style={{ color: "var(--color-overlay-0)" }}>CWD: </span>
-              <span className="font-mono">{session.cwd}</span>
-            </div>
-          )}
-          {session.claudeCodeVersion && (
-            <div>
-              <span style={{ color: "var(--color-overlay-0)" }}>CLI: </span>
-              <span>v{session.claudeCodeVersion}</span>
-            </div>
-          )}
-          {session.permissionMode && (
-            <div>
-              <span style={{ color: "var(--color-overlay-0)" }}>Permissions: </span>
-              <span>{session.permissionMode}</span>
-            </div>
-          )}
-          {session.tools && session.tools.length > 0 && (
-            <div>
-              <span style={{ color: "var(--color-overlay-0)" }}>Tools: </span>
-              <span>{session.tools.length} available</span>
-            </div>
-          )}
-        </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
-// ─── Typing Indicator (Feature 5) ──────────────────────────────────────────
+// ─── Typing Indicator (tiny — kept inline) ──────────────────────────────────
 
 function TypingDots() {
   return (
@@ -175,268 +50,8 @@ function TypingDots() {
   );
 }
 
-// ─── Export Menu ────────────────────────────────────────────────────────────
+// ─── Fine-grained selectors ────────────────────────────────────────────────
 
-function ExportMenu() {
-  const [open, setOpen] = useState(false);
-  const messages = useConversationStore(selectMessages);
-
-  if (messages.length === 0) return null;
-
-  return (
-    <div className="relative">
-      <button
-        type="button"
-        className="p-1 rounded transition-colors hover:bg-[var(--color-surface-0)]"
-        style={{ color: "var(--color-overlay-1)" }}
-        onClick={() => setOpen((o) => !o)}
-        aria-label="Export conversation"
-        title="Export conversation"
-      >
-        <Download size={14} />
-      </button>
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            className="absolute right-0 top-full mt-1 rounded-md shadow-lg z-50 py-1 min-w-[160px]"
-            style={{
-              backgroundColor: "var(--color-surface-0)",
-              border: "1px solid var(--color-surface-1)",
-            }}
-            initial={{ opacity: 0, y: -4, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -4, scale: 0.98 }}
-            transition={{ duration: 0.12, ease: [0.4, 0, 0.2, 1] }}
-          >
-            {EXPORT_FORMATS.map((fmt) => (
-              <button
-                key={fmt.id}
-                type="button"
-                className="block w-full text-left px-3 py-1.5 text-xs hover:bg-[var(--color-surface-1)] transition-colors"
-                style={{ color: "var(--color-text)" }}
-                onClick={() => {
-                  fmt.handler();
-                  setOpen(false);
-                }}
-              >
-                {fmt.label}
-              </button>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
-// ─── Streaming preview (live text accumulation) ─────────────────────────────
-
-function StreamingPreview() {
-  const activeBlocks = useConversationStore((s) => s.activeBlocks);
-
-  // Collect text from all active text blocks
-  let previewText = "";
-  const sorted = [...activeBlocks.values()].sort((a, b) => a.index - b.index);
-  for (const block of sorted) {
-    if (block.type === "text" && !block.isComplete) {
-      previewText += block.text;
-    }
-  }
-
-  if (!previewText) return null;
-
-  return (
-    <div
-      className="text-xs leading-relaxed whitespace-pre-wrap break-words mb-3"
-      style={{ color: "var(--color-text)" }}
-      data-allow-select="true"
-    >
-      {previewText}
-      <span
-        className="inline-block w-1.5 h-3.5 ml-0.5 animate-pulse rounded-sm"
-        style={{ backgroundColor: "var(--color-blue)" }}
-      />
-    </div>
-  );
-}
-
-// ─── Conversation search bar ────────────────────────────────────────────────
-
-interface ChatSearchBarProps {
-  onClose: () => void;
-  /** Callback to scroll the (virtualized) message list to a specific original-index message */
-  onScrollToMessage?: (index: number) => void;
-}
-
-function ChatSearchBar({ onClose, onScrollToMessage }: ChatSearchBarProps) {
-  const messages = useConversationStore(selectMessages);
-  const [query, setQuery] = useState("");
-  const [matchIndices, setMatchIndices] = useState<number[]>([]);
-  const [currentMatch, setCurrentMatch] = useState(0);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
-
-  useEffect(() => {
-    if (!query.trim()) {
-      setMatchIndices([]);
-      setCurrentMatch(0);
-      return;
-    }
-    const lowerQuery = query.toLowerCase();
-    const indices: number[] = [];
-    messages.forEach((msg, i) => {
-      if (msg.text?.toLowerCase().includes(lowerQuery)) {
-        indices.push(i);
-      }
-    });
-    setMatchIndices(indices);
-    setCurrentMatch(0);
-    // Scroll to first match
-    if (indices.length > 0) {
-      scrollToMessage(indices[0]);
-    }
-  }, [query, messages]);
-
-  const scrollToMessage = (idx: number) => {
-    if (onScrollToMessage) {
-      onScrollToMessage(idx);
-    } else {
-      // Fallback: DOM-based scroll (for non-virtualized contexts)
-      const el = document.querySelector(`[data-message-index="${idx}"]`);
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth", block: "center" });
-      }
-    }
-  };
-
-  const goNext = () => {
-    if (matchIndices.length === 0) return;
-    const next = (currentMatch + 1) % matchIndices.length;
-    setCurrentMatch(next);
-    scrollToMessage(matchIndices[next]);
-  };
-
-  const goPrev = () => {
-    if (matchIndices.length === 0) return;
-    const prev = (currentMatch - 1 + matchIndices.length) % matchIndices.length;
-    setCurrentMatch(prev);
-    scrollToMessage(matchIndices[prev]);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Escape") {
-      onClose();
-    } else if (e.key === "Enter" && e.shiftKey) {
-      goPrev();
-    } else if (e.key === "Enter") {
-      goNext();
-    }
-  };
-
-  return (
-    <div
-      className="flex items-center gap-1.5 px-3 h-8 shrink-0"
-      style={{
-        backgroundColor: "var(--color-surface-0)",
-        borderBottom: "1px solid var(--color-surface-1)",
-      }}
-    >
-      <Search size={12} style={{ color: "var(--color-overlay-1)" }} />
-      <input
-        ref={inputRef}
-        type="text"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        onKeyDown={handleKeyDown}
-        placeholder="Search messages..."
-        className="flex-1 bg-transparent text-xs outline-none placeholder:text-[var(--color-overlay-0)]"
-        style={{ color: "var(--color-text)" }}
-      />
-      {query && (
-        <span className="text-[10px]" style={{ color: "var(--color-overlay-1)" }}>
-          {matchIndices.length > 0
-            ? `${currentMatch + 1}/${matchIndices.length}`
-            : "0 results"}
-        </span>
-      )}
-      <button
-        type="button"
-        onClick={goPrev}
-        disabled={matchIndices.length === 0}
-        className="p-0.5 rounded hover:bg-[var(--color-surface-1)] disabled:opacity-30"
-        style={{ color: "var(--color-overlay-1)" }}
-        aria-label="Previous match"
-      >
-        <ChevronUp size={12} />
-      </button>
-      <button
-        type="button"
-        onClick={goNext}
-        disabled={matchIndices.length === 0}
-        className="p-0.5 rounded hover:bg-[var(--color-surface-1)] disabled:opacity-30"
-        style={{ color: "var(--color-overlay-1)" }}
-        aria-label="Next match"
-      >
-        <ChevronDown size={12} />
-      </button>
-      <button
-        type="button"
-        onClick={onClose}
-        className="p-0.5 rounded hover:bg-[var(--color-surface-1)]"
-        style={{ color: "var(--color-overlay-1)" }}
-        aria-label="Close search"
-      >
-        <X size={12} />
-      </button>
-    </div>
-  );
-}
-
-// ─── Available Claude models ─────────────────────────────────────────────────
-
-const CLAUDE_MODELS = [
-  { value: "claude-opus-4-6", label: "Opus 4.6" },
-  { value: "claude-sonnet-4-6", label: "Sonnet 4.6" },
-  { value: "claude-haiku-4-5", label: "Haiku 4.5" },
-] as const;
-
-// ─── Model selector dropdown ─────────────────────────────────────────────────
-
-function ModelSelector() {
-  const selectedModel = useSettingsStore((s) => s.selectedModel);
-  const setSelectedModel = useSettingsStore((s) => s.setSelectedModel);
-
-  return (
-    <select
-      value={selectedModel}
-      onChange={(e) => setSelectedModel(e.target.value)}
-      className="text-[10px] px-1.5 py-0.5 rounded outline-none cursor-pointer"
-      style={{
-        backgroundColor: "var(--color-surface-0)",
-        color: "var(--color-overlay-1)",
-        border: "1px solid var(--color-surface-1)",
-      }}
-      aria-label="Select Claude model"
-      title="Select model for new sessions"
-    >
-      {CLAUDE_MODELS.map((m) => (
-        <option key={m.value} value={m.value}>
-          {m.label}
-        </option>
-      ))}
-    </select>
-  );
-}
-
-// ─── ChatPanel ──────────────────────────────────────────────────────────────
-
-// Fine-grained selectors to minimize re-renders during streaming.
-// Each selector returns only the specific value the component needs,
-// so a change to e.g. activeBlocks during streaming won't cause the
-// header or input area to re-render.
 const selectMessages = (s: import("@/stores/conversation").ConversationState) => s.messages;
 const selectIsStreaming = (s: import("@/stores/conversation").ConversationState) => s.isStreaming;
 const selectIsThinking = (s: import("@/stores/conversation").ConversationState) => s.isThinking;
@@ -444,6 +59,8 @@ const selectThinkingStartedAt = (s: import("@/stores/conversation").Conversation
 const selectSession = (s: import("@/stores/conversation").ConversationState) => s.session;
 const selectConnectionStatus = (s: import("@/stores/conversation").ConversationState) => s.connectionStatus;
 const selectTotalCost = (s: import("@/stores/conversation").ConversationState) => s.totalCost;
+
+// ─── ChatPanel ──────────────────────────────────────────────────────────────
 
 export interface ChatPanelProps {
   /** "full" = Claude View (centered, max-w-3xl, larger text); "sidebar" = IDE View (fill width) */
@@ -500,7 +117,7 @@ export function ChatPanel({ mode = "sidebar" }: ChatPanelProps) {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  // ── Scroll to bottom button handler (Feature 4) — delegates to VirtualMessageList ──
+  // ── Scroll to bottom button handler ──
   const handleScrollToBottom = useCallback(() => {
     virtualListRef.current?.scrollToBottom();
   }, []);
@@ -554,7 +171,6 @@ export function ChatPanel({ mode = "sidebar" }: ChatPanelProps) {
   // ── Regenerate: re-send the last user message ──
 
   const handleRegenerate = useCallback(() => {
-    // Find the last user message
     const lastUserMsg = [...messages].reverse().find((m) => m.role === "user");
     if (!lastUserMsg) return;
     virtualListRef.current?.scrollToBottom();
@@ -568,20 +184,12 @@ export function ChatPanel({ mode = "sidebar" }: ChatPanelProps) {
     interruptSession();
   }, [interruptSession]);
 
-  const isConnected =
-    connectionStatus === "ready" || connectionStatus === "streaming";
-  const isDisconnected =
-    connectionStatus === "disconnected" || connectionStatus === "stopped";
-
-  const modelDisplay = session?.model ? normalizeModelName(session.model) : null;
-
   // Determine the last assistant message ID (for the regenerate button)
   const lastAssistantMsgId = messages.length > 0 && messages[messages.length - 1].role === "assistant"
     ? messages[messages.length - 1].id
     : null;
 
   // ── Footer content rendered as the last virtual row ──
-  // Memoized so the virtualizer only re-measures when inputs change.
   const footerContent = useMemo(() => {
     const hasContent =
       (isThinking && thinkingStartedAt !== null) ||
@@ -642,110 +250,19 @@ export function ChatPanel({ mode = "sidebar" }: ChatPanelProps) {
       className="flex flex-col h-full overflow-hidden"
       style={{ backgroundColor: "var(--color-mantle)" }}
     >
-      {/* Header — clean single row with backdrop blur */}
-      <div
-        className={`flex items-center shrink-0 min-w-0 gap-2 backdrop-blur-sm z-10 ${mode === "full" ? "px-5 h-10" : "px-3 h-9"}`}
-        style={{
-          borderBottom: "1px solid var(--color-surface-0)",
-          backgroundColor: "color-mix(in srgb, var(--color-mantle) 95%, transparent)",
-        }}
-      >
-        {/* Left: title + model badge */}
-        <div className="flex items-center gap-2 min-w-0 shrink-0">
-          {mode === "sidebar" && (
-            <MessageSquare size={13} className="shrink-0" style={{ color: "var(--color-blue)" }} />
-          )}
-          <span
-            className="text-[11px] font-semibold uppercase tracking-wider"
-            style={{ color: "var(--color-subtext-0)" }}
-          >
-            {mode === "full" ? "Claude" : "Chat"}
-          </span>
-          {modelDisplay && (
-            <span
-              className="text-[10px] px-1.5 py-0.5 rounded-full"
-              style={{
-                backgroundColor: "var(--color-surface-0)",
-                color: "var(--color-subtext-0)",
-              }}
-              title="Active session model"
-            >
-              {modelDisplay}
-            </span>
-          )}
-        </div>
-
-        {/* Spacer */}
-        <div className="flex-1" />
-
-        {/* Right: icon-only action buttons grouped tightly */}
-        <div className="flex items-center gap-0.5 shrink-0">
-          {/* Primary actions group */}
-          <PlanModeToggle />
-          {mode === "sidebar" && <ModelSelector />}
-
-          {/* Divider */}
-          <div className="w-px h-3.5 mx-1" style={{ backgroundColor: "var(--color-surface-1)" }} />
-
-          {/* Secondary icon-only actions */}
-          {pinnedMessageIds.size > 0 && (
-            <button
-              type="button"
-              className="p-1 rounded hover:bg-[var(--color-surface-0)]"
-              style={{ color: showPinnedOnly ? "var(--color-yellow)" : "var(--color-overlay-1)" }}
-              onClick={() => setShowPinnedOnly((prev) => !prev)}
-              title={showPinnedOnly ? "Show all messages" : `Pinned (${pinnedMessageIds.size})`}
-              aria-label={showPinnedOnly ? "Show all messages" : `Show pinned messages (${pinnedMessageIds.size})`}
-            >
-              <Pin size={13} />
-            </button>
-          )}
-          <button
-            type="button"
-            className="p-1 rounded hover:bg-[var(--color-surface-0)]"
-            style={{ color: searchOpen ? "var(--color-blue)" : "var(--color-overlay-1)" }}
-            onClick={() => setSearchOpen((prev) => !prev)}
-            title="Search (Ctrl+Shift+F)"
-            aria-label={searchOpen ? "Close search" : "Search messages"}
-          >
-            <Search size={13} />
-          </button>
-          <button
-            type="button"
-            className="p-1 rounded hover:bg-[var(--color-surface-0)]"
-            style={{ color: showMap ? "var(--color-blue)" : "var(--color-overlay-1)" }}
-            onClick={() => setShowMap((prev) => !prev)}
-            title="Execution map"
-            aria-label={showMap ? "Hide execution map" : "Show execution map"}
-          >
-            <GitBranch size={13} />
-          </button>
-          <ExportMenu />
-
-          {/* Divider */}
-          <div className="w-px h-3.5 mx-1" style={{ backgroundColor: "var(--color-surface-1)" }} />
-
-          {/* Session actions */}
-          <WriterReviewerLauncher />
-          <CompactDialog onSend={handleSend} />
-          <SessionSelector
-            cwd={session?.cwd ?? ""}
-            onNewSession={handleNewSession}
-            onResumeSession={handleResumeSession}
-          />
-          {isConnected && (
-            <button
-              type="button"
-              className="p-1 rounded hover:bg-[var(--color-surface-0)]"
-              style={{ color: "var(--color-overlay-1)" }}
-              onClick={handleNewSession}
-              title="New Session"
-            >
-              <Plus size={13} />
-            </button>
-          )}
-        </div>
-      </div>
+      {/* Header */}
+      <ChatHeader
+        mode={mode}
+        searchOpen={searchOpen}
+        onToggleSearch={() => setSearchOpen((prev) => !prev)}
+        showMap={showMap}
+        onToggleMap={() => setShowMap((prev) => !prev)}
+        showPinnedOnly={showPinnedOnly}
+        onTogglePinned={() => setShowPinnedOnly((prev) => !prev)}
+        onSend={handleSend}
+        onNewSession={handleNewSession}
+        onResumeSession={handleResumeSession}
+      />
 
       {/* Search bar */}
       {searchOpen && <ChatSearchBar onClose={() => setSearchOpen(false)} onScrollToMessage={handleScrollToMessage} />}
@@ -765,33 +282,7 @@ export function ChatPanel({ mode = "sidebar" }: ChatPanelProps) {
           <div className="flex-1 relative overflow-hidden">
             {/* Empty state — shown outside virtualizer when no messages */}
             {messages.length === 0 && !isStreaming ? (
-              <div
-                className={`h-full overflow-y-auto scrollbar-thin ${mode === "full" ? "flex justify-center px-6 py-5" : "p-4"}`}
-                aria-live="polite"
-                aria-atomic="false"
-              >
-                <div className={mode === "full" ? "w-full max-w-4xl chat-full-mode" : "w-full"}>
-                  <div className="flex flex-col items-center justify-center h-full">
-                    <div
-                      className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3"
-                      style={{ backgroundColor: "var(--color-surface-0)" }}
-                    >
-                      <MessageSquare
-                        size={20}
-                        style={{ color: "var(--color-mauve)" }}
-                      />
-                    </div>
-                    <p
-                      className="text-xs leading-relaxed max-w-48 text-center"
-                      style={{ color: "var(--color-overlay-1)" }}
-                    >
-                      {isDisconnected
-                        ? "Type a message below to start a Claude Code session."
-                        : "Ask Claude anything about your codebase."}
-                    </p>
-                  </div>
-                </div>
-              </div>
+              <ChatEmptyState mode={mode} onSendMessage={handleSend} />
             ) : (
               <VirtualMessageList
                 ref={virtualListRef}
@@ -808,7 +299,7 @@ export function ChatPanel({ mode = "sidebar" }: ChatPanelProps) {
               />
             )}
 
-            {/* Scroll to bottom button (Feature 4) */}
+            {/* Scroll to bottom button */}
             <AnimatePresence>
               {isScrolledUp && (
                 <motion.button
