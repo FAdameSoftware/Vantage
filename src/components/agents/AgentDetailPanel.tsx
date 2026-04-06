@@ -18,6 +18,8 @@ import { MessageBubble } from "@/components/chat/MessageBubble";
 import { AgentTimeline } from "./AgentTimeline";
 import { MultiFileDiffReview } from "@/components/diff/MultiFileDiffReview";
 import { CheckpointControls } from "./CheckpointControls";
+import { normalizeModelName } from "@/lib/pricing";
+import { formatDuration } from "@/lib/formatters";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -49,26 +51,6 @@ function StatusBadge({ status }: { status: string }) {
       {status.replace("_", " ")}
     </span>
   );
-}
-
-// ── Duration formatter ─────────────────────────────────────────────────────────
-
-function formatDuration(createdAt: number, lastActivityAt: number): string {
-  const ms = lastActivityAt - createdAt;
-  const totalSec = Math.floor(ms / 1000);
-  if (totalSec < 60) return `${totalSec}s`;
-  const min = Math.floor(totalSec / 60);
-  const sec = totalSec % 60;
-  if (min < 60) return `${min}m ${sec}s`;
-  const hr = Math.floor(min / 60);
-  const rem = min % 60;
-  return `${hr}h ${rem}m`;
-}
-
-// ── Strip model date suffix ────────────────────────────────────────────────────
-
-function stripModelDate(model: string): string {
-  return model.replace(/-\d{8}$/, "");
 }
 
 // ── Agent info header ──────────────────────────────────────────────────────────
@@ -143,7 +125,7 @@ function AgentHeader({ agentId, onClose }: AgentHeaderProps) {
           style={{ color: "var(--color-overlay-1)" }}
         >
           <Clock size={11} />
-          {formatDuration(agent.createdAt, agent.lastActivityAt)}
+          {formatDuration(agent.lastActivityAt - agent.createdAt)}
         </span>
 
         {/* Model */}
@@ -153,7 +135,7 @@ function AgentHeader({ agentId, onClose }: AgentHeaderProps) {
             style={{ color: "var(--color-overlay-1)" }}
           >
             <Cpu size={11} />
-            {stripModelDate(agent.model)}
+            {normalizeModelName(agent.model)}
           </span>
         )}
 

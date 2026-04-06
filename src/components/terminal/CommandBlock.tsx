@@ -11,16 +11,7 @@ import {
   Layers,
 } from "lucide-react";
 import type { CommandBlock as CommandBlockType } from "@/hooks/useCommandBlocks";
-
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
-function formatDuration(ms: number): string {
-  if (ms < 1000) return `${ms}ms`;
-  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
-  const mins = Math.floor(ms / 60000);
-  const secs = Math.floor((ms % 60000) / 1000);
-  return `${mins}m ${secs}s`;
-}
+import { formatDuration } from "@/lib/formatters";
 
 // ─── Single Command Block Card ──────────────────────────────────────────────
 

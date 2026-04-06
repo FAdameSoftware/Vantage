@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { useLayoutStore } from "@/stores/layout";
+import { formatRelativeTime } from "@/lib/formatters";
 
 // ── Types matching Rust structs ──────────────────────────────────────
 
@@ -12,22 +13,6 @@ interface GitBlameLine {
   date: string;
   content: string;
   is_boundary: boolean;
-}
-
-// ── Relative time formatter ──────────────────────────────────────────
-
-function formatRelativeDate(isoDate: string): string {
-  const date = new Date(isoDate);
-  const now = Date.now();
-  const diffMs = now - date.getTime();
-  const diffDay = Math.floor(diffMs / 86400000);
-
-  if (diffDay < 1) return "today";
-  if (diffDay === 1) return "yesterday";
-  if (diffDay < 7) return `${diffDay}d ago`;
-  if (diffDay < 30) return `${Math.floor(diffDay / 7)}w ago`;
-  if (diffDay < 365) return `${Math.floor(diffDay / 30)}mo ago`;
-  return `${Math.floor(diffDay / 365)}y ago`;
 }
 
 // ── BlameAnnotation ──────────────────────────────────────────────────
@@ -199,7 +184,7 @@ export function GitBlameGutter({ filePath }: GitBlameGutterProps) {
               </span>
               {" "}
               <span style={{ color: "var(--color-overlay-0)" }}>
-                {formatRelativeDate(group.date)}
+                {formatRelativeTime(group.date)}
               </span>
             </span>
           </div>

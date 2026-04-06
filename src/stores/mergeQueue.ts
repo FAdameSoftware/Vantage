@@ -1,8 +1,9 @@
 import { create } from "zustand";
+import type { CheckStatus } from "./verification";
 
 // ── Types ──────────────────────────────────────────────────────────
 
-export type GateStatus = "pending" | "running" | "passed" | "failed" | "skipped";
+export type GateStatus = CheckStatus;
 
 export interface QualityGateResult {
   gateName: string;

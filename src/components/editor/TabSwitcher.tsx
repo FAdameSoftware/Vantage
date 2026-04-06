@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { FileCode } from "lucide-react";
-import { useEditorStore } from "@/stores/editor";
+import { useShallow } from "zustand/react/shallow";
+import { useEditorStore, selectTabList } from "@/stores/editor";
 import { FileIcon } from "@/components/files/FileIcon";
 
 /**
@@ -11,7 +12,7 @@ import { FileIcon } from "@/components/files/FileIcon";
  * Releasing Ctrl selects the highlighted entry.
  */
 export function TabSwitcher() {
-  const tabs = useEditorStore((s) => s.tabs);
+  const tabs = useEditorStore(useShallow(selectTabList));
   const activeTabId = useEditorStore((s) => s.activeTabId);
   const setActiveTab = useEditorStore((s) => s.setActiveTab);
 

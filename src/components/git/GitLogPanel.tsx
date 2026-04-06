@@ -11,6 +11,7 @@ import {
 import { useLayoutStore } from "@/stores/layout";
 import { useEditorStore } from "@/stores/editor";
 import { ResumeFromPR } from "./ResumeFromPR";
+import { formatRelativeTime } from "@/lib/formatters";
 
 // ── Types matching Rust structs ──────────────────────────────────────
 
@@ -22,33 +23,6 @@ interface GitLogEntry {
   author_email: string;
   date: string;
   refs: string[];
-}
-
-// ── Relative time formatter ──────────────────────────────────────────
-
-function formatRelativeTime(isoDate: string): string {
-  const date = new Date(isoDate);
-  const now = Date.now();
-  const diffMs = now - date.getTime();
-  const diffSec = Math.floor(diffMs / 1000);
-
-  if (diffSec < 60) return "just now";
-
-  const diffMin = Math.floor(diffSec / 60);
-  if (diffMin < 60) return `${diffMin}m ago`;
-
-  const diffHour = Math.floor(diffMin / 60);
-  if (diffHour < 24) return `${diffHour}h ago`;
-
-  const diffDay = Math.floor(diffHour / 24);
-  if (diffDay < 7) return `${diffDay}d ago`;
-
-  if (diffDay < 30) {
-    const weeks = Math.floor(diffDay / 7);
-    return `${weeks}w ago`;
-  }
-
-  return date.toLocaleDateString();
 }
 
 // ── Extension to Monaco language mapping ─────────────────────────────

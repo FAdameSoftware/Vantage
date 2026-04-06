@@ -18,6 +18,7 @@ import { ActivityTrail } from "./ActivityTrail";
 import { SessionTimeline } from "./SessionTimeline";
 import { ExecutionMap } from "./ExecutionMap";
 import { EXPORT_FORMATS } from "@/lib/slashHandlers";
+import { normalizeModelName } from "@/lib/pricing";
 
 // ─── Session Info Badge (Feature 2) ─────────────────────────────────────────
 
@@ -58,7 +59,7 @@ function SessionInfoBadge() {
   const truncatedId = session.sessionId
     ? session.sessionId.slice(0, 8) + "..."
     : "unknown";
-  const modelName = session.model ? stripModelDate(session.model) : "unknown";
+  const modelName = session.model ? normalizeModelName(session.model) : "unknown";
 
   return (
     <div
@@ -257,13 +258,6 @@ function StreamingPreview() {
       />
     </div>
   );
-}
-
-// ─── Strip date suffix from model name ──────────────────────────────────────
-
-function stripModelDate(model: string): string {
-  // e.g. "claude-sonnet-4-20250514" -> "claude-sonnet-4"
-  return model.replace(/-\d{8}$/, "");
 }
 
 // ─── Conversation search bar ────────────────────────────────────────────────
@@ -600,7 +594,7 @@ export function ChatPanel({ mode = "sidebar" }: ChatPanelProps) {
   const isDisconnected =
     connectionStatus === "disconnected" || connectionStatus === "stopped";
 
-  const modelDisplay = session?.model ? stripModelDate(session.model) : null;
+  const modelDisplay = session?.model ? normalizeModelName(session.model) : null;
 
   // Determine the last assistant message ID (for the regenerate button)
   const lastAssistantMsgId = messages.length > 0 && messages[messages.length - 1].role === "assistant"

@@ -17,24 +17,7 @@ import { useEditorStore } from "@/stores/editor";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { useLayoutStore } from "@/stores/layout";
 import { addRecentFile, getRecentFiles, type RecentFile } from "@/hooks/useRecentFiles";
-
-/** Format a relative time string from an ISO 8601 timestamp. */
-function formatRelativeTime(isoTimestamp: string): string {
-  const date = new Date(isoTimestamp);
-  const now = Date.now();
-  const diffMs = now - date.getTime();
-  if (diffMs < 0) return "just now";
-  const diffSec = Math.floor(diffMs / 1000);
-  if (diffSec < 60) return "just now";
-  const diffMin = Math.floor(diffSec / 60);
-  if (diffMin < 60) return `${diffMin}m ago`;
-  const diffHour = Math.floor(diffMin / 60);
-  if (diffHour < 24) return `${diffHour}h ago`;
-  const diffDay = Math.floor(diffHour / 24);
-  if (diffDay < 7) return `${diffDay}d ago`;
-  if (diffDay < 30) return `${Math.floor(diffDay / 7)}w ago`;
-  return date.toLocaleDateString();
-}
+import { formatRelativeTime } from "@/lib/formatters";
 
 /** Extract a color from the project name for the project icon. */
 function projectIconColor(name: string): string {

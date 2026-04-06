@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Minus, Square, X, Copy, MessageSquare, Code } from "lucide-react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
-import { useEditorStore } from "@/stores/editor";
+import { useEditorStore, selectHasDirtyTabs } from "@/stores/editor";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { useLayoutStore, type ViewMode } from "@/stores/layout";
 import { MenuBar } from "./MenuBar";
@@ -10,7 +10,7 @@ import { MenuBar } from "./MenuBar";
 function WindowControls() {
   const [isMaximized, setIsMaximized] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
-  const hasDirtyTabs = useEditorStore((s) => s.tabs.some((t) => t.isDirty));
+  const hasDirtyTabs = useEditorStore(selectHasDirtyTabs);
 
   useEffect(() => {
     const appWindow = getCurrentWindow();

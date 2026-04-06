@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { FileCode, ChevronRight } from "lucide-react";
-import { useEditorStore, selectActiveTab } from "@/stores/editor";
+import { useShallow } from "zustand/react/shallow";
+import { useEditorStore, selectActiveTab, selectTabList } from "@/stores/editor";
+import { useClickOutside } from "@/hooks/useClickOutside";
 import { useSettingsStore } from "@/stores/settings";
 import { MonacoEditor } from "@/components/editor/MonacoEditor";
 import { DiffViewer } from "@/components/editor/DiffViewer";
@@ -57,25 +59,8 @@ function BreadcrumbDropdown({
     };
   }, [dirPath]);
 
-  // Close on click outside
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(e.target as Node)
-      ) {
-        onClose();
-      }
-    };
-    // Use a short delay so the click that opened the dropdown doesn't immediately close it
-    const timer = setTimeout(() => {
-      document.addEventListener("mousedown", handleClickOutside);
-    }, 50);
-    return () => {
-      clearTimeout(timer);
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [onClose]);
+  // Close on click outside (50ms delay prevents the opening click from immediately closing)
+  useClickOutside(dropdownRef, onClose, true, 50);
 
   const handleItemClick = async (entry: SiblingEntry) => {
     if (entry.is_file) {
@@ -274,7 +259,8 @@ export function EditorArea() {
   const activeTab = useEditorStore(selectActiveTab);
   const splitDirection = useEditorStore((s) => s.splitDirection);
   const secondaryActiveTabId = useEditorStore((s) => s.secondaryActiveTabId);
-  const tabs = useEditorStore((s) => s.tabs);
+  // Subscribe to metadata-only tab list (avoids re-render on every keystroke)
+  const tabsMeta = useEditorStore(useShallow(selectTabList));
   const openFile = useEditorStore((s) => s.openFile);
 
   // ── Auto-open welcome tab on startup if no tabs exist ─────────────
@@ -283,7 +269,7 @@ export function EditorArea() {
     if (hasInitRef.current) return;
     hasInitRef.current = true;
     // Only auto-open welcome if there are zero tabs (fresh start, not restoring workspace)
-    if (tabs.length === 0) {
+    if (tabsMeta.length === 0) {
       openFile(WELCOME_TAB_PATH, "Welcome", "plaintext", "", false);
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -380,10 +366,13 @@ export function EditorArea() {
     });
   }, []);
 
-  // Resolve the secondary tab for split view
-  const secondaryTab = secondaryActiveTabId
-    ? tabs.find((t) => t.id === secondaryActiveTabId) ?? null
-    : null;
+  // Resolve the secondary tab for split view (reads full tab including content
+  // from the store at render time — only re-renders when secondaryActiveTabId changes)
+  const secondaryTab = useEditorStore((s) =>
+    s.secondaryActiveTabId
+      ? s.tabs.find((t) => t.id === s.secondaryActiveTabId) ?? null
+      : null,
+  );
 
   // If the active tab has a pending diff, show the diff viewer instead of the editor.
   // setPendingDiff is wired in useClaude hook — it captures before/after content

@@ -165,11 +165,16 @@ export const selectActiveTab = (s: EditorState): EditorTab | null =>
 export const selectTabList = (s: EditorState) =>
   s.tabs.map((t) => ({
     id: t.id,
+    path: t.path,
     name: t.name,
     isDirty: t.isDirty,
     isPreview: t.isPreview,
     language: t.language,
   }));
+
+/** Whether any tab has unsaved changes (stable boolean — no array allocation). */
+export const selectHasDirtyTabs = (s: EditorState): boolean =>
+  s.tabs.some((t) => t.isDirty);
 
 /**
  * Select only the IDs of tabs with unsaved changes.

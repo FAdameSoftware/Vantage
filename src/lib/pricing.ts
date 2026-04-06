@@ -73,7 +73,7 @@ const DEFAULT_PRICING: ModelPricing = {
 /**
  * Strip date suffix from model name: "claude-sonnet-4-20250514" -> "claude-sonnet-4"
  */
-function normalizeModelName(model: string): string {
+export function normalizeModelName(model: string): string {
   return model.replace(/-\d{8}$/, "");
 }
 

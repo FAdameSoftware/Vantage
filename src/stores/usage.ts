@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { invoke } from "@tauri-apps/api/core";
+import { formatDuration } from "@/lib/formatters";
 
 /** Shape returned by the Rust `get_project_usage` command */
 export interface ProjectUsage {
@@ -174,18 +175,7 @@ export const useUsageStore = create<UsageState>()((set, get) => ({
   },
 
   getSessionDurationFormatted() {
-    const ms = get().getSessionDurationMs();
-    const totalSeconds = Math.floor(ms / 1000);
-    const minutes = Math.floor(totalSeconds / 60);
-    const hours = Math.floor(minutes / 60);
-
-    if (hours > 0) {
-      return `${hours}h ${minutes % 60}m`;
-    }
-    if (minutes > 0) {
-      return `${minutes}m ${totalSeconds % 60}s`;
-    }
-    return `${totalSeconds}s`;
+    return formatDuration(get().getSessionDurationMs());
   },
 
   getTotalTokens() {

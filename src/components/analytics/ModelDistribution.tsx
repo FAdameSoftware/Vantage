@@ -1,4 +1,5 @@
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { normalizeModelName } from "@/lib/pricing";
 
 interface ModelUsage {
   model: string;
@@ -23,10 +24,6 @@ const COLORS = [
   "var(--color-flamingo)",
 ];
 
-function stripModelDate(model: string): string {
-  return model.replace(/-\d{8}$/, "");
-}
-
 export function ModelDistribution({ data }: ModelDistributionProps) {
   if (data.length === 0) {
     return (
@@ -40,7 +37,7 @@ export function ModelDistribution({ data }: ModelDistributionProps) {
   }
 
   const chartData = data.map((d) => ({
-    name: stripModelDate(d.model),
+    name: normalizeModelName(d.model),
     value: d.total_cost_usd,
     sessions: d.session_count,
   }));

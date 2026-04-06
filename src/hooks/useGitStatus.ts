@@ -49,16 +49,18 @@ export function useGitStatus(rootPath: string | null): UseGitStatusReturn {
     if (!rootPath) return;
 
     try {
-      const branchInfo = await invoke<GitBranchInfo>("get_git_branch", {
-        cwd: rootPath,
-      });
+      // Fire both IPC calls in parallel — git_status is a no-op if not a repo
+      const [branchInfo, statuses] = await Promise.all([
+        invoke<GitBranchInfo>("get_git_branch", { cwd: rootPath }),
+        invoke<GitFileStatus[]>("get_git_status", { cwd: rootPath }).catch(
+          () => [] as GitFileStatus[],
+        ),
+      ]);
+
       setBranch(branchInfo);
       setIsGitRepo(branchInfo.branch !== null);
 
       if (branchInfo.branch !== null) {
-        const statuses = await invoke<GitFileStatus[]>("get_git_status", {
-          cwd: rootPath,
-        });
         setAllStatuses(statuses);
         const statusMap = new Map<string, GitFileStatus>();
         for (const status of statuses) {

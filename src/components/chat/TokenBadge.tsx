@@ -5,6 +5,7 @@ import {
   calculateCost,
   formatTokenCount,
   formatCost,
+  normalizeModelName,
   type CostBreakdown,
 } from "@/lib/pricing";
 
@@ -154,7 +155,7 @@ function TokenBreakdown({ message, breakdown }: TokenBreakdownProps) {
             className="font-mono"
             style={{ color: "var(--color-overlay-1)" }}
           >
-            {message.model.replace(/-\d{8}$/, "")}
+            {normalizeModelName(message.model)}
           </span>
         </div>
       )}

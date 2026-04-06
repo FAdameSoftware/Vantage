@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useClickOutside } from "@/hooks/useClickOutside";
 import {
   Bell,
   X,
@@ -15,27 +16,7 @@ import {
   type Notification,
   type NotificationType,
 } from "@/stores/notifications";
-
-/** Format a timestamp as a relative time string */
-function formatRelativeTime(timestamp: number): string {
-  const now = Date.now();
-  const diffMs = now - timestamp;
-  const diffSeconds = Math.floor(diffMs / 1000);
-  const diffMinutes = Math.floor(diffSeconds / 60);
-  const diffHours = Math.floor(diffMinutes / 60);
-
-  if (diffSeconds < 60) return "Just now";
-  if (diffMinutes < 60) return `${diffMinutes}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-
-  const date = new Date(timestamp);
-  return date.toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
+import { formatRelativeTime } from "@/lib/formatters";
 
 /** Get the icon and color for a notification type */
 function getTypeStyle(type: NotificationType): { icon: React.ReactNode; color: string } {
@@ -174,22 +155,8 @@ export function NotificationCenter() {
   }, [markAllRead]);
 
   // Close on outside click
-  useEffect(() => {
-    if (!isOpen) return;
-    function handleClick(e: MouseEvent) {
-      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
-        setIsOpen(false);
-      }
-    }
-    // Use setTimeout so the current click event doesn't immediately close it
-    const timer = setTimeout(() => {
-      document.addEventListener("mousedown", handleClick);
-    }, 0);
-    return () => {
-      clearTimeout(timer);
-      document.removeEventListener("mousedown", handleClick);
-    };
-  }, [isOpen]);
+  const closePanel = useCallback(() => setIsOpen(false), []);
+  useClickOutside(panelRef, closePanel, isOpen);
 
   const { today, earlier } = groupNotifications(notifications);
 

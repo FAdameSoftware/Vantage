@@ -7,17 +7,7 @@ import { useConversationStore } from "@/stores/conversation";
 import { CodeBlock } from "./CodeBlock";
 import { ToolCallCard } from "./ToolCallCard";
 import { TokenBadge } from "./TokenBadge";
-
-// ─── Timestamp formatting ───────────────────────────────────────────────────
-
-function formatTimestamp(ts: number): string {
-  const d = new Date(ts);
-  const h = d.getHours();
-  const m = d.getMinutes().toString().padStart(2, "0");
-  const period = h >= 12 ? "PM" : "AM";
-  const h12 = h % 12 || 12;
-  return `${h12}:${m} ${period}`;
-}
+import { formatTimestamp } from "@/lib/formatters";
 
 // ─── Image extraction helpers ──────────────────────────────────────────────
 

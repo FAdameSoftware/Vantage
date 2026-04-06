@@ -524,7 +524,7 @@ export const useAgentsStore = create<AgentsState>()((set, get) => ({
       const next = new Map(state.agents);
       next.set(agentId, {
         ...agent,
-        timeline: [...agent.timeline, event],
+        timeline: [...agent.timeline, event].slice(-200),
         lastActivityAt: Date.now(),
       });
       return { agents: next };

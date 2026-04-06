@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useAgentsStore } from "@/stores/agents";
 import type { AgentTimelineEvent } from "@/stores/agents";
+import { formatTimestamp24 } from "@/lib/formatters";
 
 /** Stable empty array to avoid creating new references in selectors */
 const EMPTY_TIMELINE: AgentTimelineEvent[] = [];

@@ -17,6 +17,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { useEditorStore, type EditorTab } from "@/stores/editor";
 import { useLayoutStore } from "@/stores/layout";
 import { useFloatingWindow } from "@/hooks/useFloatingWindow";
+import { useClickOutside } from "@/hooks/useClickOutside";
 
 // ── Unsaved changes confirmation dialog ────────────────────────────
 
@@ -158,18 +159,7 @@ function TabContextMenu({
   onCloseAll,
 }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        onClose();
-      }
-    }
-    if (state.visible) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [state.visible, onClose]);
+  useClickOutside(menuRef, onClose, state.visible);
 
   if (!state.visible || !state.tabId) return null;
 
@@ -299,15 +289,17 @@ function TabContextMenu({
 
 // ── Sortable tab item ────────────────────────────────────────────────
 
+type TabMeta = EditorTab;
+
 interface SortableTabProps {
-  tab: EditorTab;
+  tab: TabMeta;
   isActive: boolean;
   isPoppedOut: boolean;
-  onTabClick: (tab: EditorTab) => void;
-  onTabDoubleClick: (tab: EditorTab) => void;
-  onMiddleClick: (e: React.MouseEvent, tab: EditorTab) => void;
-  onContextMenu: (e: React.MouseEvent, tab: EditorTab) => void;
-  onTabClose: (e: React.MouseEvent, tab: EditorTab) => void;
+  onTabClick: (tab: TabMeta) => void;
+  onTabDoubleClick: (tab: TabMeta) => void;
+  onMiddleClick: (e: React.MouseEvent, tab: TabMeta) => void;
+  onContextMenu: (e: React.MouseEvent, tab: TabMeta) => void;
+  onTabClose: (e: React.MouseEvent, tab: TabMeta) => void;
 }
 
 function SortableTab({
@@ -454,12 +446,13 @@ export function EditorTabs() {
   const handleUnsavedSave = useCallback(async () => {
     const tabId = unsavedDialog.tabId;
     if (!tabId) return;
-    const tab = tabs.find((t) => t.id === tabId);
-    if (!tab) return;
+    // Read the full tab from the store (we need content + path for saving)
+    const fullTab = useEditorStore.getState().tabs.find((t) => t.id === tabId);
+    if (!fullTab) return;
     try {
       const { invoke } = await import("@tauri-apps/api/core");
-      await invoke("write_file", { path: tab.path, content: tab.content });
-      markSaved(tabId, tab.content);
+      await invoke("write_file", { path: fullTab.path, content: fullTab.content });
+      markSaved(tabId, fullTab.content);
       closeTab(tabId);
       setUnsavedDialog({ visible: false, tabId: null, tabName: "" });
     } catch (e) {
@@ -467,7 +460,7 @@ export function EditorTabs() {
       // Don't close tab on save failure — user would lose their work
       setUnsavedDialog({ visible: false, tabId: null, tabName: "" });
     }
-  }, [unsavedDialog, tabs, markSaved, closeTab]);
+  }, [unsavedDialog, markSaved, closeTab]);
 
   const handleUnsavedDiscard = useCallback(() => {
     if (unsavedDialog.tabId) {
@@ -564,7 +557,7 @@ export function EditorTabs() {
   const isPreviewActive = activeTab ? markdownPreviewTabs.has(activeTab.id) : false;
   const tabIds = tabs.map((t) => t.id);
 
-  const handleTabClick = (tab: EditorTab) => {
+  const handleTabClick = (tab: TabMeta) => {
     if (popoutTabs.has(tab.id)) {
       focusPopout(tab.id);
       return;
@@ -572,25 +565,25 @@ export function EditorTabs() {
     setActiveTab(tab.id);
   };
 
-  const handleTabClose = (e: React.MouseEvent, tab: EditorTab) => {
+  const handleTabClose = (e: React.MouseEvent, tab: TabMeta) => {
     e.stopPropagation();
     safeCloseTab(tab.id);
   };
 
-  const handleTabDoubleClick = (tab: EditorTab) => {
+  const handleTabDoubleClick = (tab: TabMeta) => {
     if (tab.isPreview) {
       pinTab(tab.id);
     }
   };
 
-  const handleMiddleClick = (e: React.MouseEvent, tab: EditorTab) => {
+  const handleMiddleClick = (e: React.MouseEvent, tab: TabMeta) => {
     if (e.button === 1) {
       e.preventDefault();
       safeCloseTab(tab.id);
     }
   };
 
-  const handleContextMenu = (e: React.MouseEvent, tab: EditorTab) => {
+  const handleContextMenu = (e: React.MouseEvent, tab: TabMeta) => {
     e.preventDefault();
     setContextMenu({
       visible: true,

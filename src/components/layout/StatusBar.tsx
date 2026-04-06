@@ -31,6 +31,7 @@ import { UsagePanel } from "@/components/shared/UsagePanel";
 import { BuddyWidget } from "@/components/shared/BuddyWidget";
 import { EffortLevelSelector } from "@/components/shared/EffortLevelSelector";
 import { useCommandPaletteStore } from "@/stores/commandPalette";
+import { normalizeModelName } from "@/lib/pricing";
 import * as monaco from "monaco-editor";
 
 /** Track window width for responsive status bar priority tiers */
@@ -632,7 +633,7 @@ export function StatusBar() {
               onClick={handleModelClick}
               title="Select Model"
             >
-              {(session?.model ?? lastSessionModel ?? "claude-opus-4-6").replace(/-\d{8}$/, "").replace("claude-", "")}
+              {normalizeModelName(session?.model ?? lastSessionModel ?? "claude-opus-4-6").replace("claude-", "")}
             </button>
             <AnimatePresence>
               {showModelSelector && (

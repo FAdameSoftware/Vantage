@@ -787,16 +787,18 @@ export function useClaude() {
       let worktreeCwd = agent.worktreePath;
 
       if (!worktreeCwd) {
-        // Generate worktree path and branch name via Rust helpers
-        const worktreePath = await invoke<string>("get_agent_worktree_path", {
-          repoPath: cwd,
-          agentName: agent.name,
-          agentId: agent.id,
-        });
-        const branchName = await invoke<string>("get_agent_branch_name", {
-          agentName: agent.name,
-          agentId: agent.id,
-        });
+        // Generate worktree path and branch name via Rust helpers (parallelized)
+        const [worktreePath, branchName] = await Promise.all([
+          invoke<string>("get_agent_worktree_path", {
+            repoPath: cwd,
+            agentName: agent.name,
+            agentId: agent.id,
+          }),
+          invoke<string>("get_agent_branch_name", {
+            agentName: agent.name,
+            agentId: agent.id,
+          }),
+        ]);
 
         // Create the worktree
         await invoke<{ path: string; branch: string }>("create_worktree", {
