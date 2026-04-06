@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useState, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { FileCode, ChevronRight } from "lucide-react";
-import { useShallow } from "zustand/react/shallow";
-import { useEditorStore, selectActiveTab, selectTabList } from "@/stores/editor";
+import { useEditorStore, selectActiveTab } from "@/stores/editor";
 import { useClickOutside } from "@/hooks/useClickOutside";
 import { useSettingsStore } from "@/stores/settings";
 import { MonacoEditor } from "@/components/editor/MonacoEditor";
@@ -259,8 +258,7 @@ export function EditorArea() {
   const activeTab = useEditorStore(selectActiveTab);
   const splitDirection = useEditorStore((s) => s.splitDirection);
   const secondaryActiveTabId = useEditorStore((s) => s.secondaryActiveTabId);
-  // Subscribe to metadata-only tab list (avoids re-render on every keystroke)
-  const tabsMeta = useEditorStore(useShallow(selectTabList));
+  const tabCount = useEditorStore((s) => s.tabs.length);
   const openFile = useEditorStore((s) => s.openFile);
 
   // ── Auto-open welcome tab on startup if no tabs exist ─────────────
@@ -269,7 +267,7 @@ export function EditorArea() {
     if (hasInitRef.current) return;
     hasInitRef.current = true;
     // Only auto-open welcome if there are zero tabs (fresh start, not restoring workspace)
-    if (tabsMeta.length === 0) {
+    if (tabCount === 0) {
       openFile(WELCOME_TAB_PATH, "Welcome", "plaintext", "", false);
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps

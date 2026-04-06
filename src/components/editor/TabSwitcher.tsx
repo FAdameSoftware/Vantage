@@ -1,7 +1,6 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { FileCode } from "lucide-react";
-import { useShallow } from "zustand/react/shallow";
-import { useEditorStore, selectTabList } from "@/stores/editor";
+import { useEditorStore } from "@/stores/editor";
 import { FileIcon } from "@/components/files/FileIcon";
 
 /**
@@ -12,7 +11,14 @@ import { FileIcon } from "@/components/files/FileIcon";
  * Releasing Ctrl selects the highlighted entry.
  */
 export function TabSwitcher() {
-  const tabs = useEditorStore(useShallow(selectTabList));
+  // Subscribe to raw tabs, derive metadata via useMemo to skip content-only changes
+  const rawTabs = useEditorStore((s) => s.tabs);
+  const tabsSig = rawTabs.map((t) => `${t.id}|${t.name}|${t.path}|${t.isDirty}|${t.isPreview}`).join("\n");
+  const tabs = useMemo(
+    () => rawTabs.map((t) => ({ id: t.id, name: t.name, path: t.path, isDirty: t.isDirty, isPreview: t.isPreview, language: t.language })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [tabsSig],
+  );
   const activeTabId = useEditorStore((s) => s.activeTabId);
   const setActiveTab = useEditorStore((s) => s.setActiveTab);
 

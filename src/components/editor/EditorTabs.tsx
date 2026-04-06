@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { X, FileCode, Eye, EyeOff, ExternalLink, Columns2, Rows2, Copy, Folder } from "lucide-react";
 import {
   DndContext,
@@ -14,10 +14,44 @@ import {
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useEditorStore, type EditorTab } from "@/stores/editor";
+import { useEditorStore, selectTabList } from "@/stores/editor";
 import { useLayoutStore } from "@/stores/layout";
 import { useFloatingWindow } from "@/hooks/useFloatingWindow";
 import { useClickOutside } from "@/hooks/useClickOutside";
+
+// ── Tab metadata type (excludes content/savedContent for perf) ──────
+
+type TabMeta = ReturnType<typeof selectTabList>[number];
+
+/**
+ * Custom hook: subscribe to the raw tabs array from the store, then derive
+ * metadata-only objects via useMemo.  The memo compares each tab's metadata
+ * fields so the derived array only updates when something visible to the tab
+ * bar actually changes (not on every keystroke in the editor).
+ */
+function useTabsMeta(): TabMeta[] {
+  const rawTabs = useEditorStore((s) => s.tabs);
+  // Build a stable "signature" string from the metadata fields.  When the
+  // signature is unchanged the memo returns the previous array reference,
+  // preventing child re-renders.
+  const sig = rawTabs
+    .map((t) => `${t.id}|${t.path}|${t.name}|${t.isDirty}|${t.isPreview}|${t.language}`)
+    .join("\n");
+
+  return useMemo(
+    () =>
+      rawTabs.map((t) => ({
+        id: t.id,
+        path: t.path,
+        name: t.name,
+        isDirty: t.isDirty,
+        isPreview: t.isPreview,
+        language: t.language,
+      })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [sig],
+  );
+}
 
 // ── Unsaved changes confirmation dialog ────────────────────────────
 
@@ -289,8 +323,6 @@ function TabContextMenu({
 
 // ── Sortable tab item ────────────────────────────────────────────────
 
-type TabMeta = EditorTab;
-
 interface SortableTabProps {
   tab: TabMeta;
   isActive: boolean;
@@ -390,7 +422,8 @@ function SortableTab({
 // ── Editor tabs ─────────────────────────────────────────────────────
 
 export function EditorTabs() {
-  const tabs = useEditorStore((s) => s.tabs);
+  // Metadata-only tabs via useMemo — avoids re-renders when only content changes
+  const tabs = useTabsMeta();
   const activeTabId = useEditorStore((s) => s.activeTabId);
   const setActiveTab = useEditorStore((s) => s.setActiveTab);
   const closeTab = useEditorStore((s) => s.closeTab);
@@ -676,4 +709,3 @@ export function EditorTabs() {
     </>
   );
 }
-
