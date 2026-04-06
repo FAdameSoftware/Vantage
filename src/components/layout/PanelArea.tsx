@@ -49,6 +49,7 @@ function VerificationBadge() {
 export function PanelArea() {
   const activePanelTab = useLayoutStore((s) => s.activePanelTab);
   const setActivePanelTab = useLayoutStore((s) => s.setActivePanelTab);
+  const flashPanelTab = useLayoutStore((s) => s.flashPanelTab);
 
   return (
     <div
@@ -71,12 +72,14 @@ export function PanelArea() {
             key={tab.id}
             onClick={() => setActivePanelTab(tab.id)}
             aria-label={tab.label}
-            className="flex items-center gap-1 px-2 h-6 text-[11px] transition-colors relative shrink-0"
+            className={`flex items-center gap-1 px-2 h-6 text-[11px] transition-colors relative shrink-0${flashPanelTab === tab.id ? " animate-pulse" : ""}`}
             style={{
               color:
-                activePanelTab === tab.id
-                  ? "var(--color-text)"
-                  : "var(--color-overlay-1)",
+                flashPanelTab === tab.id
+                  ? "var(--color-peach)"
+                  : activePanelTab === tab.id
+                    ? "var(--color-text)"
+                    : "var(--color-overlay-1)",
               backgroundColor:
                 activePanelTab === tab.id
                   ? "var(--color-surface-0)"

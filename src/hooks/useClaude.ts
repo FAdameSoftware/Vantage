@@ -322,6 +322,74 @@ function capturePendingDiffs(assistantMsg: AssistantMessage) {
   }
 }
 
+// ─── Helper: View Integration — IDE reacts to Claude tool actions ────────────
+
+/** Map file extensions to Monaco language IDs */
+function guessLanguage(filePath: string): string {
+  const ext = filePath.split(".").pop()?.toLowerCase() ?? "";
+  const langMap: Record<string, string> = {
+    ts: "typescript",
+    tsx: "typescriptreact",
+    js: "javascript",
+    jsx: "javascriptreact",
+    json: "json",
+    md: "markdown",
+    css: "css",
+    html: "html",
+    rs: "rust",
+    py: "python",
+    toml: "toml",
+    yaml: "yaml",
+    yml: "yaml",
+    sh: "shellscript",
+    bash: "shellscript",
+    sql: "sql",
+    graphql: "graphql",
+    svg: "xml",
+    xml: "xml",
+  };
+  return langMap[ext] ?? "plaintext";
+}
+
+/**
+ * React to Claude's tool calls by opening background editor tabs and
+ * flashing the terminal indicator. Called after an assistant message is
+ * received with tool_use blocks.
+ */
+function handleViewIntegration(assistantMsg: AssistantMessage) {
+  const editorStore = useEditorStore.getState();
+  const layoutStore = useLayoutStore.getState();
+
+  for (const block of assistantMsg.message.content) {
+    if (block.type !== "tool_use") continue;
+    const toolName = block.name;
+    const input = block.input as Record<string, unknown>;
+
+    if (toolName === "Read" || toolName === "Edit" || toolName === "Write") {
+      const filePath = (input.file_path ?? input.path ?? "") as string;
+      if (!filePath) continue;
+
+      const fileName = filePath.split("/").pop() ?? filePath.split("\\").pop() ?? filePath;
+      const language = guessLanguage(filePath);
+
+      // Open a background tab (doesn't switch focus or view mode)
+      editorStore.revealFile(filePath, fileName, language);
+
+      // For Edit/Write, also mark the tab as modified by Claude
+      if (toolName === "Edit" || toolName === "Write") {
+        let normalizedPath = filePath.replace(/\\/g, "/");
+        if (/^[A-Z]:\//.test(normalizedPath)) {
+          normalizedPath = normalizedPath[0].toLowerCase() + normalizedPath.slice(1);
+        }
+        editorStore.markClaudeModified(normalizedPath);
+      }
+    } else if (toolName === "Bash") {
+      // Flash the terminal panel tab to indicate bash activity
+      layoutStore.setFlashPanelTab("terminal");
+    }
+  }
+}
+
 // ─── Tauri event bridge ─────────────────────────────────────────────────────
 
 export function useClaude() {
@@ -462,6 +530,8 @@ export function useClaude() {
               }
               // Capture before/after diffs for Edit/Write tool calls
               capturePendingDiffs(assistantMsg);
+              // View Integration: open background tabs, flash terminal indicator
+              handleViewIntegration(assistantMsg);
               break;
             }
 

@@ -48,6 +48,10 @@ export interface LayoutState {
   viewMode: ViewMode;
   /** When true, auto-open file previews when Claude touches a file */
   autoOpenFiles: boolean;
+  /** Tab ID currently flashing (brief pulse to indicate activity), auto-clears after 2s */
+  flashPanelTab: string | null;
+  /** Flash a panel tab briefly to indicate activity (auto-clears after 2 seconds) */
+  setFlashPanelTab: (tab: string | null) => void;
   togglePrimarySidebar: () => void;
   toggleSecondarySidebar: () => void;
   togglePanel: () => void;
@@ -98,6 +102,18 @@ export const useLayoutStore = create<LayoutState>()(
       zenModeSnapshot: null,
       viewMode: "claude",
       autoOpenFiles: true,
+      flashPanelTab: null,
+      setFlashPanelTab: (tab) => {
+        set({ flashPanelTab: tab });
+        if (tab !== null) {
+          setTimeout(() => {
+            // Only clear if the value hasn't been changed by another call
+            if (get().flashPanelTab === tab) {
+              set({ flashPanelTab: null });
+            }
+          }, 2000);
+        }
+      },
       togglePrimarySidebar: () => set({ primarySidebarVisible: !get().primarySidebarVisible }),
       toggleSecondarySidebar: () => set({ secondarySidebarVisible: !get().secondarySidebarVisible }),
       togglePanel: () => set({ panelVisible: !get().panelVisible }),
@@ -187,6 +203,7 @@ export const useLayoutStore = create<LayoutState>()(
           zenModeSnapshot: null,
           viewMode: "claude",
           autoOpenFiles: true,
+          flashPanelTab: null,
         });
       },
     }),

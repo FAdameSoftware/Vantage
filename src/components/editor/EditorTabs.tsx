@@ -327,6 +327,7 @@ interface SortableTabProps {
   tab: TabMeta;
   isActive: boolean;
   isPoppedOut: boolean;
+  isClaudeModified: boolean;
   onTabClick: (tab: TabMeta) => void;
   onTabDoubleClick: (tab: TabMeta) => void;
   onMiddleClick: (e: React.MouseEvent, tab: TabMeta) => void;
@@ -338,6 +339,7 @@ function SortableTab({
   tab,
   isActive,
   isPoppedOut,
+  isClaudeModified,
   onTabClick,
   onTabDoubleClick,
   onMiddleClick,
@@ -395,6 +397,15 @@ function SortableTab({
       )}
       <span className="truncate min-w-0">{tab.name}</span>
 
+      {/* Claude-modified indicator (small peach dot) */}
+      {isClaudeModified && (
+        <span
+          className="w-1.5 h-1.5 rounded-full shrink-0"
+          style={{ backgroundColor: "var(--color-peach)" }}
+          title="Modified by Claude"
+        />
+      )}
+
       {/* Dirty indicator OR close button */}
       {tab.isDirty ? (
         <span
@@ -436,6 +447,7 @@ export function EditorTabs() {
   const closeTabsToTheRight = useEditorStore((s) => s.closeTabsToTheRight);
   const splitEditor = useEditorStore((s) => s.splitEditor);
   const popoutTabs = useEditorStore((s) => s.popoutTabs);
+  const claudeModifiedTabs = useEditorStore((s) => s.claudeModifiedTabs);
   const reorderTabs = useEditorStore((s) => s.reorderTabs);
 
   const { popOut, focusPopout } = useFloatingWindow();
@@ -653,6 +665,7 @@ export function EditorTabs() {
                   tab={tab}
                   isActive={tab.id === activeTabId}
                   isPoppedOut={popoutTabs.has(tab.id)}
+                  isClaudeModified={claudeModifiedTabs.has(tab.id)}
                   onTabClick={handleTabClick}
                   onTabDoubleClick={handleTabDoubleClick}
                   onMiddleClick={handleMiddleClick}

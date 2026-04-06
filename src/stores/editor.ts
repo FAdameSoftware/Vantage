@@ -134,6 +134,17 @@ export interface EditorState {
   /** Check if a tab has a pending diff */
   hasPendingDiff: (tabId: string) => boolean;
 
+  // ── View Integration (IDE reacts to Claude actions) ─────────────────────────
+
+  /** Open a file in a background tab without switching focus or view mode */
+  revealFile: (path: string, name: string, language: string) => void;
+  /** Set of tab IDs modified by Claude (shows indicator badge) */
+  claudeModifiedTabs: Set<string>;
+  /** Mark a tab as modified by Claude (e.g., after Edit/Write tool) */
+  markClaudeModified: (tabId: string) => void;
+  /** Clear the Claude-modified indicator for a tab */
+  clearClaudeModified: (tabId: string) => void;
+
   /** Close all tabs to the right of the given tab ID */
   closeTabsToTheRight: (id: string) => void;
 
@@ -223,6 +234,7 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
   markdownPreviewTabs: new Set<string>(),
   popoutTabs: new Set<string>(),
   pendingDiffs: new Map<string, PendingDiff>(),
+  claudeModifiedTabs: new Set<string>(),
 
   openFile: (path, name, language, content, preview = false) => {
     const id = normalizeTabId(path);
@@ -288,14 +300,16 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
     }
 
     // Clean up associated Set/Map entries to prevent unbounded growth.
-    // Without this, markdownPreviewTabs, popoutTabs, and pendingDiffs accumulate
-    // stale IDs across many tab open/close cycles.
+    // Without this, markdownPreviewTabs, popoutTabs, pendingDiffs, and
+    // claudeModifiedTabs accumulate stale IDs across many tab open/close cycles.
     const nextPreview = new Set(markdownPreviewTabs);
     nextPreview.delete(id);
     const nextPopout = new Set(popoutTabs);
     nextPopout.delete(id);
     const nextDiffs = new Map(pendingDiffs);
     nextDiffs.delete(id);
+    const nextClaudeModified = new Set(get().claudeModifiedTabs);
+    nextClaudeModified.delete(id);
 
     set({
       tabs: newTabs,
@@ -305,6 +319,7 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
       markdownPreviewTabs: nextPreview,
       popoutTabs: nextPopout,
       pendingDiffs: nextDiffs,
+      claudeModifiedTabs: nextClaudeModified,
     });
   },
 
@@ -377,11 +392,12 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
       markdownPreviewTabs: new Set<string>(),
       popoutTabs: new Set<string>(),
       pendingDiffs: new Map<string, PendingDiff>(),
+      claudeModifiedTabs: new Set<string>(),
     });
   },
 
   closeOtherTabs: (id) => {
-    const { tabs, markdownPreviewTabs, popoutTabs, pendingDiffs } = get();
+    const { tabs, markdownPreviewTabs, popoutTabs, pendingDiffs, claudeModifiedTabs } = get();
     // Keep only the entries for the surviving tab to prevent stale ID accumulation.
     const nextPreview = new Set<string>();
     if (markdownPreviewTabs.has(id)) nextPreview.add(id);
@@ -390,6 +406,8 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
     const nextDiffs = new Map<string, PendingDiff>();
     const existingDiff = pendingDiffs.get(id);
     if (existingDiff) nextDiffs.set(id, existingDiff);
+    const nextClaudeModified = new Set<string>();
+    if (claudeModifiedTabs.has(id)) nextClaudeModified.add(id);
 
     set({
       tabs: tabs.filter((t) => t.id === id),
@@ -397,6 +415,7 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
       markdownPreviewTabs: nextPreview,
       popoutTabs: nextPopout,
       pendingDiffs: nextDiffs,
+      claudeModifiedTabs: nextClaudeModified,
     });
   },
 
@@ -515,8 +534,53 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
     return get().pendingDiffs.has(tabId);
   },
 
+  revealFile: (path, name, language) => {
+    const id = normalizeTabId(path);
+    const { tabs } = get();
+
+    // If a tab for this path already exists, do nothing — don't switch to it
+    if (tabs.find((t) => t.id === id)) return;
+
+    // Create a background preview tab without switching active tab
+    const currentActiveTabId = get().activeTabId;
+    const newTabs = tabs.filter((t) => !t.isPreview);
+
+    const newTab: EditorTab = {
+      id,
+      path: path.replace(/\\/g, "/"),
+      name,
+      language,
+      content: "",
+      savedContent: "",
+      isDirty: false,
+      isPreview: true,
+    };
+
+    set({
+      tabs: [...newTabs, newTab],
+      // Preserve the current active tab — do NOT switch focus
+      activeTabId: currentActiveTabId,
+    });
+  },
+
+  markClaudeModified: (tabId) => {
+    set((state) => {
+      const next = new Set(state.claudeModifiedTabs);
+      next.add(tabId);
+      return { claudeModifiedTabs: next };
+    });
+  },
+
+  clearClaudeModified: (tabId) => {
+    set((state) => {
+      const next = new Set(state.claudeModifiedTabs);
+      next.delete(tabId);
+      return { claudeModifiedTabs: next };
+    });
+  },
+
   closeTabsToTheRight: (id) => {
-    const { tabs, markdownPreviewTabs, popoutTabs, pendingDiffs } = get();
+    const { tabs, markdownPreviewTabs, popoutTabs, pendingDiffs, claudeModifiedTabs } = get();
     const idx = tabs.findIndex((t) => t.id === id);
     if (idx === -1) return;
     const keepTabs = tabs.slice(0, idx + 1);
@@ -534,6 +598,10 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
     pendingDiffs.forEach((diff, tid) => {
       if (!removedIds.has(tid)) nextDiffs.set(tid, diff);
     });
+    const nextClaudeModified = new Set<string>();
+    claudeModifiedTabs.forEach((tid) => {
+      if (!removedIds.has(tid)) nextClaudeModified.add(tid);
+    });
 
     set({
       tabs: keepTabs,
@@ -541,6 +609,7 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
       markdownPreviewTabs: nextPreview,
       popoutTabs: nextPopout,
       pendingDiffs: nextDiffs,
+      claudeModifiedTabs: nextClaudeModified,
     });
   },
 
@@ -573,6 +642,7 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
       markdownPreviewTabs: new Set<string>(),
       popoutTabs: new Set<string>(),
       pendingDiffs: new Map<string, PendingDiff>(),
+      claudeModifiedTabs: new Set<string>(),
     });
   },
 }));
