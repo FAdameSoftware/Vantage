@@ -1,19 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import type { ConversationCheckpoint } from "@/stores/conversation";
+import { formatTimestamp24 } from "@/lib/formatters";
 
 interface CheckpointDotProps {
   checkpoint: ConversationCheckpoint;
   index: number;
   isActive: boolean;
   onRestore: (index: number) => void;
-}
-
-function formatTime(ts: number): string {
-  const d = new Date(ts);
-  const h = d.getHours().toString().padStart(2, "0");
-  const m = d.getMinutes().toString().padStart(2, "0");
-  const s = d.getSeconds().toString().padStart(2, "0");
-  return `${h}:${m}:${s}`;
 }
 
 export function CheckpointDot({ checkpoint, index, isActive, onRestore }: CheckpointDotProps) {
@@ -77,7 +70,7 @@ export function CheckpointDot({ checkpoint, index, isActive, onRestore }: Checkp
                   className="mt-0.5 font-mono"
                   style={{ color: "var(--color-overlay-1)" }}
                 >
-                  {formatTime(checkpoint.timestamp)}
+                  {formatTimestamp24(checkpoint.timestamp)}
                 </div>
                 <div
                   className="mt-0.5"
@@ -123,7 +116,7 @@ export function CheckpointDot({ checkpoint, index, isActive, onRestore }: Checkp
         onClick={handleClick}
         onMouseEnter={() => setShowTooltip(true)}
         onMouseLeave={() => { setShowTooltip(false); }}
-        aria-label={`Checkpoint: ${checkpoint.label} at ${formatTime(checkpoint.timestamp)}. Click to restore.`}
+        aria-label={`Checkpoint: ${checkpoint.label} at ${formatTimestamp24(checkpoint.timestamp)}. Click to restore.`}
         title={checkpoint.label}
       />
     </div>

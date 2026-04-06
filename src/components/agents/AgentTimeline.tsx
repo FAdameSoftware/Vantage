@@ -38,16 +38,6 @@ const EVENT_META: Record<AgentTimelineEvent["type"], EventMeta> = {
   message: { icon: MessageSquare, color: "var(--color-green)", label: "Message" },
 };
 
-// ── Timestamp formatter ────────────────────────────────────────────────────────
-
-function formatTimestamp(ms: number): string {
-  const d = new Date(ms);
-  const hh = d.getHours().toString().padStart(2, "0");
-  const mm = d.getMinutes().toString().padStart(2, "0");
-  const ss = d.getSeconds().toString().padStart(2, "0");
-  return `${hh}:${mm}:${ss}`;
-}
-
 // ── Single timeline event row ──────────────────────────────────────────────────
 
 interface TimelineEventRowProps {
@@ -93,7 +83,7 @@ function TimelineEventRow({ event }: TimelineEventRowProps) {
             minWidth: "56px",
           }}
         >
-          {formatTimestamp(event.timestamp)}
+          {formatTimestamp24(event.timestamp)}
         </span>
 
         {/* Type icon */}
