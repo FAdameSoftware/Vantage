@@ -24,14 +24,21 @@ import { ReadWidget } from "./ReadWidget";
 import { EditWidget } from "./EditWidget";
 import { WriteWidget } from "./WriteWidget";
 import { BashWidget } from "./BashWidget";
-import { SearchWidget } from "./SearchWidget";
+import { GrepWidget } from "./GrepWidget";
+import { GlobWidget } from "./GlobWidget";
+import { TodoWidget } from "./TodoWidget";
+import { AgentWidget } from "./AgentWidget";
 
 registerWidget("Read", ReadWidget);
 registerWidget("Edit", EditWidget);
 registerWidget("Write", WriteWidget);
 registerWidget("Bash", BashWidget);
-registerWidget("Grep", SearchWidget);
-registerWidget("Glob", SearchWidget);
+registerWidget("Grep", GrepWidget);
+registerWidget("Glob", GlobWidget);
+registerWidget("TodoWrite", TodoWidget);
+registerWidget("Task", TodoWidget);
+registerWidget("Agent", AgentWidget);
+registerWidget("SendMessage", AgentWidget);
 
 // Re-exports for convenience
 export type { WidgetProps } from "./types";

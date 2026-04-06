@@ -6,6 +6,8 @@ import {
   FolderOpen,
   Bot,
   FilePlus,
+  ListTodo,
+  MessageSquare,
 } from "lucide-react";
 import type { ToolMeta } from "./types";
 
@@ -19,6 +21,9 @@ export const toolMeta: Record<string, ToolMeta> = {
   Grep: { icon: Search, color: "var(--color-green)", label: "Grep" },
   Glob: { icon: FolderOpen, color: "var(--color-teal)", label: "Glob" },
   Agent: { icon: Bot, color: "var(--color-mauve)", label: "Agent" },
+  TodoWrite: { icon: ListTodo, color: "var(--color-lavender)", label: "Tasks" },
+  Task: { icon: ListTodo, color: "var(--color-lavender)", label: "Task" },
+  SendMessage: { icon: MessageSquare, color: "var(--color-mauve)", label: "Send Message" },
 };
 
 export function getToolMeta(name: string): ToolMeta {
