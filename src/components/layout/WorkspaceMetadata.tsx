@@ -38,7 +38,11 @@ function useDetectedPorts(): number[] {
         const port = parseInt(m[1], 10);
         if (port >= 1024 && port <= 65535) found.add(port);
       }
-      setPorts(Array.from(found).sort((a, b) => a - b));
+      const newPorts = Array.from(found).sort((a, b) => a - b);
+      setPorts((prev) => {
+        if (JSON.stringify(newPorts) === JSON.stringify(prev)) return prev;
+        return newPorts;
+      });
     };
 
     scan();

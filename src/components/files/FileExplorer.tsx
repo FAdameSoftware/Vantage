@@ -240,7 +240,20 @@ export function FileExplorer() {
   } = useFileTree();
 
   const [filterQuery, setFilterQuery] = useState("");
+  const [debouncedFilterQuery, setDebouncedFilterQuery] = useState("");
   const filterInputRef = useRef<HTMLInputElement>(null);
+  const filterDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Debounce filterQuery by 150ms before applying to the tree
+  useEffect(() => {
+    if (filterDebounceRef.current) clearTimeout(filterDebounceRef.current);
+    filterDebounceRef.current = setTimeout(() => {
+      setDebouncedFilterQuery(filterQuery);
+    }, 150);
+    return () => {
+      if (filterDebounceRef.current) clearTimeout(filterDebounceRef.current);
+    };
+  }, [filterQuery]);
 
   const openFile = useEditorStore((s) => s.openFile);
   const { fileStatuses } = useGitStatus(rootPath);
@@ -437,11 +450,11 @@ export function FileExplorer() {
     }
   }, [contextNode, rootPath]);
 
-  // Filtered tree for display when a filter query is active
+  // Filtered tree for display when the debounced filter query is active
   const filteredTree = useMemo(() => {
-    if (!filterQuery.trim()) return tree;
-    return filterTree(tree, filterQuery.trim());
-  }, [tree, filterQuery]);
+    if (!debouncedFilterQuery.trim()) return tree;
+    return filterTree(tree, debouncedFilterQuery.trim());
+  }, [tree, debouncedFilterQuery]);
 
   const handleOpenFolder = useCallback(async () => {
     try {
@@ -595,13 +608,13 @@ export function FileExplorer() {
                 key={node.path}
                 node={node}
                 depth={0}
-                expandedPaths={filterQuery ? new Set([...expandedPaths, ...getAllDirPaths(filteredTree)]) : expandedPaths}
+                expandedPaths={debouncedFilterQuery ? new Set([...expandedPaths, ...getAllDirPaths(filteredTree)]) : expandedPaths}
                 onToggleExpand={toggleExpand}
                 onFileClick={handleFileClick}
                 onFileDoubleClick={handleFileDoubleClick}
                 onContextMenu={handleContextMenu}
                 gitStatuses={fileStatuses}
-                filterQuery={filterQuery}
+                filterQuery={debouncedFilterQuery}
               />
             ))}
 

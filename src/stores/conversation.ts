@@ -117,6 +117,8 @@ export interface ConversationState {
 
   // Internal streaming accumulator
   activeBlocks: Map<number, ActiveBlock>;
+  /** Incremented on activeBlocks mutation to trigger re-renders without cloning the Map */
+  activeBlocksVersion: number;
   activeMessageId: string | null;
 
   // Session info
@@ -318,6 +320,7 @@ const DEFAULT_STATE: Omit<
   isThinking: false,
   thinkingStartedAt: null,
   activeBlocks: new Map(),
+  activeBlocksVersion: 0,
   activeMessageId: null,
   session: null,
   totalCost: 0,
@@ -425,6 +428,8 @@ export const useConversationStore = create<ConversationState>()(
             console.warn(`Ignoring content_block_delta for unknown block index ${index}`);
             return {};
           }
+          // Mutate the existing block in-place and bump a version counter
+          // to trigger re-renders, avoiding O(n) Map copies on every streaming delta.
           const updated: ActiveBlock = { ...existing };
 
           if (delta.type === "text_delta") {
@@ -435,9 +440,8 @@ export const useConversationStore = create<ConversationState>()(
             updated.inputJson += delta.partial_json;
           }
 
-          const next = new Map(state.activeBlocks);
-          next.set(index, updated);
-          return { activeBlocks: next };
+          state.activeBlocks.set(index, updated);
+          return { activeBlocksVersion: (state.activeBlocksVersion ?? 0) + 1 };
         });
         break;
       }
@@ -603,6 +607,7 @@ export const useConversationStore = create<ConversationState>()(
     set({
       ...DEFAULT_STATE,
       activeBlocks: new Map(),
+      activeBlocksVersion: 0,
       sessionAllowedTools: new Set(),
       pinnedMessageIds: new Set(),
     });
@@ -675,6 +680,7 @@ export const useConversationStore = create<ConversationState>()(
     set({
       ...DEFAULT_STATE,
       activeBlocks: new Map(),
+      activeBlocksVersion: 0,
       sessionAllowedTools: new Set(),
       pinnedMessageIds: new Set(),
     });

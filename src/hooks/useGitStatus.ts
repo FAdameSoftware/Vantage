@@ -34,6 +34,7 @@ export function useGitStatus(rootPath: string | null): UseGitStatusReturn {
   );
   const [isGitRepo, setIsGitRepo] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const lastRefreshRef = useRef<number>(0);
 
   const stagedFiles = useMemo(
     () => allStatuses.filter((s) => s.is_staged),
@@ -89,7 +90,11 @@ export function useGitStatus(rootPath: string | null): UseGitStatusReturn {
   useEffect(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
     refresh();
-    intervalRef.current = setInterval(refresh, 5000);
+    intervalRef.current = setInterval(() => {
+      // Skip redundant poll if an event-driven refresh ran within the last 3 seconds
+      if (Date.now() - lastRefreshRef.current < 3000) return;
+      refresh();
+    }, 5000);
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
@@ -101,6 +106,7 @@ export function useGitStatus(rootPath: string | null): UseGitStatusReturn {
   // Also refresh on file change events
   useEffect(() => {
     const unlisten = listen("file_changed", () => {
+      lastRefreshRef.current = Date.now();
       refresh();
     });
     return () => {

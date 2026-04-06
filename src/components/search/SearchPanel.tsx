@@ -157,6 +157,7 @@ export function SearchPanel() {
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
   const [recentSearches, setRecentSearches] = useState<string[]>(() => loadRecentSearches());
   const [showRecent, setShowRecent] = useState(false);
+  const [regexError, setRegexError] = useState<string | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const recentDropdownRef = useRef<HTMLDivElement>(null);
@@ -167,7 +168,22 @@ export function SearchPanel() {
     async (searchQuery: string) => {
       if (!projectRootPath || searchQuery.length < 2) {
         setResults(null);
+        setRegexError(null);
         return;
+      }
+
+      // Validate regex syntax before sending to backend
+      if (isRegex) {
+        try {
+          new RegExp(searchQuery);
+          setRegexError(null);
+        } catch {
+          setRegexError("Invalid regex");
+          setResults(null);
+          return;
+        }
+      } else {
+        setRegexError(null);
       }
 
       setLoading(true);
@@ -578,6 +594,16 @@ export function SearchPanel() {
 
       {/* Results area */}
       <div className="flex-1 overflow-y-auto scrollbar-thin">
+        {/* Regex error */}
+        {regexError && isRegex && (
+          <div
+            className="px-3 py-1.5 text-xs"
+            style={{ color: "var(--color-red)" }}
+          >
+            {regexError}
+          </div>
+        )}
+
         {/* Summary line */}
         {results !== null && query.length >= 2 && (
           <div
