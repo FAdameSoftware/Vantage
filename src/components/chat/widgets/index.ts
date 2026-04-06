@@ -4,18 +4,9 @@ import { GenericWidget } from "./GenericWidget";
 // ─── Widget Registry ────────────────────────────────────────────────────────
 //
 // Maps tool names to their specialized widget components.
-// Tasks 2-7 will register per-tool widgets (ReadWidget, BashWidget, etc.).
 // Any tool not in the registry falls back to GenericWidget.
 
-const widgetRegistry: Record<string, React.ComponentType<WidgetProps>> = {
-  // Specialized widgets will be registered here as they are created:
-  // Read: ReadWidget,
-  // Bash: BashWidget,
-  // Edit: EditWidget,
-  // Write: WriteWidget,
-  // Grep: GrepWidget,
-  // Glob: GlobWidget,
-};
+const widgetRegistry: Record<string, React.ComponentType<WidgetProps>> = {};
 
 /** Look up the widget for a given tool name, falling back to GenericWidget */
 export function getWidget(toolName: string): React.ComponentType<WidgetProps> {
@@ -26,6 +17,21 @@ export function getWidget(toolName: string): React.ComponentType<WidgetProps> {
 export function registerWidget(toolName: string, widget: React.ComponentType<WidgetProps>) {
   widgetRegistry[toolName] = widget;
 }
+
+// ─── Register all built-in widgets (side-effect imports) ───────────────────
+
+import { ReadWidget } from "./ReadWidget";
+import { EditWidget } from "./EditWidget";
+import { WriteWidget } from "./WriteWidget";
+import { BashWidget } from "./BashWidget";
+import { SearchWidget } from "./SearchWidget";
+
+registerWidget("Read", ReadWidget);
+registerWidget("Edit", EditWidget);
+registerWidget("Write", WriteWidget);
+registerWidget("Bash", BashWidget);
+registerWidget("Grep", SearchWidget);
+registerWidget("Glob", SearchWidget);
 
 // Re-exports for convenience
 export type { WidgetProps } from "./types";
