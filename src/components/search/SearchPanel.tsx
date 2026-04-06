@@ -628,6 +628,7 @@ function ToggleButton({
       type="button"
       onClick={onClick}
       title={title}
+      aria-label={title}
       className="flex items-center justify-center w-6 h-6 rounded shrink-0 transition-colors"
       style={{
         color: active ? "var(--color-blue)" : "var(--color-overlay-1)",
@@ -670,6 +671,7 @@ function FileResultGroup({
         onClick={onToggle}
         role="button"
         tabIndex={0}
+        aria-expanded={isExpanded}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();

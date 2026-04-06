@@ -130,13 +130,13 @@ export function useTerminal(options: UseTerminalOptions): UseTerminalReturn {
 
         // Terminal -> PTY (user keystrokes to shell)
         const inputDisposable = terminal.onData((data: string) => {
-          try { pty.write(data); } catch { /* PTY handle may be closed */ }
+          try { pty.write(data); } catch (e) { console.debug('[Terminal] PTY write error:', e); }
         });
 
         // Terminal resize -> PTY resize
         const resizeDisposable = terminal.onResize(
           ({ cols, rows }: { cols: number; rows: number }) => {
-            try { pty.resize(cols, rows); } catch { /* PTY handle may be invalid during transitions */ }
+            try { pty.resize(cols, rows); } catch (e) { console.debug('[Terminal] PTY resize error:', e); }
           }
         );
 

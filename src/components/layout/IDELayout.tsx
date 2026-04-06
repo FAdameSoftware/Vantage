@@ -233,7 +233,7 @@ export function IDELayout() {
   // Claude View: chat-first layout with navigation strip
   if (viewMode === "claude") {
     return (
-      <div className="flex flex-col h-screen w-screen overflow-hidden" role="application" aria-label="Vantage IDE">
+      <div className="flex flex-col h-screen w-screen overflow-hidden">
         <TitleBar />
         <ClaudeViewLayout />
         <StatusBar />
@@ -243,7 +243,7 @@ export function IDELayout() {
 
   // IDE View: traditional editor layout
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden" role="application" aria-label="Vantage IDE">
+    <div className="flex flex-col h-screen w-screen overflow-hidden">
       <TitleBar />
 
       <div className="flex flex-1 overflow-hidden">

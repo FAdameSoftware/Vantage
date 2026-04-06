@@ -352,6 +352,7 @@ export function useClaude() {
   // ── Set up Tauri event listeners ──
 
   useEffect(() => {
+    let cancelled = false;
     const unlisteners: UnlistenFn[] = [];
 
     async function setupListeners() {
@@ -533,6 +534,7 @@ export function useClaude() {
           }
         },
       );
+      if (cancelled) { unlistenMessage(); return; }
       unlisteners.push(unlistenMessage);
 
       // claude_permission_request
@@ -562,6 +564,7 @@ export function useClaude() {
           }
         },
       );
+      if (cancelled) { unlistenPermission(); return; }
       unlisteners.push(unlistenPermission);
 
       // claude_status
@@ -579,12 +582,14 @@ export function useClaude() {
           setConnectionStatus(mapped, error);
         },
       );
+      if (cancelled) { unlistenStatus(); return; }
       unlisteners.push(unlistenStatus);
     }
 
     setupListeners();
 
     return () => {
+      cancelled = true;
       for (const unlisten of unlisteners) {
         unlisten();
       }
@@ -676,6 +681,7 @@ export function useClaude() {
               effortLevel: settings.effortLevel,
               planMode: settings.planMode,
               fromPr: null,
+              skipPermissions: settings.skipPermissions ?? false,
             });
             sessionIdRef.current = id;
             const session: SessionMetadata = {
@@ -719,10 +725,13 @@ export function useClaude() {
       updatedInput?: Record<string, unknown>,
       denyReason?: string,
     ) => {
-      if (!sessionIdRef.current) return;
+      // Read session ID from store (not local ref) so this works from any
+      // component that calls useClaude(), including PermissionDialog.
+      const sid = sessionIdRef.current ?? useConversationStore.getState().session?.sessionId;
+      if (!sid) return;
       try {
         await invoke("claude_respond_permission", {
-          sessionId: sessionIdRef.current,
+          sessionId: sid,
           allow,
           updatedInput: updatedInput ?? null,
           denyReason: denyReason ?? null,
@@ -808,6 +817,7 @@ export function useClaude() {
         effortLevel: useSettingsStore.getState().effortLevel,
         planMode: false,
         fromPr: null,
+        skipPermissions: useSettingsStore.getState().skipPermissions ?? false,
       });
       agentsStore.linkSession(agentId, sessionId);
     } catch (err) {

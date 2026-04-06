@@ -70,6 +70,7 @@ export function PanelArea() {
           <button
             key={tab.id}
             onClick={() => setActivePanelTab(tab.id)}
+            aria-label={tab.label}
             className="flex items-center gap-1 px-2 h-6 text-[11px] transition-colors relative shrink-0"
             style={{
               color:

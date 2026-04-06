@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Brain } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { expandVariants, expandTransition } from "@/lib/animations";
 
 interface ThinkingIndicatorProps {
   startedAt: number;
@@ -42,10 +43,11 @@ export function ThinkingIndicator({ startedAt, thinkingText }: ThinkingIndicator
       <AnimatePresence>
         {expanded && thinkingText && (
           <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
+            variants={expandVariants}
+            initial="collapsed"
+            animate="expanded"
+            exit="collapsed"
+            transition={expandTransition}
             className="overflow-hidden"
           >
             <div

@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { useKeybindings } from "@/hooks/useKeybindings";
 import { useAgentNotifications } from "@/hooks/useAgentNotifications";
 import { useAutoUpdate } from "@/hooks/useAutoUpdate";
+import { MotionConfig } from "framer-motion";
 // import { useProjectUsage } from "@/hooks/useProjectUsage"; // disabled — causes hooks crash
 import { useCustomTheme } from "@/hooks/useCustomTheme";
 import { PermissionDialog } from "@/components/permissions/PermissionDialog";
@@ -79,28 +80,30 @@ function App() {
 
   // If this is a popout window, render only the floating editor
   if (isPopoutWindow()) {
-    return <PopoutEditor />;
+    return <ErrorBoundary><PopoutEditor /></ErrorBoundary>;
   }
 
   return (
     <ErrorBoundary>
-      <IDELayout />
-      <CommandPalette />
-      <TabSwitcher />
-      <PermissionDialog />
-      <NotificationCenter />
-      <PrerequisiteCheck />
-      <Toaster
-        position="bottom-right"
-        toastOptions={{
-          style: {
-            backgroundColor: "var(--color-surface-0)",
-            color: "var(--color-text)",
-            border: "1px solid var(--color-surface-1)",
-          },
-        }}
-      />
-      <DevPanel />
+      <MotionConfig reducedMotion="user">
+        <IDELayout />
+        <CommandPalette />
+        <TabSwitcher />
+        <PermissionDialog />
+        <NotificationCenter />
+        <PrerequisiteCheck />
+        <Toaster
+          position="bottom-right"
+          toastOptions={{
+            style: {
+              backgroundColor: "var(--color-surface-0)",
+              color: "var(--color-text)",
+              border: "1px solid var(--color-surface-1)",
+            },
+          }}
+        />
+        <DevPanel />
+      </MotionConfig>
     </ErrorBoundary>
   );
 }

@@ -51,6 +51,7 @@ export function SettingsPanel() {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
+            aria-label={tab.label}
             className="flex items-center gap-1.5 px-3 h-8 text-xs transition-colors relative shrink-0 whitespace-nowrap"
             style={{
               color:

@@ -24,6 +24,8 @@ export interface WorkspaceFile {
   chat: WorkspaceChatState;
   agents: WorkspaceAgentState;
   agentConversations?: WorkspaceAgentConversationsState;
+  mergeQueue?: WorkspaceMergeQueueState;
+  verification?: WorkspaceVerificationState;
   terminal: WorkspaceTerminalState;
 }
 
@@ -173,6 +175,45 @@ export interface SerializedAgentConversation {
 }
 
 // ─── Terminal ──────────────────────────────────────────────────────
+
+// ─── Merge Queue ──────────────────────────────────────────────────
+
+export interface WorkspaceMergeQueueState {
+  entries: {
+    id: string;
+    agentId: string;
+    agentName: string;
+    branchName: string;
+    worktreePath: string;
+    status: string;
+    position: number;
+    addedAt: number;
+    mergedAt?: number;
+  }[];
+  defaultGates: { name: string; command: string }[];
+}
+
+// ─── Verification ─────────────────────────────────────────────────
+
+export interface WorkspaceVerificationState {
+  agents: Record<string, {
+    agentId: string;
+    agentName: string;
+    worktreePath: string;
+    checks: {
+      name: string;
+      command: string;
+      status: string;
+      exitCode?: number;
+      durationMs?: number;
+      lastRunAt?: number;
+    }[];
+    overallStatus: string;
+    lastRunAt?: number;
+  }>;
+}
+
+// ─── Terminal ─────────────────────────────────────────────────────
 
 export interface WorkspaceTerminalState {
   /** Terminal tab configurations (not the PTY state — that cannot be serialized) */

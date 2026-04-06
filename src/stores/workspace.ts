@@ -180,6 +180,8 @@ function collectWorkspaceState(projectPath: string): WorkspaceFile {
   const conversation = useConversationStore.getState();
   const agents = useAgentsStore.getState();
   const agentConversations = useAgentConversationsStore.getState();
+  const mergeQueue = useMergeQueueStore.getState();
+  const verification = useVerificationStore.getState();
 
   return {
     version: 1,
@@ -243,6 +245,42 @@ function collectWorkspaceState(projectPath: string): WorkspaceFile {
             totalCost: conv.totalCost,
             totalTokens: { ...conv.totalTokens },
           } satisfies SerializedAgentConversation,
+        ]),
+      ),
+    },
+    mergeQueue: {
+      entries: mergeQueue.entries.map((e) => ({
+        id: e.id,
+        agentId: e.agentId,
+        agentName: e.agentName,
+        branchName: e.branchName,
+        worktreePath: e.worktreePath,
+        status: e.status,
+        position: e.position,
+        addedAt: e.addedAt,
+        mergedAt: e.mergedAt,
+      })),
+      defaultGates: [...mergeQueue.defaultGates],
+    },
+    verification: {
+      agents: Object.fromEntries(
+        [...verification.agents.entries()].map(([id, v]) => [
+          id,
+          {
+            agentId: v.agentId,
+            agentName: v.agentName,
+            worktreePath: v.worktreePath,
+            checks: v.checks.map((c) => ({
+              name: c.name,
+              command: c.command,
+              status: c.status,
+              exitCode: c.exitCode,
+              durationMs: c.durationMs,
+              lastRunAt: c.lastRunAt,
+            })),
+            overallStatus: v.overallStatus,
+            lastRunAt: v.lastRunAt,
+          },
         ]),
       ),
     },
@@ -366,7 +404,38 @@ async function applyWorkspaceState(ws: WorkspaceFile): Promise<void> {
     },
   });
 
-  // 5. Agent conversations — restore per-agent messages
+  // 5. Merge queue — restore entries and default gates
+  if (ws.mergeQueue) {
+    useMergeQueueStore.setState({
+      entries: ws.mergeQueue.entries.map((e) => ({
+        ...e,
+        gates: [],
+        status: e.status as import("./mergeQueue").MergeQueueEntry["status"],
+      })),
+      defaultGates: [...ws.mergeQueue.defaultGates],
+    });
+  }
+
+  // 6. Verification — restore agent verification state
+  if (ws.verification) {
+    const verMap = new Map<string, import("./verification").AgentVerification>();
+    for (const [id, v] of Object.entries(ws.verification.agents)) {
+      verMap.set(id, {
+        agentId: v.agentId,
+        agentName: v.agentName,
+        worktreePath: v.worktreePath,
+        checks: v.checks.map((c) => ({
+          ...c,
+          status: c.status as import("./verification").CheckStatus,
+        })),
+        overallStatus: v.overallStatus as import("./verification").CheckStatus,
+        lastRunAt: v.lastRunAt,
+      });
+    }
+    useVerificationStore.setState({ agents: verMap });
+  }
+
+  // 7. Agent conversations — restore per-agent messages
   if (ws.agentConversations) {
     const convMap = new Map<string, import("./agentConversations").AgentConversationState>();
     for (const [agentId, serialized] of Object.entries(ws.agentConversations.conversations)) {
@@ -470,12 +539,8 @@ export const useWorkspaceStore = create<WorkspaceManagerState>()(
         // 7. Set the current project path
         set({ currentProjectPath: projectPath });
 
-        // 8. Start file watcher
-        try {
-          await invoke("start_file_watcher", { path: projectPath });
-        } catch (err) {
-          console.warn("Failed to start file watcher:", err);
-        }
+        // 8. File watcher is started by useFileTree hook when projectRootPath changes.
+        // Do NOT start it here to avoid double-registration (useFileTree owns the watcher lifecycle).
       } finally {
         set({ isLoading: false });
       }

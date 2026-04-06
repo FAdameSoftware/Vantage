@@ -99,6 +99,7 @@ impl ClaudeProcess {
 
         // Skip permissions (dangerous — bypasses all permission prompts)
         if options.skip_permissions {
+            eprintln!("[SECURITY] Starting Claude session with --dangerously-skip-permissions enabled");
             cmd.arg("--dangerously-skip-permissions");
         }
 

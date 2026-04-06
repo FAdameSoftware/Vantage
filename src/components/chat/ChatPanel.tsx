@@ -292,7 +292,7 @@ function ChatSearchBar({ onClose }: ChatSearchBarProps) {
     const lowerQuery = query.toLowerCase();
     const indices: number[] = [];
     messages.forEach((msg, i) => {
-      if (msg.text.toLowerCase().includes(lowerQuery)) {
+      if (msg.text?.toLowerCase().includes(lowerQuery)) {
         indices.push(i);
       }
     });

@@ -360,6 +360,7 @@ function AssistantBubble({
               className="flex items-center gap-2 text-xs italic cursor-pointer bg-transparent border-none p-0 mb-1"
               style={{ color: "var(--color-overlay-1)" }}
               onClick={() => setThinkingExpanded(!thinkingExpanded)}
+              aria-expanded={thinkingExpanded}
             >
               <Brain size={12} style={{ color: "var(--color-mauve)" }} />
               <span>Thought process</span>

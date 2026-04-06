@@ -460,11 +460,13 @@ export function EditorTabs() {
       const { invoke } = await import("@tauri-apps/api/core");
       await invoke("write_file", { path: tab.path, content: tab.content });
       markSaved(tabId, tab.content);
+      closeTab(tabId);
+      setUnsavedDialog({ visible: false, tabId: null, tabName: "" });
     } catch (e) {
       console.error("Failed to save file before closing:", e);
+      // Don't close tab on save failure — user would lose their work
+      setUnsavedDialog({ visible: false, tabId: null, tabName: "" });
     }
-    closeTab(tabId);
-    setUnsavedDialog({ visible: false, tabId: null, tabName: "" });
   }, [unsavedDialog, tabs, markSaved, closeTab]);
 
   const handleUnsavedDiscard = useCallback(() => {

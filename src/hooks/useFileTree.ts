@@ -159,6 +159,7 @@ export function useFileTree(): UseFileTreeReturn {
 
   // Listen for file change events from the Rust watcher
   useEffect(() => {
+    let cancelled = false;
     let unlisten: UnlistenFn | null = null;
 
     listen<FileChangeEvent>("file_changed", () => {
@@ -166,14 +167,21 @@ export function useFileTree(): UseFileTreeReturn {
       // On any file change, refresh the tree.
       // For a more efficient approach, we could update only the affected subtree,
       // but a full refresh at depth 1 is fast enough for most projects.
-      if (rootPath) {
+      if (!cancelled && rootPath) {
         refresh();
       }
     }).then((fn) => {
+      if (cancelled) {
+        // Cleanup ran before the listen promise resolved — immediately unlisten
+        // to prevent the handler from persisting as a leaked listener.
+        fn();
+        return;
+      }
       unlisten = fn;
     });
 
     return () => {
+      cancelled = true;
       if (unlisten) unlisten();
     };
   }, [rootPath, refresh]);
