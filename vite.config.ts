@@ -20,12 +20,21 @@ export default defineConfig(async () => ({
     hmr: host
       ? { protocol: "ws", host, port: 1421 }
       : undefined,
-    watch: { ignored: ["**/src-tauri/**"] },
+    watch: { ignored: ["**/src-tauri/**", "**/reference-repos/**"] },
+    fs: { allow: ["."] },
+  },
+  optimizeDeps: {
+    exclude: ["reference-repos"],
+  },
+  build: {
+    rollupOptions: {
+      external: [/reference-repos/],
+    },
   },
   test: {
     environment: "jsdom",
     globals: true,
-    exclude: ["e2e/**", "node_modules/**"],
+    exclude: ["e2e/**", "node_modules/**", "reference-repos/**"],
     setupFiles: ["./src/components/__tests__/setup.ts"],
   },
 }));
