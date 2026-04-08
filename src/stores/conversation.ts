@@ -544,6 +544,20 @@ export const useConversationStore = create<ConversationState>()(
         messages[existingIdx] = assembled;
         return { messages };
       }
+
+      // Dedup guard: The Claude CLI sends both streaming events (which produce
+      // a message via message_stop) AND a complete "assistant" message for the
+      // same turn. If we already have a recent assistant message with identical
+      // text, skip appending this duplicate.
+      if (assembled.text && messages.length > 0) {
+        const last = messages[messages.length - 1];
+        if (last.role === "assistant" && last.text === assembled.text) {
+          // Same content — replace with the authoritative version (has correct ID)
+          messages[messages.length - 1] = assembled;
+          return { messages };
+        }
+      }
+
       // Otherwise append
       return { messages: [...messages, assembled] };
     });
