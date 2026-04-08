@@ -21,7 +21,10 @@ export default defineConfig(async () => ({
       ? { protocol: "ws", host, port: 1421 }
       : undefined,
     watch: { ignored: ["**/src-tauri/**", "**/reference-repos/**"] },
-    fs: { allow: ["./src", "./public", "./node_modules"] },
+    fs: {
+      allow: ["."],
+      deny: ["**/src-tauri/**", "**/reference-repos/**", "**/.env*"],
+    },
   },
   optimizeDeps: {
     exclude: ["reference-repos"],
