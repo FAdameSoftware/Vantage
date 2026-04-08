@@ -9,9 +9,13 @@ describe("usageStore", () => {
       outputTokens: 0,
       cacheCreationTokens: 0,
       cacheReadTokens: 0,
+      totalCacheCreationTokens: 0,
+      totalCacheReadTokens: 0,
       totalCostUsd: 0,
       turnCount: 0,
       rateLimitInfo: null,
+      turnHistory: [],
+      modelBreakdown: {},
     });
   });
 
@@ -164,5 +168,118 @@ describe("usageStore", () => {
   it("getTokensFormatted returns k-formatted number at or above 1000", () => {
     useUsageStore.getState().addTurnUsage({ inputTokens: 1500, outputTokens: 500 });
     expect(useUsageStore.getState().getTokensFormatted()).toBe("2.0k");
+  });
+
+  // ── New: turn history tracking ──
+
+  it("addTurnUsage records turn history entries", () => {
+    useUsageStore.getState().addTurnUsage({
+      inputTokens: 100,
+      outputTokens: 50,
+      costUsd: 0.01,
+      model: "claude-opus-4-6",
+      durationMs: 5000,
+    });
+    useUsageStore.getState().addTurnUsage({
+      inputTokens: 200,
+      outputTokens: 75,
+      costUsd: 0.02,
+    });
+
+    const state = useUsageStore.getState();
+    expect(state.turnHistory).toHaveLength(2);
+    expect(state.turnHistory[0].inputTokens).toBe(100);
+    expect(state.turnHistory[0].model).toBe("claude-opus-4-6");
+    expect(state.turnHistory[0].durationMs).toBe(5000);
+    expect(state.turnHistory[1].inputTokens).toBe(200);
+    expect(state.turnHistory[1].model).toBeUndefined();
+  });
+
+  // ── New: model breakdown from modelUsage ──
+
+  it("addTurnUsage builds model breakdown from modelUsage", () => {
+    useUsageStore.getState().addTurnUsage({
+      inputTokens: 1000,
+      outputTokens: 500,
+      costUsd: 0.10,
+      modelUsage: {
+        "claude-opus-4-6": { input_tokens: 600, output_tokens: 400 },
+        "claude-sonnet-4-6": { input_tokens: 400, output_tokens: 100 },
+      },
+    });
+
+    const state = useUsageStore.getState();
+    expect(Object.keys(state.modelBreakdown)).toHaveLength(2);
+    expect(state.modelBreakdown["claude-opus-4-6"].inputTokens).toBe(600);
+    expect(state.modelBreakdown["claude-opus-4-6"].outputTokens).toBe(400);
+    // Opus gets 400/500 = 80% of $0.10 = $0.08
+    expect(state.modelBreakdown["claude-opus-4-6"].costUsd).toBeCloseTo(0.08);
+    expect(state.modelBreakdown["claude-sonnet-4-6"].inputTokens).toBe(400);
+    // Sonnet gets 100/500 = 20% of $0.10 = $0.02
+    expect(state.modelBreakdown["claude-sonnet-4-6"].costUsd).toBeCloseTo(0.02);
+  });
+
+  it("addTurnUsage falls back to single model attribution when no modelUsage", () => {
+    useUsageStore.getState().addTurnUsage({
+      inputTokens: 100,
+      outputTokens: 50,
+      costUsd: 0.01,
+      model: "claude-opus-4-6",
+    });
+
+    const state = useUsageStore.getState();
+    expect(state.modelBreakdown["claude-opus-4-6"]).toBeDefined();
+    expect(state.modelBreakdown["claude-opus-4-6"].inputTokens).toBe(100);
+    expect(state.modelBreakdown["claude-opus-4-6"].outputTokens).toBe(50);
+    expect(state.modelBreakdown["claude-opus-4-6"].costUsd).toBe(0.01);
+  });
+
+  it("addTurnUsage accumulates model breakdown across turns", () => {
+    useUsageStore.getState().addTurnUsage({
+      inputTokens: 100,
+      outputTokens: 50,
+      costUsd: 0.01,
+      model: "claude-opus-4-6",
+    });
+    useUsageStore.getState().addTurnUsage({
+      inputTokens: 200,
+      outputTokens: 100,
+      costUsd: 0.02,
+      model: "claude-opus-4-6",
+    });
+
+    const state = useUsageStore.getState();
+    expect(state.modelBreakdown["claude-opus-4-6"].inputTokens).toBe(300);
+    expect(state.modelBreakdown["claude-opus-4-6"].outputTokens).toBe(150);
+    expect(state.modelBreakdown["claude-opus-4-6"].costUsd).toBeCloseTo(0.03);
+  });
+
+  // ── New: totalCacheCreationTokens / totalCacheReadTokens ──
+
+  it("addTurnUsage tracks totalCacheCreationTokens and totalCacheReadTokens", () => {
+    useUsageStore.getState().addTurnUsage({ cacheCreation: 500, cacheRead: 300 });
+    useUsageStore.getState().addTurnUsage({ cacheCreation: 200, cacheRead: 100 });
+
+    const state = useUsageStore.getState();
+    expect(state.totalCacheCreationTokens).toBe(700);
+    expect(state.totalCacheReadTokens).toBe(400);
+  });
+
+  it("startSession clears turnHistory and modelBreakdown", () => {
+    useUsageStore.getState().addTurnUsage({
+      inputTokens: 100,
+      outputTokens: 50,
+      costUsd: 0.01,
+      model: "claude-opus-4-6",
+    });
+    expect(useUsageStore.getState().turnHistory).toHaveLength(1);
+    expect(Object.keys(useUsageStore.getState().modelBreakdown)).toHaveLength(1);
+
+    useUsageStore.getState().startSession();
+    const state = useUsageStore.getState();
+    expect(state.turnHistory).toHaveLength(0);
+    expect(Object.keys(state.modelBreakdown)).toHaveLength(0);
+    expect(state.totalCacheCreationTokens).toBe(0);
+    expect(state.totalCacheReadTokens).toBe(0);
   });
 });

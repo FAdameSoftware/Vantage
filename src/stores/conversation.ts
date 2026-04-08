@@ -573,6 +573,7 @@ export const useConversationStore = create<ConversationState>()(
       isError: msg.is_error,
       errors: msg.errors,
     };
+    const sessionModel = get().session?.model;
     set((state) => ({
       lastResult: summary,
       totalCost: state.totalCost + (msg.total_cost_usd ?? 0),
@@ -583,12 +584,19 @@ export const useConversationStore = create<ConversationState>()(
       connectionStatus: "ready",
       isStreaming: false,
     }));
+    // Pass full API-sourced usage data to the usage store, including
+    // per-model breakdown, cache tokens, and timing metadata
     useUsageStore.getState().addTurnUsage({
       inputTokens: msg.usage?.input_tokens,
       outputTokens: msg.usage?.output_tokens,
       cacheCreation: msg.usage?.cache_creation_input_tokens,
       cacheRead: msg.usage?.cache_read_input_tokens,
       costUsd: msg.total_cost_usd,
+      model: sessionModel,
+      durationMs: msg.duration_ms,
+      durationApiMs: msg.duration_api_ms,
+      numTurns: msg.num_turns,
+      modelUsage: msg.modelUsage,
     });
   },
 

@@ -28,6 +28,8 @@ pub struct ProjectUsage {
     pub session_output_tokens: u64,
     /// Total cache creation tokens for the latest session
     pub session_cache_tokens: u64,
+    /// Total cache read tokens for the latest session
+    pub session_cache_read_tokens: u64,
     /// Model used in the latest session
     pub model: Option<String>,
     /// Number of result messages in the latest session (turn count)
@@ -331,6 +333,7 @@ pub fn get_project_usage(cwd: &str) -> Result<ProjectUsage, String> {
         session_input_tokens: latest_parsed.input_tokens,
         session_output_tokens: latest_parsed.output_tokens,
         session_cache_tokens: latest_parsed.cache_creation_tokens,
+        session_cache_read_tokens: latest_parsed.cache_read_tokens,
         model: latest_parsed.model,
         session_turn_count: latest_parsed.turn_count,
         last_activity,
@@ -347,6 +350,7 @@ struct ParsedSessionUsage {
     input_tokens: u64,
     output_tokens: u64,
     cache_creation_tokens: u64,
+    cache_read_tokens: u64,
     model: Option<String>,
     turn_count: u32,
 }
@@ -361,6 +365,7 @@ fn parse_session_for_usage(path: &PathBuf) -> ParsedSessionUsage {
                 input_tokens: 0,
                 output_tokens: 0,
                 cache_creation_tokens: 0,
+                cache_read_tokens: 0,
                 model: None,
                 turn_count: 0,
             }
@@ -372,6 +377,7 @@ fn parse_session_for_usage(path: &PathBuf) -> ParsedSessionUsage {
     let mut input_tokens: u64 = 0;
     let mut output_tokens: u64 = 0;
     let mut cache_creation_tokens: u64 = 0;
+    let mut cache_read_tokens: u64 = 0;
     let mut model: Option<String> = None;
     let mut turn_count: u32 = 0;
 
@@ -387,8 +393,10 @@ fn parse_session_for_usage(path: &PathBuf) -> ParsedSessionUsage {
             if msg_type == "result" {
                 turn_count += 1;
 
+                // Prefer total_cost_usd (stream-json format), fall back to cost_usd/costUsd
                 if let Some(cost) = val
-                    .get("cost_usd")
+                    .get("total_cost_usd")
+                    .or_else(|| val.get("cost_usd"))
                     .or_else(|| val.get("costUsd"))
                     .and_then(|c| c.as_f64())
                 {
@@ -409,6 +417,12 @@ fn parse_session_for_usage(path: &PathBuf) -> ParsedSessionUsage {
                     {
                         cache_creation_tokens += cache;
                     }
+                    if let Some(cache_rd) = usage
+                        .get("cache_read_input_tokens")
+                        .and_then(|t| t.as_u64())
+                    {
+                        cache_read_tokens += cache_rd;
+                    }
                 }
 
                 // Also check top-level token fields (some formats put them here)
@@ -427,6 +441,11 @@ fn parse_session_for_usage(path: &PathBuf) -> ParsedSessionUsage {
                         cache_creation_tokens += cache;
                     }
                 }
+                if let Some(cache_rd) = val.get("cache_read_input_tokens").and_then(|t| t.as_u64()) {
+                    if val.get("usage").is_none() {
+                        cache_read_tokens += cache_rd;
+                    }
+                }
             }
 
             // Extract model from any message that has it
@@ -443,6 +462,7 @@ fn parse_session_for_usage(path: &PathBuf) -> ParsedSessionUsage {
         input_tokens,
         output_tokens,
         cache_creation_tokens,
+        cache_read_tokens,
         model,
         turn_count,
     }

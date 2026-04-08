@@ -8,6 +8,9 @@ import {
   Activity,
   BarChart3,
   Zap,
+  Database,
+  BookOpen,
+  Layers,
 } from "lucide-react";
 import { Spinner } from "@/components/ui/Spinner";
 
@@ -24,6 +27,8 @@ interface ModelUsage {
   total_cost_usd: number;
   input_tokens: number;
   output_tokens: number;
+  cache_creation_tokens: number;
+  cache_read_tokens: number;
   session_count: number;
 }
 
@@ -34,6 +39,8 @@ interface AnalyticsSummary {
   total_sessions: number;
   total_input_tokens: number;
   total_output_tokens: number;
+  total_cache_creation_tokens: number;
+  total_cache_read_tokens: number;
   avg_cost_per_session: number;
   date_range_start: string | null;
   date_range_end: string | null;
@@ -233,6 +240,83 @@ export function UsageDashboard() {
           />
         </div>
 
+        {/* Cache token metrics — shown when cache data is present */}
+        {(data.total_cache_creation_tokens > 0 || data.total_cache_read_tokens > 0) && (
+          <div
+            className="rounded-lg p-4"
+            style={{
+              backgroundColor: "var(--color-surface-0)",
+              border: "1px solid var(--color-surface-1)",
+            }}
+          >
+            <h2
+              className="text-sm font-medium mb-3 flex items-center gap-2"
+              style={{ color: "var(--color-text)" }}
+            >
+              <Database size={14} style={{ color: "var(--color-teal)" }} />
+              Cache Token Metrics
+              <span className="text-[10px] font-normal" style={{ color: "var(--color-overlay-1)" }}>
+                (API-sourced)
+              </span>
+            </h2>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-1.5 text-xs" style={{ color: "var(--color-subtext-0)" }}>
+                  <Activity size={11} style={{ color: "var(--color-blue)" }} />
+                  Regular Input
+                </div>
+                <div className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>
+                  {formatTokens(
+                    data.total_input_tokens -
+                      data.total_cache_creation_tokens -
+                      data.total_cache_read_tokens,
+                  )}
+                </div>
+              </div>
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-1.5 text-xs" style={{ color: "var(--color-subtext-0)" }}>
+                  <Layers size={11} style={{ color: "var(--color-peach)" }} />
+                  Cache Write
+                </div>
+                <div className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>
+                  {formatTokens(data.total_cache_creation_tokens)}
+                </div>
+              </div>
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-1.5 text-xs" style={{ color: "var(--color-subtext-0)" }}>
+                  <BookOpen size={11} style={{ color: "var(--color-teal)" }} />
+                  Cache Read
+                </div>
+                <div className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>
+                  {formatTokens(data.total_cache_read_tokens)}
+                </div>
+              </div>
+            </div>
+            {data.total_cache_read_tokens > 0 && data.total_input_tokens > 0 && (
+              <div className="mt-3">
+                <div className="flex items-center justify-between text-xs mb-1">
+                  <span style={{ color: "var(--color-subtext-0)" }}>Cache hit rate</span>
+                  <span style={{ color: "var(--color-teal)" }}>
+                    {((data.total_cache_read_tokens / data.total_input_tokens) * 100).toFixed(1)}%
+                  </span>
+                </div>
+                <div
+                  className="h-2 rounded-full overflow-hidden"
+                  style={{ backgroundColor: "var(--color-surface-1)" }}
+                >
+                  <div
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${Math.min((data.total_cache_read_tokens / data.total_input_tokens) * 100, 100)}%`,
+                      backgroundColor: "var(--color-teal)",
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Daily cost chart */}
         <div
           className="rounded-lg p-4"
@@ -284,6 +368,79 @@ export function UsageDashboard() {
             <SessionsPerDay data={data.daily_costs} />
           </div>
         </div>
+
+        {/* Per-model cost breakdown table */}
+        {data.model_usage.length > 0 && (
+          <div
+            className="rounded-lg p-4"
+            style={{
+              backgroundColor: "var(--color-surface-0)",
+              border: "1px solid var(--color-surface-1)",
+            }}
+          >
+            <h2
+              className="text-sm font-medium mb-3 flex items-center gap-2"
+              style={{ color: "var(--color-text)" }}
+            >
+              <Zap size={14} style={{ color: "var(--color-blue)" }} />
+              Per-Model Cost Breakdown
+              <span className="text-[10px] font-normal" style={{ color: "var(--color-overlay-1)" }}>
+                (API-sourced)
+              </span>
+            </h2>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs" style={{ borderCollapse: "collapse" }}>
+                <thead>
+                  <tr
+                    style={{
+                      borderBottom: "1px solid var(--color-surface-1)",
+                    }}
+                  >
+                    <th className="text-left py-2 px-2 font-medium" style={{ color: "var(--color-subtext-0)" }}>Model</th>
+                    <th className="text-right py-2 px-2 font-medium" style={{ color: "var(--color-subtext-0)" }}>Cost</th>
+                    <th className="text-right py-2 px-2 font-medium" style={{ color: "var(--color-subtext-0)" }}>Input</th>
+                    <th className="text-right py-2 px-2 font-medium" style={{ color: "var(--color-subtext-0)" }}>Output</th>
+                    <th className="text-right py-2 px-2 font-medium" style={{ color: "var(--color-subtext-0)" }}>Cache Write</th>
+                    <th className="text-right py-2 px-2 font-medium" style={{ color: "var(--color-subtext-0)" }}>Cache Read</th>
+                    <th className="text-right py-2 px-2 font-medium" style={{ color: "var(--color-subtext-0)" }}>Sessions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.model_usage.map((m) => (
+                    <tr
+                      key={m.model}
+                      style={{
+                        borderBottom: "1px solid var(--color-surface-1)",
+                      }}
+                    >
+                      <td className="py-2 px-2 font-mono" style={{ color: "var(--color-text)" }}>
+                        {m.model.replace(/-\d{8}$/, "")}
+                      </td>
+                      <td className="py-2 px-2 text-right font-mono" style={{ color: "var(--color-yellow)" }}>
+                        ${m.total_cost_usd.toFixed(4)}
+                      </td>
+                      <td className="py-2 px-2 text-right font-mono" style={{ color: "var(--color-text)" }}>
+                        {formatTokens(m.input_tokens)}
+                      </td>
+                      <td className="py-2 px-2 text-right font-mono" style={{ color: "var(--color-text)" }}>
+                        {formatTokens(m.output_tokens)}
+                      </td>
+                      <td className="py-2 px-2 text-right font-mono" style={{ color: "var(--color-peach)" }}>
+                        {m.cache_creation_tokens > 0 ? formatTokens(m.cache_creation_tokens) : "-"}
+                      </td>
+                      <td className="py-2 px-2 text-right font-mono" style={{ color: "var(--color-teal)" }}>
+                        {m.cache_read_tokens > 0 ? formatTokens(m.cache_read_tokens) : "-"}
+                      </td>
+                      <td className="py-2 px-2 text-right" style={{ color: "var(--color-text)" }}>
+                        {m.session_count}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

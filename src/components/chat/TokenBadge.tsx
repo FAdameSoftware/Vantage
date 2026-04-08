@@ -212,6 +212,11 @@ export function TokenBadge({ message }: TokenBadgeProps) {
         <Zap size={9} />
         <span>
           {formatTokenCount(usage.input_tokens)} in
+          {usage.cache_read_input_tokens != null && usage.cache_read_input_tokens > 0 && (
+            <span style={{ color: "var(--color-teal)" }}>
+              {" "}({formatTokenCount(usage.cache_read_input_tokens)} cached)
+            </span>
+          )}
         </span>
         <span style={{ color: "var(--color-overlay-0)" }}>/</span>
         <span>

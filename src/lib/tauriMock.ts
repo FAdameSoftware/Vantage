@@ -298,6 +298,7 @@ const mockInvokeHandlers: Record<string, MockInvokeHandler> = {
     session_input_tokens: 45200,
     session_output_tokens: 12800,
     session_cache_tokens: 8400,
+    session_cache_read_tokens: 32000,
     model: "claude-opus-4-6",
     session_turn_count: 14,
     last_activity: "2026-04-04T15:30:00Z",
@@ -457,10 +458,17 @@ const mockInvokeHandlers: Record<string, MockInvokeHandler> = {
 
   // ── Analytics ──
   get_analytics: () => ({
-    total_sessions: 0,
+    daily_costs: [],
+    model_usage: [],
     total_cost_usd: 0,
-    total_tokens: { input: 0, output: 0 },
-    sessions: [],
+    total_sessions: 0,
+    total_input_tokens: 0,
+    total_output_tokens: 0,
+    total_cache_creation_tokens: 0,
+    total_cache_read_tokens: 0,
+    avg_cost_per_session: 0,
+    date_range_start: null,
+    date_range_end: null,
   }),
 
   // ── Claude Settings ──

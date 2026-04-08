@@ -98,6 +98,7 @@ export function SessionInfo({ windowWidth }: SessionInfoProps) {
   const usageTotalCost = useUsageStore((s) => s.totalCostUsd);
   const usageInputTokens = useUsageStore((s) => s.inputTokens);
   const usageOutputTokens = useUsageStore((s) => s.outputTokens);
+  const usageCacheReadTokens = useUsageStore((s) => s.cacheReadTokens);
   const allTimeCost = useUsageStore((s) => s.allTimeCost);
   const projectUsageLoaded = useUsageStore((s) => s.projectUsageLoaded);
   const lastSessionModel = useUsageStore((s) => s.lastSessionModel);
@@ -203,15 +204,20 @@ export function SessionInfo({ windowWidth }: SessionInfoProps) {
             </div>
           )}
 
-          {/* Token count */}
+          {/* Token count — shows input (with cache read), output */}
           {(usageInputTokens > 0 || usageOutputTokens > 0) && (
             <div
               className="flex items-center gap-1"
-              title={`Input: ${usageInputTokens.toLocaleString()} | Output: ${usageOutputTokens.toLocaleString()}`}
+              title={`Input: ${usageInputTokens.toLocaleString()}${usageCacheReadTokens > 0 ? ` (${usageCacheReadTokens.toLocaleString()} cached)` : ""} | Output: ${usageOutputTokens.toLocaleString()}`}
             >
               <Hash size={11} />
               <span>
                 {((usageInputTokens + usageOutputTokens) / 1000).toFixed(1)}k
+                {usageCacheReadTokens > 0 && (
+                  <span style={{ color: "var(--color-teal)", fontSize: "10px" }}>
+                    {" "}({((usageCacheReadTokens) / 1000).toFixed(1)}k cached)
+                  </span>
+                )}
               </span>
             </div>
           )}
