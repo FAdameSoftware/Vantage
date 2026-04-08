@@ -35,7 +35,7 @@ export interface WorkspaceLayout {
   primarySidebarVisible: boolean;
   secondarySidebarVisible: boolean;
   panelVisible: boolean;
-  activeActivityBarItem: "explorer" | "search" | "git" | "agents" | "settings";
+  activeActivityBarItem: "explorer" | "search" | "git" | "agents" | "usage" | "plugins" | "settings";
   primarySidebarSize: number;
   secondarySidebarSize: number;
   panelSize: number;

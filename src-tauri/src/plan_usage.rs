@@ -38,7 +38,13 @@ pub struct ExtraUsage {
 #[serde(rename_all = "camelCase")]
 struct OAuthCredentials {
     access_token: String,
-    // refresh_token and expires_at are present but we don't need them for a simple fetch
+}
+
+/// The credentials file wraps tokens under a provider key like "claudeAiOauth".
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CredentialsFile {
+    claude_ai_oauth: Option<OAuthCredentials>,
 }
 
 // ── API response shape ──────────────────────────────────────────────────────
@@ -99,6 +105,17 @@ fn read_oauth_credentials() -> Result<OAuthCredentials, String> {
     let content = std::fs::read_to_string(&creds_path)
         .map_err(|e| format!("Failed to read credentials file: {}", e))?;
 
+    // Try nested format first: { "claudeAiOauth": { "accessToken": "..." } }
+    if let Ok(file) = serde_json::from_str::<CredentialsFile>(&content) {
+        if let Some(creds) = file.claude_ai_oauth {
+            if !creds.access_token.is_empty() {
+                return Ok(creds);
+            }
+            return Err("empty_token".to_string());
+        }
+    }
+
+    // Fallback: try top-level format { "accessToken": "..." }
     let creds: OAuthCredentials = serde_json::from_str(&content)
         .map_err(|e| format!("Failed to parse credentials: {}", e))?;
 

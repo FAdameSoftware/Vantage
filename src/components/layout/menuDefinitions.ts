@@ -254,6 +254,20 @@ function viewMenu(): MenuDef {
         },
       },
       {
+        label: "Usage Analytics",
+        shortcut: "Ctrl+Shift+U",
+        action: () => {
+          useLayoutStore.getState().setActiveActivityBarItem("usage");
+        },
+      },
+      {
+        label: "Plugins",
+        shortcut: "Ctrl+Shift+X",
+        action: () => {
+          useLayoutStore.getState().setActiveActivityBarItem("plugins");
+        },
+      },
+      {
         label: "Toggle Sidebar",
         shortcut: "Ctrl+B",
         separator: true,

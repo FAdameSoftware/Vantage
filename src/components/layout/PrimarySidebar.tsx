@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, GitBranch as GitBranchIcon, Bot, Settings, Files, LayoutGrid, GitFork } from "lucide-react";
+import { Search, GitBranch as GitBranchIcon, Bot, Settings, Files, LayoutGrid, GitFork, BarChart3, Puzzle } from "lucide-react";
 import { useLayoutStore, type ActivityBarItem } from "@/stores/layout";
 import { FileExplorer } from "@/components/files/FileExplorer";
 import { SearchPanel } from "@/components/search/SearchPanel";
@@ -8,6 +8,8 @@ import { KanbanBoard } from "@/components/agents/KanbanBoard";
 import { AgentTreeView } from "@/components/agents/AgentTreeView";
 import { GitLogPanel } from "@/components/git/GitLogPanel";
 import { SourceControlPanel } from "@/components/git/SourceControlPanel";
+import { UsageDashboard } from "@/components/analytics/UsageDashboard";
+import { PluginManager } from "@/components/settings/PluginManager";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 import { WorkspaceMetadata } from "./WorkspaceMetadata";
 
@@ -38,6 +40,16 @@ const panelConfig: Record<
     title: "Agents",
     icon: <Bot size={16} />,
     description: "Agent dashboard will appear here.",
+  },
+  usage: {
+    title: "Usage",
+    icon: <BarChart3 size={16} />,
+    description: "Usage analytics will appear here.",
+  },
+  plugins: {
+    title: "Plugins",
+    icon: <Puzzle size={16} />,
+    description: "Plugin management will appear here.",
   },
   settings: {
     title: "Settings",
@@ -185,6 +197,10 @@ export function PrimarySidebar() {
           <ErrorBoundary><GitPanel /></ErrorBoundary>
         ) : activeItem === "agents" ? (
           <ErrorBoundary><AgentsPanel /></ErrorBoundary>
+        ) : activeItem === "usage" ? (
+          <ErrorBoundary><UsageDashboard /></ErrorBoundary>
+        ) : activeItem === "plugins" ? (
+          <ErrorBoundary><PluginManager /></ErrorBoundary>
         ) : activeItem === "settings" ? (
           <ErrorBoundary><SettingsPanel /></ErrorBoundary>
         ) : (

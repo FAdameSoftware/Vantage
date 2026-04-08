@@ -12,6 +12,7 @@ import {
   SessionInfo,
   StatusBarBuddyWidget,
   NotificationIndicator,
+  PlanUsageIndicator,
 } from "./status-bar";
 
 /** Track window width for responsive status bar priority tiers */
@@ -89,6 +90,9 @@ export function StatusBar() {
 
           {/* Notification bell */}
           <NotificationIndicator windowWidth={windowWidth} />
+
+          {/* Plan usage indicator — mini progress bar + popover */}
+          <PlanUsageIndicator windowWidth={windowWidth} />
 
           {/* Index status — hidden below 1200px */}
           {windowWidth >= 1200 && (

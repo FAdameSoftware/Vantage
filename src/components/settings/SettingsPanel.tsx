@@ -1,25 +1,20 @@
 import { useState, useEffect } from "react";
-import { FileText, Server, BookOpen, Puzzle, Zap, Settings, Keyboard, Gauge } from "lucide-react";
+import { FileText, Server, Zap, Settings, Keyboard } from "lucide-react";
 import { ClaudeMdEditor } from "./ClaudeMdEditor";
 import { McpManager } from "./McpManager";
-import { PluginManager } from "./PluginManager";
 import { SpecViewer } from "./SpecViewer";
 import { HooksEditor } from "./HooksEditor";
 import { PreferencesEditor } from "./PreferencesEditor";
 import { KeybindingsEditor } from "./KeybindingsEditor";
-import { PlanUsagePanel } from "./PlanUsagePanel";
 
-type SettingsTab = "preferences" | "keybindings" | "plan-usage" | "claude-md" | "mcp-servers" | "plugins" | "hooks" | "spec-viewer";
+type SettingsTab = "preferences" | "keybindings" | "claude-md" | "mcp-servers" | "hooks" | "spec-viewer";
 
 const tabs: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
   { id: "preferences", label: "Preferences", icon: <Settings size={12} /> },
   { id: "keybindings", label: "Keybindings", icon: <Keyboard size={12} /> },
-  { id: "plan-usage", label: "Plan Usage", icon: <Gauge size={12} /> },
   { id: "claude-md", label: "CLAUDE.md", icon: <FileText size={12} /> },
   { id: "mcp-servers", label: "MCP Servers", icon: <Server size={12} /> },
-  { id: "plugins", label: "Plugins", icon: <Puzzle size={12} /> },
   { id: "hooks", label: "Hooks", icon: <Zap size={12} /> },
-  { id: "spec-viewer", label: "Spec Viewer", icon: <BookOpen size={12} /> },
 ];
 
 export function SettingsPanel() {
@@ -84,19 +79,15 @@ export function SettingsPanel() {
           <PreferencesEditor />
         ) : activeTab === "keybindings" ? (
           <KeybindingsEditor />
-        ) : activeTab === "plan-usage" ? (
-          <PlanUsagePanel />
         ) : activeTab === "claude-md" ? (
           <ClaudeMdEditor />
         ) : activeTab === "mcp-servers" ? (
           <McpManager />
-        ) : activeTab === "plugins" ? (
-          <PluginManager />
         ) : activeTab === "hooks" ? (
           <HooksEditor />
-        ) : (
+        ) : activeTab === "spec-viewer" ? (
           <SpecViewer />
-        )}
+        ) : null}
       </div>
     </div>
   );

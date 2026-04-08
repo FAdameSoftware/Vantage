@@ -229,6 +229,20 @@ export function useKeybindings() {
       action: () => setActiveActivityBarItem("agents"),
       description: "Focus Agents",
     },
+    {
+      key: "u",
+      ctrl: true,
+      shift: true,
+      action: () => setActiveActivityBarItem("usage"),
+      description: "Focus Usage Analytics",
+    },
+    {
+      key: "x",
+      ctrl: true,
+      shift: true,
+      action: () => setActiveActivityBarItem("plugins"),
+      description: "Focus Plugins",
+    },
 
     // Settings
     {

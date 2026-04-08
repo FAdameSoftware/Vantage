@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { invoke } from "@tauri-apps/api/core";
 
-export type ActivityBarItem = "explorer" | "search" | "git" | "agents" | "settings";
+export type ActivityBarItem = "explorer" | "search" | "git" | "agents" | "usage" | "plugins" | "settings";
 
 /** Snapshot of panel visibility used to restore state after zen mode exits */
 export interface ZenModeSnapshot {

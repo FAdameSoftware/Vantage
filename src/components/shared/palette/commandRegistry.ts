@@ -16,6 +16,7 @@ import {
   Globe,
   Keyboard,
   Maximize2,
+  Puzzle,
 } from "lucide-react";
 import { createElement } from "react";
 import { useEditorStore } from "@/stores/editor";
@@ -140,6 +141,22 @@ export function createCommands(actions: CommandActions): CommandDef[] {
       icon: icon(Bot),
       category: "View",
       action: () => actions.setActiveActivityBarItem("agents"),
+    },
+    {
+      id: "focus-usage",
+      label: "Focus Usage Analytics",
+      shortcut: "Ctrl+Shift+U",
+      icon: icon(BarChart3),
+      category: "View",
+      action: () => actions.setActiveActivityBarItem("usage"),
+    },
+    {
+      id: "focus-plugins",
+      label: "Focus Plugins",
+      shortcut: "Ctrl+Shift+X",
+      icon: icon(Puzzle),
+      category: "View",
+      action: () => actions.setActiveActivityBarItem("plugins"),
     },
     {
       id: "open-settings",

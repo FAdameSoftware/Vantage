@@ -4,6 +4,8 @@ import {
   Search,
   GitBranch,
   Bot,
+  BarChart3,
+  Puzzle,
   Settings,
   type LucideIcon,
 } from "lucide-react";
@@ -29,6 +31,8 @@ const topItems: ActivityBarEntry[] = [
   { id: "search", icon: Search, label: "Search", shortcut: "Ctrl+Shift+F" },
   { id: "git", icon: GitBranch, label: "Source Control", shortcut: "Ctrl+Shift+G" },
   { id: "agents", icon: Bot, label: "Agents", shortcut: "Ctrl+Shift+A" },
+  { id: "usage", icon: BarChart3, label: "Usage", shortcut: "Ctrl+Shift+U" },
+  { id: "plugins", icon: Puzzle, label: "Plugins", shortcut: "Ctrl+Shift+X" },
 ];
 
 const bottomItems: ActivityBarEntry[] = [
