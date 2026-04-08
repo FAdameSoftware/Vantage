@@ -2,6 +2,29 @@ import { create } from "zustand";
 import { invoke } from "@tauri-apps/api/core";
 import { formatDuration } from "@/lib/formatters";
 
+// ── Plan usage types (OAuth subscription API) ───────────────────────────────
+
+export interface UsageWindow {
+  utilization: number;
+  resetsAt: string | null;
+}
+
+export interface ExtraUsageInfo {
+  isEnabled: boolean;
+  monthlyLimit: number;
+  usedCredits: number;
+  utilization: number;
+}
+
+export interface PlanUsage {
+  fiveHour: UsageWindow | null;
+  sevenDay: UsageWindow | null;
+  sevenDayOpus: UsageWindow | null;
+  extraUsage: ExtraUsageInfo | null;
+  fetchedAt: string;
+  isOauthUser: boolean;
+}
+
 /** Shape returned by the Rust `get_project_usage` command */
 export interface ProjectUsage {
   session_id: string;
@@ -90,6 +113,14 @@ export interface UsageState {
   /** ISO 8601 timestamp of last session activity */
   lastActivity: string | null;
 
+  // ── Plan usage (OAuth subscription) ──
+  /** Fetched plan usage from OAuth API */
+  planUsage: PlanUsage | null;
+  /** Whether plan usage is currently being fetched */
+  planUsageLoading: boolean;
+  /** Error message from last plan usage fetch attempt */
+  planUsageError: string | null;
+
   // Actions
   startSession: () => void;
   addTurnUsage: (usage: {
@@ -107,6 +138,8 @@ export interface UsageState {
   setRateLimitInfo: (info: UsageState["rateLimitInfo"]) => void;
   /** Load usage from session files on disk for a project */
   loadProjectUsage: (cwd: string) => Promise<void>;
+  /** Fetch plan usage from the OAuth usage API */
+  fetchPlanUsage: () => Promise<void>;
   reset: () => void;
 
   // Computed getters (as functions to avoid stale closures)
@@ -137,6 +170,11 @@ export const useUsageStore = create<UsageState>()((set, get) => ({
   sessionCount: 0,
   lastSessionModel: null,
   lastActivity: null,
+
+  // Plan usage defaults
+  planUsage: null,
+  planUsageLoading: false,
+  planUsageError: null,
 
   startSession() {
     set({
@@ -266,6 +304,16 @@ export const useUsageStore = create<UsageState>()((set, get) => ({
     }
   },
 
+  async fetchPlanUsage() {
+    set({ planUsageLoading: true, planUsageError: null });
+    try {
+      const usage = await invoke<PlanUsage>("get_plan_usage");
+      set({ planUsage: usage, planUsageLoading: false });
+    } catch (err) {
+      set({ planUsageError: String(err), planUsageLoading: false });
+    }
+  },
+
   reset() {
     set({
       sessionStartedAt: null,
@@ -286,6 +334,9 @@ export const useUsageStore = create<UsageState>()((set, get) => ({
       sessionCount: 0,
       lastSessionModel: null,
       lastActivity: null,
+      planUsage: null,
+      planUsageLoading: false,
+      planUsageError: null,
     });
   },
 

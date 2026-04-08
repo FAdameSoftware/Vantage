@@ -33,6 +33,8 @@ uuid = { version = "1", features = ["v4"] }
 regex = "1"
 # --- Phase 5: System notifications ---
 tauri-plugin-notification = "2"
+# --- Plan usage: OAuth usage API ---
+reqwest = { version = "0.12", features = ["json", "rustls-tls"] }
 # --- Phase 6: Auto-update ---
 tauri-plugin-updater = "2"
 # --- MCP Bridge: enables AI assistants to interact with the running app (debug only) ---

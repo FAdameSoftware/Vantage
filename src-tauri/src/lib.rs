@@ -7,6 +7,7 @@ mod git;
 mod indexer;
 mod mcp;
 mod merge_queue;
+mod plan_usage;
 mod plugins;
 mod prerequisites;
 mod search;
@@ -667,6 +668,14 @@ fn write_claude_settings(content: String) -> Result<(), String> {
     claude_settings::write_claude_settings(&content)
 }
 
+// ── Plan Usage Commands ─────────────────────────────────────────────
+
+#[tauri::command]
+#[specta::specta]
+async fn get_plan_usage() -> Result<plan_usage::PlanUsage, String> {
+    plan_usage::fetch_plan_usage().await
+}
+
 // ── Application Setup ───────────────────────────────────────────────
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -751,6 +760,7 @@ pub fn run() {
             get_project_index,
             read_claude_settings,
             write_claude_settings,
+            get_plan_usage,
             workspace::read_workspace_file,
             workspace::write_workspace_file,
             workspace::list_workspace_files,

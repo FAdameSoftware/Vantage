@@ -307,6 +307,30 @@ const mockInvokeHandlers: Record<string, MockInvokeHandler> = {
     session_count: 23,
   }),
 
+  // ── Plan usage (OAuth subscription) ──
+  get_plan_usage: () => ({
+    fiveHour: {
+      utilization: 46.0,
+      resetsAt: new Date(Date.now() + 46 * 60 * 1000).toISOString(),
+    },
+    sevenDay: {
+      utilization: 18.5,
+      resetsAt: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000 + 3 * 60 * 60 * 1000).toISOString(),
+    },
+    sevenDayOpus: {
+      utilization: 0.0,
+      resetsAt: null,
+    },
+    extraUsage: {
+      isEnabled: true,
+      monthlyLimit: 1000,
+      usedCredits: 245.50,
+      utilization: 24.5,
+    },
+    fetchedAt: new Date().toISOString(),
+    isOauthUser: true,
+  }),
+
   // ── PR list ──
   get_pr_list: () => [
     { number: 42, title: "feat: example pull request", state: "OPEN" },
