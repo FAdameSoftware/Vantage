@@ -74,7 +74,7 @@ describe("agentsmd", () => {
       expect(config.roles).toHaveLength(1);
 
       const role = config.roles[0];
-      expect(role.model).toBe("claude-sonnet-4-5");
+      expect(role.model).toBe("claude-sonnet-4-6");
       expect(role.description).toBe("");
       expect(role.triggers).toEqual([]);
       expect(role.filePatterns).toEqual([]);

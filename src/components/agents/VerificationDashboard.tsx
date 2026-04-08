@@ -247,8 +247,9 @@ function AgentRow({ agentId, onRunChecks }: AgentRowProps) {
 
 export function VerificationDashboard() {
   const projectRoot = useLayoutStore((s) => s.projectRootPath);
+  const agentsVersion = useAgentsStore((s) => s.agentsVersion);
   const agentsMap = useAgentsStore((s) => s.agents);
-  const agentsList = useMemo(() => Array.from(agentsMap.values()), [agentsMap]);
+  const agentsList = useMemo(() => Array.from(agentsMap.values()), [agentsMap, agentsVersion]);
   const defaultGates = useMergeQueueStore((s) => s.defaultGates);
 
   const verifAgents = useVerificationStore((s) => s.agents);

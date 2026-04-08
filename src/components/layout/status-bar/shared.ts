@@ -1,9 +1,11 @@
+import { EASE_SMOOTH } from "@/lib/animations";
+
 /** Shared popup animation props for status bar dropdowns */
 export const popupMotion = {
   initial: { opacity: 0, y: 4, scale: 0.98 },
   animate: { opacity: 1, y: 0, scale: 1 },
   exit: { opacity: 0, y: 4, scale: 0.98 },
-  transition: { duration: 0.12, ease: [0.4, 0, 0.2, 1] as [number, number, number, number] },
+  transition: { duration: 0.12, ease: EASE_SMOOTH as [number, number, number, number] },
 };
 
 /** Map vim mode labels to Catppuccin colors */

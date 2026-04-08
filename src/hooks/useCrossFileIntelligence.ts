@@ -17,6 +17,7 @@ import { useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import * as monaco from "monaco-editor";
 import { useLayoutStore } from "@/stores/layout";
+import { normalizePath } from "@/lib/paths";
 
 // ── Configuration ─────────────────────────────────────────────────────
 
@@ -70,7 +71,7 @@ let currentProjectRoot: string | null = null;
 // ── Helpers ───────────────────────────────────────────────────────────
 
 function shouldSkipPath(filePath: string): boolean {
-  const normalized = filePath.replace(/\\/g, "/");
+  const normalized = normalizePath(filePath);
   return SKIP_PATTERNS.some(
     (pattern) =>
       normalized.includes(`/${pattern}/`) ||
@@ -80,7 +81,7 @@ function shouldSkipPath(filePath: string): boolean {
 
 function toMonacoUri(filePath: string): string {
   // Monaco expects file:// URIs for extra libs
-  const normalized = filePath.replace(/\\/g, "/");
+  const normalized = normalizePath(filePath);
   if (normalized.startsWith("/")) {
     return `file://${normalized}`;
   }
@@ -240,7 +241,7 @@ export function useCrossFileIntelligence(): void {
  * Called from MonacoEditor when a file is mounted.
  */
 export function registerOpenedFile(filePath: string, content: string): void {
-  const normalized = filePath.replace(/\\/g, "/");
+  const normalized = normalizePath(filePath);
   const ext = normalized.split(".").pop()?.toLowerCase();
   if (ext && TS_EXTENSIONS.has(ext)) {
     registerFileWithMonaco(normalized, content);
@@ -255,7 +256,7 @@ export function updateRegisteredFile(
   filePath: string,
   content: string
 ): void {
-  const normalized = filePath.replace(/\\/g, "/");
+  const normalized = normalizePath(filePath);
   const uri = toMonacoUri(normalized);
   if (registeredFiles.has(uri)) {
     registerFileWithMonaco(normalized, content);

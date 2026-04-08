@@ -10,6 +10,7 @@ import { create } from "zustand";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { toast } from "sonner";
+import { normalizePath } from "@/lib/paths";
 
 import type {
   WorkspaceFile,
@@ -478,7 +479,7 @@ function debouncedSave(saveFn: () => Promise<void>): void {
 // ─── Extract project name from path ────────────────────────────────
 
 function projectName(projectPath: string): string {
-  const normalized = projectPath.replace(/\\/g, "/").replace(/\/+$/, "");
+  const normalized = normalizePath(projectPath).replace(/\/+$/, "");
   const parts = normalized.split("/");
   return parts[parts.length - 1] || "Untitled";
 }
@@ -624,9 +625,9 @@ export const useWorkspaceStore = create<WorkspaceManagerState>()(
 
     async removeRecentProject(projectPath: string) {
       const { recentProjects } = get();
-      const normalized = projectPath.replace(/\\/g, "/");
+      const normalized = normalizePath(projectPath);
       const updated = recentProjects.filter(
-        (p) => p.path.replace(/\\/g, "/") !== normalized,
+        (p) => normalizePath(p.path) !== normalized,
       );
       set({ recentProjects: updated });
       await saveRecentProjects(updated).catch((err) => {
@@ -636,9 +637,9 @@ export const useWorkspaceStore = create<WorkspaceManagerState>()(
 
     async togglePinProject(projectPath: string) {
       const { recentProjects } = get();
-      const normalized = projectPath.replace(/\\/g, "/");
+      const normalized = normalizePath(projectPath);
       const updated = recentProjects.map((p) =>
-        p.path.replace(/\\/g, "/") === normalized
+        normalizePath(p.path) === normalized
           ? { ...p, pinned: !p.pinned }
           : p,
       );
@@ -685,7 +686,7 @@ export const useWorkspaceStore = create<WorkspaceManagerState>()(
       })();
       unsubs.push(
         useLayoutStore.subscribe((state) => {
-          const snap = `${state.primarySidebarVisible}|${state.secondarySidebarVisible}|${state.panelVisible}|${state.activeActivityBarItem}|${state.primarySidebarSize}|${state.secondarySidebarSize}|${state.panelSize}|${state.activePanelTab}|${state.agentsViewMode}|${state.primarySidebarPixelWidth}|${state.secondarySidebarPixelWidth}`;
+          const snap = `${state.primarySidebarVisible}|${state.secondarySidebarVisible}|${state.panelVisible}|${state.activeActivityBarItem}|${state.primarySidebarSize}|${state.secondarySidebarSize}|${state.panelSize}|${state.activePanelTab}|${state.agentsViewMode}|${state.primarySidebarPixelWidth}|${state.secondarySidebarPixelWidth}|${state.horizontalLayout.join(",")}|${state.verticalLayout.join(",")}`;
           if (snap !== prevLayoutSnap) {
             prevLayoutSnap = snap;
             markDirty();

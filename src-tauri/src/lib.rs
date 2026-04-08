@@ -133,12 +133,14 @@ async fn claude_start_session(
     plan_mode: bool,
     from_pr: Option<u32>,
     skip_permissions: bool,
+    model: Option<String>,
 ) -> Result<String, String> {
     let options = SpawnOptions {
         effort_level,
         plan_mode,
         from_pr,
         skip_permissions,
+        model,
     };
     let state = app_handle.state::<TokioMutex<SessionManager>>();
     let manager = state.lock().await;
@@ -769,7 +771,10 @@ pub fn run() {
         .plugin(tauri_plugin_pty::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init());
-        // .plugin(tauri_plugin_updater::Builder::new().build()) // TODO: enable when updater endpoint is configured
+        // TODO(P0-before-distribution): Auto-updater MUST be enabled before the first public
+        // release.  Without it, users cannot receive security patches.  This becomes P0 at
+        // first distribution — configure a signed update endpoint and uncomment the line below.
+        // .plugin(tauri_plugin_updater::Builder::new().build())
 
     // MCP Bridge: enables AI assistants (Claude Code, Cursor, etc.) to
     // take screenshots, click elements, read DOM, inspect IPC, and execute

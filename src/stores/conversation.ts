@@ -178,11 +178,7 @@ export interface ConversationState {
   resetToDefaults: () => void;
 }
 
-// ─── Helper: generate a simple unique ID ────────────────────────────────────
-
-function generateId(): string {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-}
+import { generateId } from "@/lib/id";
 
 // ─── Helper: assemble activeBlocks into a ConversationMessage ───────────────
 

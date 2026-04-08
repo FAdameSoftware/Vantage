@@ -128,7 +128,7 @@ export function WorkspaceMetadata() {
   const totalTokens = useConversationStore((s) => s.totalTokens);
   const session = useConversationStore((s) => s.session);
 
-  const agentsMap = useAgentsStore((s) => s.agents);
+  const agentsMap = useAgentsStore((s) => { void s.agentsVersion; return s.agents; });
   const activeAgentCount = Array.from(agentsMap.values()).filter(
     (a) => a.status === "working" || a.status === "waiting_permission"
   ).length;

@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { normalizePath } from "@/lib/paths";
 
 export interface PendingDiff {
   /** Tab ID this diff belongs to */
@@ -215,7 +216,7 @@ export const selectSelectionLineCount = (s: EditorState) => s.selectionLineCount
 
 /** Normalize a file path to use as a tab ID (forward slashes, lowercase drive letter) */
 function normalizeTabId(path: string): string {
-  let normalized = path.replace(/\\/g, "/");
+  let normalized = normalizePath(path);
   // Lowercase the drive letter on Windows paths like C:/...
   if (/^[A-Z]:\//.test(normalized)) {
     normalized = normalized[0].toLowerCase() + normalized.slice(1);
@@ -260,7 +261,7 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
 
     const newTab: EditorTab = {
       id,
-      path: path.replace(/\\/g, "/"),
+      path: normalizePath(path),
       name,
       language,
       content,
@@ -547,7 +548,7 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
 
     const newTab: EditorTab = {
       id,
-      path: path.replace(/\\/g, "/"),
+      path: normalizePath(path),
       name,
       language,
       content: "",

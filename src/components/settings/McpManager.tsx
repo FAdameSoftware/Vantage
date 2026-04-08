@@ -8,6 +8,7 @@ import {
   FolderOpen,
   ToggleLeft,
   ToggleRight,
+  AlertTriangle,
 } from "lucide-react";
 import { useLayoutStore } from "@/stores/layout";
 import { toast } from "sonner";
@@ -21,6 +22,7 @@ interface McpServerEntry {
   env: Record<string, string>;
   enabled: boolean;
   scope: string; // "user" | "project"
+  warnings: string[];
 }
 
 interface McpServerConfig {
@@ -453,6 +455,14 @@ export function McpManager() {
                     >
                       {server.scope}
                     </span>
+                    {server.warnings?.length > 0 && (
+                      <AlertTriangle
+                        size={12}
+                        className="shrink-0"
+                        style={{ color: "var(--color-yellow)" }}
+                        title={server.warnings.join("\n")}
+                      />
+                    )}
                   </div>
                   <span
                     className="text-[10px] truncate"
@@ -461,6 +471,19 @@ export function McpManager() {
                   >
                     {server.command} {server.args.join(" ")}
                   </span>
+                  {server.warnings?.length > 0 && (
+                    <div className="flex flex-col gap-0.5 mt-1">
+                      {server.warnings.map((warning, idx) => (
+                        <span
+                          key={idx}
+                          className="text-[10px] leading-tight"
+                          style={{ color: "var(--color-yellow)" }}
+                        >
+                          {warning}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Delete button */}

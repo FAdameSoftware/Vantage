@@ -6,11 +6,11 @@ import {
   Plus,
   Play,
   MessageSquare,
-  Loader2,
   Search,
   SortAsc,
   X,
 } from "lucide-react";
+import { Spinner } from "@/components/ui/Spinner";
 import { formatRelativeTime } from "@/lib/formatters";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -300,7 +300,7 @@ export function SessionSelector({ cwd, onNewSession, onResumeSession }: SessionS
                   className="flex items-center justify-center gap-2 py-8 text-xs"
                   style={{ color: "var(--color-overlay-1)" }}
                 >
-                  <Loader2 size={14} className="animate-spin" />
+                  <Spinner size={14} />
                   {searching ? "Searching..." : "Loading sessions..."}
                 </div>
               )}

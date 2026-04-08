@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { ChevronRight, ChevronDown, AlertTriangle } from "lucide-react";
 import { FileIcon } from "./FileIcon";
 import { useAgentsStore } from "@/stores/agents";
+import { formatFileSize } from "@/lib/formatters";
 import type { FileNode } from "@/hooks/useFileTree";
 import type { GitFileStatus } from "@/hooks/useGitStatus";
 
@@ -41,12 +42,6 @@ function HighlightedName({ name, query }: { name: string; query: string }) {
   );
 }
 
-/** Format a file size in bytes to a human-readable string. */
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
 
 export function FileTreeNode({
   node,

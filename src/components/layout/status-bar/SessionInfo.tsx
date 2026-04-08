@@ -7,15 +7,16 @@ import { useUsageStore } from "@/stores/usage";
 import { UsagePanel } from "@/components/shared/UsagePanel";
 import { EffortLevelSelector } from "@/components/shared/EffortLevelSelector";
 import { normalizeModelName } from "@/lib/pricing";
+import { AVAILABLE_MODELS } from "@/lib/models";
 import { popupMotion } from "./shared";
 
-// ── Model Selector Dropdown ──────────────────────────────────────────────
+// ── Model descriptions (keyed by family) ────────────────────────────────
 
-const AVAILABLE_MODELS = [
-  { id: "claude-opus-4-6", label: "Claude Opus 4.6", description: "Most capable" },
-  { id: "claude-sonnet-4-6", label: "Claude Sonnet 4.6", description: "Fast & smart" },
-  { id: "claude-haiku-3-5", label: "Claude Haiku 3.5", description: "Fastest" },
-];
+const MODEL_DESCRIPTIONS: Record<string, string> = {
+  opus: "Most capable",
+  sonnet: "Fast & smart",
+  haiku: "Fastest",
+};
 
 function ModelSelectorDropdown({
   currentModel,
@@ -72,7 +73,7 @@ function ModelSelectorDropdown({
             className="text-[10px] mt-0.5"
             style={{ color: "var(--color-overlay-1)" }}
           >
-            {model.description}
+            {MODEL_DESCRIPTIONS[model.family] ?? ""}
           </span>
         </button>
       ))}

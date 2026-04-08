@@ -7,7 +7,8 @@
  */
 
 import { useMemo } from "react";
-import { Check, X, Loader2 } from "lucide-react";
+import { Check, X } from "lucide-react";
+import { Spinner } from "@/components/ui/Spinner";
 
 interface InlineEditDiffProps {
   /** Pixel position for the diff panel */
@@ -153,11 +154,7 @@ export function InlineEditDiff({
       {/* Loading state */}
       {isLoading && (
         <div className="flex items-center justify-center py-6">
-          <Loader2
-            size={20}
-            className="animate-spin"
-            style={{ color: "var(--color-mauve)" }}
-          />
+          <Spinner size={20} style={{ color: "var(--color-mauve)" }} />
         </div>
       )}
 

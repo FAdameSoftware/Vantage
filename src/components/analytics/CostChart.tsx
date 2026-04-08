@@ -46,8 +46,7 @@ export function CostChart({ data }: CostChartProps) {
           width={60}
         />
         <Tooltip
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          formatter={(value: any) => [`$${Number(value).toFixed(4)}`, "Cost"]}
+          formatter={(value: number) => [`$${value.toFixed(4)}`, "Cost"]}
           labelFormatter={(label) => `Date: ${String(label)}`}
           contentStyle={{
             backgroundColor: "var(--color-surface-0)",

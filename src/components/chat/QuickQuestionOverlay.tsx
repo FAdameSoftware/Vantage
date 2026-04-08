@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Send, Loader2 } from "lucide-react";
+import { X, Send } from "lucide-react";
+import { Spinner } from "@/components/ui/Spinner";
 import { useQuickQuestionStore } from "@/stores/quickQuestion";
 
 export function QuickQuestionOverlay() {
@@ -121,11 +122,7 @@ export function QuickQuestionOverlay() {
 
           {isLoading && !response && (
             <div className="flex items-center gap-1.5">
-              <Loader2
-                size={12}
-                className="animate-spin"
-                style={{ color: "var(--color-mauve)" }}
-              />
+              <Spinner size={12} style={{ color: "var(--color-mauve)" }} />
               <span
                 className="text-xs"
                 style={{ color: "var(--color-overlay-1)" }}

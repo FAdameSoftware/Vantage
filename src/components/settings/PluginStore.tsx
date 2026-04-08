@@ -4,10 +4,10 @@ import {
   Download,
   ExternalLink,
   Package,
-  Loader2,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import { Spinner } from "@/components/ui/Spinner";
 import { invoke } from "@tauri-apps/api/core";
 import { searchPluginRegistry, type RegistryPlugin } from "@/lib/pluginRegistry";
 import { toast } from "sonner";
@@ -147,7 +147,7 @@ function StorePluginCard({
             title={`Install ${plugin.name}`}
           >
             {installing ? (
-              <Loader2 size={9} className="animate-spin" />
+              <Spinner size={9} />
             ) : (
               <Download size={9} />
             )}
@@ -281,11 +281,7 @@ export function PluginStore({ installedPluginNames, onBack }: PluginStoreProps) 
       <div className="flex-1 overflow-y-auto px-2 pb-2">
         {loading ? (
           <div className="flex items-center justify-center h-24">
-            <Loader2
-              size={18}
-              className="animate-spin"
-              style={{ color: "var(--color-overlay-1)" }}
-            />
+            <Spinner size={18} style={{ color: "var(--color-overlay-1)" }} />
           </div>
         ) : error ? (
           <div className="flex flex-col items-center justify-center gap-2 py-8 px-4">

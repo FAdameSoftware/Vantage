@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { GitPullRequest, ChevronDown, Loader2, Play } from "lucide-react";
 import { useClaude } from "@/hooks/useClaude";
 import { useLayoutStore } from "@/stores/layout";
+import { useClickOutside } from "@/hooks/useClickOutside";
 
 interface PrInfo {
   number: number;
@@ -41,16 +42,8 @@ export function ResumeFromPR() {
   }, [open, projectRootPath]);
 
   // Close on outside click
-  useEffect(() => {
-    if (!open) return;
-    function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [open]);
+  const closeDropdown = useCallback(() => setOpen(false), []);
+  useClickOutside(ref, closeDropdown, open);
 
   const handleResume = useCallback(
     async (prNumber: number) => {

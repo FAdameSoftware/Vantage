@@ -1,3 +1,4 @@
+import { memo } from "react";
 import type { ToolCall } from "@/stores/conversation";
 import { getWidget } from "./widgets";
 
@@ -9,7 +10,7 @@ interface ToolCallCardProps {
   forceExpanded?: boolean;
 }
 
-export function ToolCallCard({ toolCall, forceExpanded }: ToolCallCardProps) {
+export const ToolCallCard = memo(function ToolCallCard({ toolCall, forceExpanded }: ToolCallCardProps) {
   const Widget = getWidget(toolCall.name);
   return <Widget toolCall={toolCall} forceExpanded={forceExpanded} />;
-}
+});

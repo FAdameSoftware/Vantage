@@ -1,7 +1,9 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Sparkles, Lightbulb, Brain, Cpu, Rocket } from "lucide-react";
 import { useSettingsStore, type ThinkingMode } from "@/stores/settings";
+import { EASE_SMOOTH } from "@/lib/animations";
+import { useClickOutside } from "@/hooks/useClickOutside";
 
 // ─── Thinking mode configuration ─────────────────────────────────────────────
 
@@ -109,16 +111,8 @@ export function ThinkingModeSelector() {
   const current = THINKING_MODES.find((m) => m.id === thinkingMode) ?? THINKING_MODES[0];
 
   // Close on outside click
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [open]);
+  const closeDropdown = useCallback(() => setOpen(false), []);
+  useClickOutside(containerRef, closeDropdown, open);
 
   // Close on Escape
   useEffect(() => {
@@ -159,7 +153,7 @@ export function ThinkingModeSelector() {
             initial={{ opacity: 0, y: 4, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 4, scale: 0.97 }}
-            transition={{ duration: 0.12, ease: [0.4, 0, 0.2, 1] }}
+            transition={{ duration: 0.12, ease: EASE_SMOOTH as unknown as number[] }}
           >
             <div
               className="px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wider"

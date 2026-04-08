@@ -267,20 +267,21 @@ function AgentTreeNode({
 // ── Tree view container ────────────────────────────────────────────
 
 export function AgentTreeView() {
+  const agentsVersion = useAgentsStore((s) => s.agentsVersion);
   const agents = useAgentsStore((s) => s.agents);
 
   // Derive rootAgents and activeCount via useMemo instead of calling store
   // functions in render (which create new arrays via .filter() each time).
   const rootAgents = useMemo(
     () => [...agents.values()].filter((a) => a.parentId === null),
-    [agents],
+    [agents, agentsVersion],
   );
   const activeCount = useMemo(
     () =>
       [...agents.values()].filter(
         (a) => a.status === "working" || a.status === "waiting_permission",
       ).length,
-    [agents],
+    [agents, agentsVersion],
   );
 
   // Expanded node set -- defaults to all agents expanded

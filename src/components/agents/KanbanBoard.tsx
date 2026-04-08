@@ -96,7 +96,7 @@ function KanbanColumnView({
 // ── Kanban board ─────────────────────────────────────────────────────
 
 export function KanbanBoard() {
-  const agents = useAgentsStore((s) => s.agents);
+  const agents = useAgentsStore((s) => { void s.agentsVersion; return s.agents; });
   const columnOrder = useAgentsStore((s) => s.columnOrder);
   const moveAgent = useAgentsStore((s) => s.moveAgent);
 

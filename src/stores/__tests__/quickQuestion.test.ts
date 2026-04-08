@@ -1,8 +1,10 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { invoke } from "@tauri-apps/api/core";
 import { useQuickQuestionStore } from "../quickQuestion";
 
 describe("quickQuestionStore", () => {
   beforeEach(() => {
+    vi.mocked(invoke).mockReset().mockResolvedValue(null);
     useQuickQuestionStore.setState({
       isOpen: false,
       question: "",
@@ -88,5 +90,58 @@ describe("quickQuestionStore", () => {
     expect(state.response).toBe("");
     expect(state.isLoading).toBe(false);
     expect(state.error).toBeNull();
+  });
+
+  // ── IPC parameter completeness ──────────────────────────────────────────────
+
+  it("ask() invokes claude_start_session with skipPermissions parameter", async () => {
+    // Mock listen to return an unlisten function
+    const { listen } = await import("@tauri-apps/api/event");
+    vi.mocked(listen).mockResolvedValue(() => {});
+
+    // Mock invoke: return a session ID for claude_start_session, null for others
+    vi.mocked(invoke).mockImplementation(async (cmd: string) => {
+      if (cmd === "claude_start_session") return "btw-test-session";
+      return null;
+    });
+
+    useQuickQuestionStore.getState().ask("Quick question");
+
+    // Wait for the async runQuickQuestion to make the invoke call
+    await vi.waitFor(() => {
+      expect(invoke).toHaveBeenCalledWith(
+        "claude_start_session",
+        expect.objectContaining({ skipPermissions: false }),
+      );
+    });
+  });
+
+  it("ask() passes all required parameters to claude_start_session", async () => {
+    const { listen } = await import("@tauri-apps/api/event");
+    vi.mocked(listen).mockResolvedValue(() => {});
+
+    vi.mocked(invoke).mockImplementation(async (cmd: string) => {
+      if (cmd === "claude_start_session") return "btw-test-session";
+      return null;
+    });
+
+    useQuickQuestionStore.getState().ask("Another question");
+
+    // Wait for the async call and verify all required params are present
+    await vi.waitFor(() => {
+      const calls = vi.mocked(invoke).mock.calls;
+      const startCall = calls.find(([cmd]) => cmd === "claude_start_session");
+      expect(startCall).toBeDefined();
+
+      const args = startCall![1] as Record<string, unknown>;
+      // Every parameter the Rust backend expects must be present
+      expect(args).toHaveProperty("cwd");
+      expect(args).toHaveProperty("sessionId");
+      expect(args).toHaveProperty("resume");
+      expect(args).toHaveProperty("effortLevel");
+      expect(args).toHaveProperty("planMode");
+      expect(args).toHaveProperty("fromPr");
+      expect(args).toHaveProperty("skipPermissions");
+    });
   });
 });

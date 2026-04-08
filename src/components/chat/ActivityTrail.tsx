@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { DIMENSIONS } from "@/lib/dimensions";
 import {
   ChevronDown,
   ChevronRight,
@@ -229,7 +230,7 @@ export function ActivityTrail() {
       {expanded && (
         <div
           className="overflow-y-auto px-1 pb-1"
-          style={{ maxHeight: "250px" }}
+          style={{ maxHeight: `${DIMENSIONS.dropdown.md - 50}px` }}
         >
           {sortedEntries.map((entry) => (
             <ActivityTrailItem

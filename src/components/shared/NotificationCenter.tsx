@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useClickOutside } from "@/hooks/useClickOutside";
+import { DIMENSIONS } from "@/lib/dimensions";
 import {
   Bell,
   X,
@@ -170,7 +171,7 @@ export function NotificationCenter() {
         backgroundColor: "var(--color-mantle)",
         border: "1px solid var(--color-surface-1)",
         width: "340px",
-        maxHeight: "420px",
+        maxHeight: `${DIMENSIONS.dropdown.xl}px`,
       }}
       initial={{ opacity: 0, y: 8, scale: 0.97 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}

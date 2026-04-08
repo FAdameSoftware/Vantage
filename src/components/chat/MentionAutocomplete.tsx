@@ -3,6 +3,7 @@ import { FileText, TextSelect, Terminal, GitBranch, FolderTree, Search, type Luc
 import { invoke } from "@tauri-apps/api/core";
 import { useLayoutStore } from "@/stores/layout";
 import type { MentionSource, MentionType } from "@/lib/mentionResolver";
+import { DIMENSIONS } from "@/lib/dimensions";
 
 // ── File node type (matches useFileTree) ──────────────────────────────────
 
@@ -151,7 +152,7 @@ function FilePicker({
         bottom: "100%",
         left: 0,
         right: 0,
-        maxHeight: 300,
+        maxHeight: DIMENSIONS.dropdown.md,
         backgroundColor: "var(--color-surface-0)",
         border: "1px solid var(--color-surface-1)",
       }}
@@ -183,7 +184,7 @@ function FilePicker({
       </div>
 
       {/* File list */}
-      <div className="overflow-y-auto" style={{ maxHeight: 250 }}>
+      <div className="overflow-y-auto" style={{ maxHeight: DIMENSIONS.dropdown.md - 50 }}>
         {isLoading ? (
           <div className="px-3 py-2 text-[10px]" style={{ color: "var(--color-overlay-1)" }}>
             Loading files...
@@ -264,7 +265,7 @@ export function MentionAutocomplete({
         bottom: "100%",
         left: 0,
         right: 0,
-        maxHeight: 240,
+        maxHeight: DIMENSIONS.chatInput.maxHeight,
         backgroundColor: "var(--color-surface-0)",
         border: "1px solid var(--color-surface-1)",
       }}

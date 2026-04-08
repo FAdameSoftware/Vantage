@@ -23,12 +23,7 @@ import type {
   ContentBlockStartBlock,
 } from "@/lib/protocol";
 import type { AgentConversationState } from "@/stores/agentConversations";
-
-// ─── Helper: generate a simple unique ID ─────────────────────────────────────
-
-function generateId(): string {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-}
+import { generateId } from "@/lib/id";
 
 // ─── Helper: route an event to the correct agent (if any) ───────────────────
 
@@ -698,6 +693,7 @@ export function useClaude() {
             planMode: settings.planMode,
             fromPr: fromPr ?? null,
             skipPermissions: settings.skipPermissions ?? false,
+            model: settings.selectedModel ?? null,
           });
           sessionIdRef.current = id;
           const session: SessionMetadata = {
@@ -752,6 +748,7 @@ export function useClaude() {
               planMode: settings.planMode,
               fromPr: null,
               skipPermissions: settings.skipPermissions ?? false,
+              model: settings.selectedModel ?? null,
             });
             sessionIdRef.current = id;
             const session: SessionMetadata = {
@@ -882,14 +879,16 @@ export function useClaude() {
         worktreeCwd = worktreePath;
       }
 
+      const settings = useSettingsStore.getState();
       const sessionId = await invoke<string>("claude_start_session", {
         cwd: worktreeCwd,
         sessionId: null,
         resume: false,
-        effortLevel: useSettingsStore.getState().effortLevel,
+        effortLevel: settings.effortLevel,
         planMode: false,
         fromPr: null,
-        skipPermissions: useSettingsStore.getState().skipPermissions ?? false,
+        skipPermissions: settings.skipPermissions ?? false,
+        model: agent?.model ?? settings.selectedModel ?? null,
       });
       agentsStore.linkSession(agentId, sessionId);
     } catch (err) {

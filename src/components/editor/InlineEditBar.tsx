@@ -6,7 +6,8 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Sparkles, Loader2, X } from "lucide-react";
+import { Sparkles, X } from "lucide-react";
+import { Spinner } from "@/components/ui/Spinner";
 
 interface InlineEditBarProps {
   /** Pixel position for the floating bar */
@@ -74,11 +75,7 @@ export function InlineEditBar({
     >
       {/* Icon */}
       {isLoading ? (
-        <Loader2
-          size={14}
-          className="animate-spin shrink-0"
-          style={{ color: "var(--color-mauve)" }}
-        />
+        <Spinner size={14} className="shrink-0" style={{ color: "var(--color-mauve)" }} />
       ) : (
         <Sparkles
           size={14}

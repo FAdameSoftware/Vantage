@@ -13,8 +13,8 @@ import {
   XCircle,
   AlertTriangle,
   RefreshCw,
-  Loader2,
 } from "lucide-react";
+import { Spinner } from "@/components/ui/Spinner";
 
 interface PrerequisiteResult {
   name: string;
@@ -150,11 +150,7 @@ export function PrerequisiteCheck() {
 
           {isChecking && results.length === 0 && (
             <div className="flex items-center justify-center py-4">
-              <Loader2
-                size={24}
-                className="animate-spin"
-                style={{ color: "var(--color-blue)" }}
-              />
+              <Spinner size={24} style={{ color: "var(--color-blue)" }} />
             </div>
           )}
         </div>

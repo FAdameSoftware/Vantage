@@ -1,6 +1,7 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useCallback } from "react";
 import { ChevronDown, Gauge } from "lucide-react";
 import { useSettingsStore } from "@/stores/settings";
+import { useClickOutside } from "@/hooks/useClickOutside";
 
 type EffortLevel = "low" | "medium" | "high";
 
@@ -50,16 +51,8 @@ export function EffortLevelSelector() {
   const ref = useRef<HTMLDivElement>(null);
 
   // Close on outside click
-  useEffect(() => {
-    if (!open) return;
-    function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [open]);
+  const closeDropdown = useCallback(() => setOpen(false), []);
+  useClickOutside(ref, closeDropdown, open);
 
   const currentOption = EFFORT_OPTIONS.find((o) => o.value === effortLevel)!;
 

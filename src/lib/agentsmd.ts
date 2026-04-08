@@ -1,4 +1,5 @@
 import type { AgentRole } from "@/stores/agents";
+import { DEFAULT_MODEL_ID } from "@/lib/models";
 
 // ── Parsed types ────────────────────────────────────────────────────
 
@@ -66,13 +67,13 @@ function parseCommaSeparated(value: string): string[] {
  * # Agent Roles
  *
  * ## coordinator
- * - Model: claude-opus-4-5
+ * - Model: claude-opus-4-6
  * - Description: Orchestrates work across specialists
  * - Triggers: "plan", "architect", "design"
  * - Files: src/api/**, src/db/**
  *
  * ## backend-specialist
- * - Model: claude-sonnet-4-5
+ * - Model: claude-sonnet-4-6
  * - Description: Backend API and database work
  * - Triggers: "api", "endpoint", "database"
  * - Files: src/api/**, src/db/**
@@ -100,7 +101,7 @@ export function parseAgentsMd(content: string): AgentsMdConfig {
       const name = trimmed.slice(3).trim();
       currentRole = {
         name,
-        model: "claude-sonnet-4-5",
+        model: DEFAULT_MODEL_ID,
         description: "",
         triggers: [],
         filePatterns: [],
@@ -147,7 +148,7 @@ export function parseAgentsMd(content: string): AgentsMdConfig {
 function finalizeRole(partial: Partial<AgentRoleDefinition>): AgentRoleDefinition {
   return {
     name: partial.name ?? "unknown",
-    model: partial.model ?? "claude-sonnet-4-5",
+    model: partial.model ?? DEFAULT_MODEL_ID,
     description: partial.description ?? "",
     triggers: partial.triggers ?? [],
     filePatterns: partial.filePatterns ?? [],
@@ -192,30 +193,30 @@ export function suggestRole(
 export const AGENTS_MD_TEMPLATE = `# Agent Roles
 
 ## coordinator
-- Model: claude-opus-4-5
+- Model: claude-opus-4-6
 - Description: Orchestrates work across specialists
 - Triggers: plan, architect, design, coordinate, organize
 
 ## backend-specialist
-- Model: claude-sonnet-4-5
+- Model: claude-sonnet-4-6
 - Description: Backend API and database work
 - Triggers: api, endpoint, database, migration, server, backend
 - Files: src/api/**, src/db/**, src/models/**
 
 ## frontend-specialist
-- Model: claude-sonnet-4-5
+- Model: claude-sonnet-4-6
 - Description: UI components and styling
 - Triggers: component, ui, css, layout, page, form, frontend
 - Files: src/components/**, src/styles/**
 
 ## test-specialist
-- Model: claude-sonnet-4-5
+- Model: claude-sonnet-4-6
 - Description: Writing and fixing tests
 - Triggers: test, spec, coverage, fixture
 - Files: src/__tests__/**, tests/**
 
 ## verifier
-- Model: claude-sonnet-4-5
+- Model: claude-sonnet-4-6
 - Description: Reviews and validates completed work
 - Triggers: review, verify, check, validate
 `;

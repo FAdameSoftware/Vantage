@@ -8,8 +8,8 @@ import {
   Activity,
   BarChart3,
   Zap,
-  Loader2,
 } from "lucide-react";
+import { Spinner } from "@/components/ui/Spinner";
 
 // ── Types ─────────────────────────────────────────────────────────────
 
@@ -135,11 +135,7 @@ export function UsageDashboard() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full gap-2">
-        <Loader2
-          size={18}
-          className="animate-spin"
-          style={{ color: "var(--color-blue)" }}
-        />
+        <Spinner size={18} style={{ color: "var(--color-blue)" }} />
         <span className="text-sm" style={{ color: "var(--color-subtext-0)" }}>
           Loading analytics...
         </span>

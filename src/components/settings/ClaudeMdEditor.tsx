@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { saveFile } from "@/lib/ipc";
 import { Save, FileText, Eye, EyeOff, RotateCcw } from "lucide-react";
 import { useLayoutStore } from "@/stores/layout";
 import { MonacoEditor } from "@/components/editor/MonacoEditor";
@@ -76,7 +77,7 @@ export function ClaudeMdEditor() {
       if (!exists) {
         await invoke("create_file", { path: filePath });
       }
-      await invoke("write_file", { path: filePath, content });
+      await saveFile(filePath, content);
       setSavedContent(content);
       setExists(true);
       toast.success("CLAUDE.md saved");

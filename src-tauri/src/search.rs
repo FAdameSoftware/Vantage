@@ -34,6 +34,9 @@ pub struct SearchFileResult {
 }
 
 /// Main entry point: tries ripgrep first, falls back to ignore-crate walk.
+/// Maximum ceiling for max_results to prevent excessive memory usage.
+const MAX_RESULTS_CEILING: u32 = 10_000;
+
 pub fn search_project(
     root: &str,
     query: &str,
@@ -42,6 +45,9 @@ pub fn search_project(
     glob_filter: Option<&str>,
     max_results: u32,
 ) -> Result<SearchResult, String> {
+    // SEC-013: Clamp max_results to prevent unbounded result sets
+    let max_results = max_results.min(MAX_RESULTS_CEILING);
+
     if query.is_empty() {
         return Ok(SearchResult {
             files: vec![],

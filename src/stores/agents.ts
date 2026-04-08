@@ -163,6 +163,14 @@ export interface AgentsState {
   /** All agents, keyed by agent ID */
   agents: Map<string, Agent>;
 
+  /**
+   * Version counter that increments on every mutation to the agents Map.
+   * Zustand only triggers rerenders when state references change; since we
+   * mutate the Map in-place (to avoid O(n) copy), bumping this counter is
+   * what triggers subscribers to re-read.
+   */
+  agentsVersion: number;
+
   /** Ordered list of agent IDs per kanban column (for drag-and-drop ordering) */
   columnOrder: Record<KanbanColumn, string[]>;
 
@@ -281,6 +289,7 @@ export interface AgentsState {
 
 export const useAgentsStore = create<AgentsState>()((set, get) => ({
   agents: new Map(),
+  agentsVersion: 0,
   columnOrder: {
     backlog: [],
     in_progress: [],
@@ -319,14 +328,13 @@ export const useAgentsStore = create<AgentsState>()((set, get) => ({
     };
 
     set((state) => {
-      const next = new Map(state.agents);
-      next.set(id, agent);
+      state.agents.set(id, agent);
 
       // If this agent has a parent, add it to the parent's childIds
       if (parentId) {
-        const parent = next.get(parentId);
+        const parent = state.agents.get(parentId);
         if (parent) {
-          next.set(parentId, {
+          state.agents.set(parentId, {
             ...parent,
             childIds: [...parent.childIds, id],
           });
@@ -334,7 +342,7 @@ export const useAgentsStore = create<AgentsState>()((set, get) => ({
       }
 
       return {
-        agents: next,
+        agentsVersion: state.agentsVersion + 1,
         columnOrder: {
           ...state.columnOrder,
           backlog: [...state.columnOrder.backlog, id],
@@ -399,16 +407,14 @@ export const useAgentsStore = create<AgentsState>()((set, get) => ({
       const agent = state.agents.get(agentId);
       if (!agent) return {};
 
-      const next = new Map(state.agents);
-
-      // Remove all collected agents
-      for (const id of toRemove) next.delete(id);
+      // Remove all collected agents in-place
+      for (const id of toRemove) state.agents.delete(id);
 
       // If the removed agent had a parent, remove it from parent's childIds
       if (agent.parentId) {
-        const parent = next.get(agent.parentId);
+        const parent = state.agents.get(agent.parentId);
         if (parent) {
-          next.set(agent.parentId, {
+          state.agents.set(agent.parentId, {
             ...parent,
             childIds: parent.childIds.filter((id) => id !== agentId),
           });
@@ -422,7 +428,7 @@ export const useAgentsStore = create<AgentsState>()((set, get) => ({
         ),
       ) as Record<KanbanColumn, string[]>;
 
-      return { agents: next, columnOrder: nextColumnOrder };
+      return { agentsVersion: state.agentsVersion + 1, columnOrder: nextColumnOrder };
     });
   },
 
@@ -430,8 +436,7 @@ export const useAgentsStore = create<AgentsState>()((set, get) => ({
     set((state) => {
       const agent = state.agents.get(agentId);
       if (!agent) return {};
-      const next = new Map(state.agents);
-      next.set(agentId, {
+      state.agents.set(agentId, {
         ...agent,
         status,
         lastActivityAt: Date.now(),
@@ -440,14 +445,14 @@ export const useAgentsStore = create<AgentsState>()((set, get) => ({
 
       // Auto-trigger verifier when a specialist completes
       if (status === "completed" && agent.role === "specialist" && agent.parentId) {
-        const siblings = [...next.values()].filter(
+        const siblings = [...state.agents.values()].filter(
           (a) =>
             a.parentId === agent.parentId &&
             a.role === "verifier" &&
             a.status === "idle",
         );
         for (const verifier of siblings) {
-          next.set(verifier.id, {
+          state.agents.set(verifier.id, {
             ...verifier,
             status: "working",
             lastActivityAt: Date.now(),
@@ -455,7 +460,7 @@ export const useAgentsStore = create<AgentsState>()((set, get) => ({
         }
       }
 
-      return { agents: next };
+      return { agentsVersion: state.agentsVersion + 1 };
     });
   },
 
@@ -463,9 +468,8 @@ export const useAgentsStore = create<AgentsState>()((set, get) => ({
     set((state) => {
       const agent = state.agents.get(agentId);
       if (!agent) return {};
-      const next = new Map(state.agents);
-      next.set(agentId, { ...agent, sessionId });
-      return { agents: next };
+      state.agents.set(agentId, { ...agent, sessionId });
+      return { agentsVersion: state.agentsVersion + 1 };
     });
   },
 
@@ -473,9 +477,8 @@ export const useAgentsStore = create<AgentsState>()((set, get) => ({
     set((state) => {
       const agent = state.agents.get(agentId);
       if (!agent) return {};
-      const next = new Map(state.agents);
-      next.set(agentId, { ...agent, worktreePath, branchName });
-      return { agents: next };
+      state.agents.set(agentId, { ...agent, worktreePath, branchName });
+      return { agentsVersion: state.agentsVersion + 1 };
     });
   },
 
@@ -483,8 +486,7 @@ export const useAgentsStore = create<AgentsState>()((set, get) => ({
     set((state) => {
       const agent = state.agents.get(agentId);
       if (!agent) return {};
-      const next = new Map(state.agents);
-      next.set(agentId, {
+      state.agents.set(agentId, {
         ...agent,
         cost: agent.cost + cost,
         tokens: {
@@ -492,7 +494,7 @@ export const useAgentsStore = create<AgentsState>()((set, get) => ({
           output: agent.tokens.output + tokens.output,
         },
       });
-      return { agents: next };
+      return { agentsVersion: state.agentsVersion + 1 };
     });
   },
 
@@ -501,13 +503,12 @@ export const useAgentsStore = create<AgentsState>()((set, get) => ({
       const agent = state.agents.get(agentId);
       if (!agent) return {};
       if (agent.assignedFiles.includes(filePath)) return {};
-      const next = new Map(state.agents);
-      next.set(agentId, {
+      state.agents.set(agentId, {
         ...agent,
         assignedFiles: [...agent.assignedFiles, filePath],
         lastActivityAt: Date.now(),
       });
-      return { agents: next };
+      return { agentsVersion: state.agentsVersion + 1 };
     });
   },
 
@@ -521,13 +522,12 @@ export const useAgentsStore = create<AgentsState>()((set, get) => ({
     set((state) => {
       const agent = state.agents.get(agentId);
       if (!agent) return {};
-      const next = new Map(state.agents);
-      next.set(agentId, {
+      state.agents.set(agentId, {
         ...agent,
         timeline: [...agent.timeline, event].slice(-200),
         lastActivityAt: Date.now(),
       });
-      return { agents: next };
+      return { agentsVersion: state.agentsVersion + 1 };
     });
   },
 
@@ -561,10 +561,9 @@ export const useAgentsStore = create<AgentsState>()((set, get) => ({
         updatedAgent.status = "completed";
       }
 
-      const nextAgents = new Map(state.agents);
-      nextAgents.set(agentId, updatedAgent);
+      state.agents.set(agentId, updatedAgent);
 
-      return { agents: nextAgents, columnOrder: nextColumnOrder };
+      return { agentsVersion: state.agentsVersion + 1, columnOrder: nextColumnOrder };
     });
   },
 
@@ -611,9 +610,8 @@ export const useAgentsStore = create<AgentsState>()((set, get) => ({
     set((state) => {
       const agent = state.agents.get(agentId);
       if (!agent) return {};
-      const next = new Map(state.agents);
-      next.set(agentId, { ...agent, checkpoint });
-      return { agents: next };
+      state.agents.set(agentId, { ...agent, checkpoint });
+      return { agentsVersion: state.agentsVersion + 1 };
     });
   },
 
@@ -621,9 +619,8 @@ export const useAgentsStore = create<AgentsState>()((set, get) => ({
     set((state) => {
       const agent = state.agents.get(agentId);
       if (!agent) return {};
-      const next = new Map(state.agents);
-      next.set(agentId, { ...agent, checkpoint: undefined });
-      return { agents: next };
+      state.agents.set(agentId, { ...agent, checkpoint: undefined });
+      return { agentsVersion: state.agentsVersion + 1 };
     });
   },
 
@@ -631,9 +628,8 @@ export const useAgentsStore = create<AgentsState>()((set, get) => ({
     set((state) => {
       const agent = state.agents.get(agentId);
       if (!agent) return {};
-      const next = new Map(state.agents);
-      next.set(agentId, { ...agent, role });
-      return { agents: next };
+      state.agents.set(agentId, { ...agent, role });
+      return { agentsVersion: state.agentsVersion + 1 };
     });
   },
 
@@ -662,6 +658,7 @@ export const useAgentsStore = create<AgentsState>()((set, get) => ({
   resetToDefaults() {
     set({
       agents: new Map(),
+      agentsVersion: 0,
       columnOrder: {
         backlog: [],
         in_progress: [],

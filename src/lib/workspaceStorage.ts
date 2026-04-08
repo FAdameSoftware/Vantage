@@ -14,6 +14,7 @@ import type {
   RecentProject,
 } from "./workspaceTypes";
 import { createDefaultWorkspaceFile } from "./workspaceTypes";
+import { normalizePath as normalizeSlashes } from "./paths";
 
 // ─── Path utilities ────────────────────────────────────────────────
 
@@ -21,7 +22,7 @@ import { createDefaultWorkspaceFile } from "./workspaceTypes";
  * Normalize a project path: forward slashes, lowercase drive letter on Windows.
  */
 function normalizePath(projectPath: string): string {
-  let normalized = projectPath.replace(/\\/g, "/");
+  let normalized = normalizeSlashes(projectPath);
   // Lowercase the drive letter on Windows paths like C:/...
   if (/^[A-Z]:\//.test(normalized)) {
     normalized = normalized[0].toLowerCase() + normalized.slice(1);

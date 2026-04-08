@@ -17,6 +17,20 @@ export interface ModelPricing {
  * Keys are normalized model prefixes (date suffixes are stripped).
  */
 export const MODEL_PRICING: Record<string, ModelPricing> = {
+  // Sonnet 4.6
+  "claude-sonnet-4-6": {
+    inputPerMillion: 3,
+    outputPerMillion: 15,
+    cacheWritePerMillion: 3.75,
+    cacheReadPerMillion: 0.3,
+  },
+  // Opus 4.6
+  "claude-opus-4-6": {
+    inputPerMillion: 15,
+    outputPerMillion: 75,
+    cacheWritePerMillion: 18.75,
+    cacheReadPerMillion: 1.5,
+  },
   // Sonnet 4
   "claude-sonnet-4": {
     inputPerMillion: 3,
@@ -30,6 +44,13 @@ export const MODEL_PRICING: Record<string, ModelPricing> = {
     outputPerMillion: 75,
     cacheWritePerMillion: 18.75,
     cacheReadPerMillion: 1.5,
+  },
+  // Haiku 4.5
+  "claude-haiku-4-5": {
+    inputPerMillion: 0.8,
+    outputPerMillion: 4,
+    cacheWritePerMillion: 1,
+    cacheReadPerMillion: 0.08,
   },
   // Haiku 3.5
   "claude-3-5-haiku": {

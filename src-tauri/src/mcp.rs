@@ -41,6 +41,52 @@ pub struct McpServerEntry {
     pub enabled: bool,
     /// "user" or "project"
     pub scope: String,
+    /// Security warnings (e.g., unpinned package versions)
+    #[serde(default)]
+    pub warnings: Vec<String>,
+}
+
+// ── Version pinning checks ────────────────────────────────────────
+
+/// SEC-014: Check MCP server args for unpinned npm-style package versions.
+/// Returns a list of warning strings for any detected issues.
+fn check_unpinned_versions(args: &[String]) -> Vec<String> {
+    use regex::Regex;
+
+    let mut warnings = Vec::new();
+
+    // Match npm-style package specifiers: @scope/pkg@version or pkg@version
+    // We look for args that look like npm package references
+    let pkg_re = Regex::new(r"^(@[a-zA-Z0-9_-]+/)?[a-zA-Z0-9_-]+(@.*)?$").unwrap();
+
+    for arg in args {
+        // Skip flags and non-package args
+        if arg.starts_with('-') || arg.starts_with('/') {
+            continue;
+        }
+
+        // Check for @latest (explicit unpinned)
+        if arg.contains("@latest") {
+            warnings.push(format!(
+                "Package '{}' uses @latest — pin to a specific version for security",
+                arg
+            ));
+            continue;
+        }
+
+        // Check for npm-style package names without version specifier
+        // e.g. "some-package" with no @version suffix
+        if pkg_re.is_match(arg) && !arg.contains('@') && !arg.contains('.') {
+            // Looks like a bare package name (no version, no file path)
+            // Only flag if it appears after "npx" or similar in the args list
+            warnings.push(format!(
+                "Package '{}' has no version specifier — consider pinning (e.g., {}@1.0.0)",
+                arg, arg
+            ));
+        }
+    }
+
+    warnings
 }
 
 // ── Config file paths ──────────────────────────────────────────────
@@ -60,9 +106,20 @@ fn read_config_file(path: &PathBuf) -> McpConfig {
     match fs::read_to_string(path) {
         Ok(content) => {
             // Try parsing as { mcpServers: { ... } }
-            serde_json::from_str::<McpConfig>(&content).unwrap_or(McpConfig {
-                mcp_servers: HashMap::new(),
-            })
+            match serde_json::from_str::<McpConfig>(&content) {
+                Ok(config) => config,
+                Err(e) => {
+                    // SEC-015: Log parse errors instead of silently dropping them
+                    eprintln!(
+                        "[mcp] WARNING: Failed to parse MCP config at {}: {}",
+                        path.display(),
+                        e
+                    );
+                    McpConfig {
+                        mcp_servers: HashMap::new(),
+                    }
+                }
+            }
         }
         Err(_) => McpConfig {
             mcp_servers: HashMap::new(),
@@ -78,6 +135,7 @@ pub fn read_mcp_config(project_root: Option<&str>) -> Result<Vec<McpServerEntry>
     let user_path = user_mcp_config_path()?;
     let user_config = read_config_file(&user_path);
     for (name, server) in user_config.mcp_servers {
+        let warnings = check_unpinned_versions(&server.args);
         entries.push(McpServerEntry {
             name,
             command: server.command,
@@ -85,6 +143,7 @@ pub fn read_mcp_config(project_root: Option<&str>) -> Result<Vec<McpServerEntry>
             env: server.env,
             enabled: server.enabled,
             scope: "user".to_string(),
+            warnings,
         });
     }
 
@@ -93,6 +152,7 @@ pub fn read_mcp_config(project_root: Option<&str>) -> Result<Vec<McpServerEntry>
         let project_path = project_mcp_config_path(root);
         let project_config = read_config_file(&project_path);
         for (name, server) in project_config.mcp_servers {
+            let warnings = check_unpinned_versions(&server.args);
             entries.push(McpServerEntry {
                 name,
                 command: server.command,
@@ -100,6 +160,7 @@ pub fn read_mcp_config(project_root: Option<&str>) -> Result<Vec<McpServerEntry>
                 env: server.env,
                 enabled: server.enabled,
                 scope: "project".to_string(),
+                warnings,
             });
         }
     }

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { normalizePath } from "@/lib/paths";
 
 export interface GitBranchInfo {
   branch: string | null;
@@ -70,7 +71,7 @@ export function useGitStatus(rootPath: string | null): UseGitStatusReturn {
             status.path.startsWith("/") || status.path.includes(":")
               ? status.path
               : `${rootPath}/${status.path}`;
-          statusMap.set(fullPath.replace(/\\/g, "/"), status);
+          statusMap.set(normalizePath(fullPath), status);
         }
         setFileStatuses(statusMap);
       }

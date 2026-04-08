@@ -46,8 +46,7 @@ export function SessionsPerDay({ data }: SessionsPerDayProps) {
           width={30}
         />
         <Tooltip
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          formatter={(value: any) => [value, "Sessions"]}
+          formatter={(value: number) => [value, "Sessions"]}
           labelFormatter={(label) => `Date: ${String(label)}`}
           contentStyle={{
             backgroundColor: "var(--color-surface-0)",

@@ -67,8 +67,7 @@ export function ModelDistribution({ data }: ModelDistributionProps) {
           ))}
         </Pie>
         <Tooltip
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          formatter={(value: any) => [`$${Number(value).toFixed(4)}`, "Cost"]}
+          formatter={(value: number) => [`$${value.toFixed(4)}`, "Cost"]}
           contentStyle={{
             backgroundColor: "var(--color-surface-0)",
             border: "1px solid var(--color-surface-1)",

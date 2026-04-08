@@ -8,8 +8,8 @@ import {
   Copy,
   Bot,
   FileText,
-  Loader2,
 } from "lucide-react";
+import { Spinner } from "@/components/ui/Spinner";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { toast } from "sonner";
@@ -442,7 +442,7 @@ export function SpecViewer() {
             {loading && (
               <div className="flex items-center justify-center py-8 gap-2"
                 style={{ color: "var(--color-overlay-1)" }}>
-                <Loader2 size={14} className="animate-spin" />
+                <Spinner size={14} />
                 <span className="text-xs">Loading…</span>
               </div>
             )}

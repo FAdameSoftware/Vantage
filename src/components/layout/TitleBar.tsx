@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Minus, Square, X, Copy, MessageSquare, Code } from "lucide-react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
+import { saveFile } from "@/lib/ipc";
 import { useEditorStore, selectHasDirtyTabs } from "@/stores/editor";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { useLayoutStore, type ViewMode } from "@/stores/layout";
@@ -50,7 +51,7 @@ function WindowControls() {
     const dirty = tabs.filter((t) => t.isDirty);
     for (const tab of dirty) {
       try {
-        await invoke("write_file", { path: tab.path, content: tab.content });
+        await saveFile(tab.path, tab.content);
         markSaved(tab.id, tab.content);
       } catch (err) {
         console.error(`Failed to save ${tab.path}:`, err);

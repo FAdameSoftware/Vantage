@@ -110,6 +110,7 @@ function ActivityBarButton({
 export function ActivityBar() {
   const projectRootPath = useLayoutStore((s) => s.projectRootPath);
   const { allStatuses } = useGitStatus(projectRootPath);
+  const agentsVersion = useAgentsStore((s) => s.agentsVersion);
   const agentsMap = useAgentsStore((s) => s.agents);
 
   const gitDirtyCount = allStatuses.length;
@@ -118,7 +119,7 @@ export function ActivityBar() {
       [...agentsMap.values()].filter(
         (a) => a.status === "working" || a.status === "waiting_permission",
       ).length,
-    [agentsMap],
+    [agentsMap, agentsVersion],
   );
 
   /** Map activity bar item IDs to badge counts */

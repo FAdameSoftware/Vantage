@@ -13,6 +13,7 @@ import {
 import { handleSlashCommand } from "@/lib/slashHandlers";
 import { useQuickQuestionStore } from "@/stores/quickQuestion";
 import { useSettingsStore } from "@/stores/settings";
+import { DIMENSIONS } from "@/lib/dimensions";
 import {
   filterMentionSources,
   resolveMention,
@@ -469,7 +470,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
             style={{
               color: "var(--color-text)",
               fontFamily: "var(--font-sans)",
-              maxHeight: "240px",
+              maxHeight: `${DIMENSIONS.chatInput.maxHeight}px`,
             }}
             placeholder={placeholder}
             rows={1}

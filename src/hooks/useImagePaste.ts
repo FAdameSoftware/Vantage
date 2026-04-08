@@ -37,8 +37,10 @@ const SUPPORTED_TYPES = new Set([
   "image/webp",
 ]);
 
+import { generateId as _generateId } from "@/lib/id";
+
 function generateId(): string {
-  return `img-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  return _generateId("img");
 }
 
 function readFileAsDataUrl(file: File): Promise<string> {

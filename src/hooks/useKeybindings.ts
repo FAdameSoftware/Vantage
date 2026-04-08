@@ -5,6 +5,7 @@ import { useCommandPaletteStore } from "@/stores/commandPalette";
 import { useSettingsStore } from "@/stores/settings";
 import type { ThemeName } from "@/stores/settings";
 import { invoke } from "@tauri-apps/api/core";
+import { saveFile } from "@/lib/ipc";
 import { toast } from "sonner";
 
 const THEME_CYCLE: ThemeName[] = ["vantage-dark", "vantage-light", "vantage-high-contrast"];
@@ -128,10 +129,7 @@ export function useKeybindings() {
     if (!activeTab || !activeTab.isDirty) return;
 
     try {
-      await invoke("write_file", {
-        path: activeTab.path,
-        content: activeTab.content,
-      });
+      await saveFile(activeTab.path, activeTab.content);
       state.markSaved(activeTab.id, activeTab.content);
     } catch (e) {
       toast.error("Failed to save file", {

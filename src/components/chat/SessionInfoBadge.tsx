@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Info } from "lucide-react";
+import { EASE_SMOOTH } from "@/lib/animations";
 import { useConversationStore } from "@/stores/conversation";
 import { normalizeModelName } from "@/lib/pricing";
 import type { ConversationState } from "@/stores/conversation";
@@ -94,7 +95,7 @@ export function SessionInfoBadge() {
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: "auto" }}
           exit={{ opacity: 0, height: 0 }}
-          transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
+          transition={{ duration: 0.15, ease: EASE_SMOOTH as unknown as number[] }}
         >
           <div>
             <span style={{ color: "var(--color-overlay-0)" }}>Session ID: </span>

@@ -168,6 +168,8 @@ async function runQuickQuestion(
       effortLevel: settings.effortLevel,
       planMode: false,
       fromPr: null,
+      skipPermissions: false,
+      model: settings.selectedModel ?? null,
     });
     _btw_session_id = sessionId;
 

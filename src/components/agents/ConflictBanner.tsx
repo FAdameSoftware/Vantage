@@ -8,7 +8,7 @@ import { useAgentsStore } from "@/stores/agents";
  */
 export function ConflictBanner() {
   const [dismissed, setDismissed] = useState(false);
-  const agents = useAgentsStore((s) => s.agents);
+  const agents = useAgentsStore((s) => { void s.agentsVersion; return s.agents; });
 
   // Compute conflicting files: files touched by more than one agent
   const conflicts = useMemo(() => {

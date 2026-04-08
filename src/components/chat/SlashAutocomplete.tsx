@@ -1,4 +1,5 @@
 import type { SlashCommand } from "@/lib/slashCommands";
+import { DIMENSIONS } from "@/lib/dimensions";
 
 interface SlashAutocompleteProps {
   commands: SlashCommand[];
@@ -25,7 +26,7 @@ export function SlashAutocomplete({
         bottom: "100%",
         left: 0,
         right: 0,
-        maxHeight: 300,
+        maxHeight: DIMENSIONS.dropdown.md,
         backgroundColor: "var(--color-surface-0)",
         border: "1px solid var(--color-surface-1)",
       }}

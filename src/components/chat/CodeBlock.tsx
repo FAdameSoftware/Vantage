@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { memo, useState, useEffect, useRef, useCallback } from "react";
 import { Copy, Check } from "lucide-react";
 import { codeToHtml } from "shiki";
 
@@ -66,7 +66,7 @@ interface CodeBlockProps {
   filename?: string;
 }
 
-export function CodeBlock({ code, language, filename }: CodeBlockProps) {
+export const CodeBlock = memo(function CodeBlock({ code, language, filename }: CodeBlockProps) {
   const [highlightedHtml, setHighlightedHtml] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const codeContainerRef = useRef<HTMLDivElement>(null);
@@ -197,4 +197,4 @@ export function CodeBlock({ code, language, filename }: CodeBlockProps) {
       </div>
     </div>
   );
-}
+});

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { saveFile } from "@/lib/ipc";
 import { FileCode, ChevronRight } from "lucide-react";
 import { useEditorStore, selectActiveTab } from "@/stores/editor";
 import { useClickOutside } from "@/hooks/useClickOutside";
@@ -292,7 +293,7 @@ export function EditorArea() {
       const tab = useEditorStore.getState().getActiveTab();
       if (!tab || !tab.isDirty) return;
       try {
-        await invoke("write_file", { path: tab.path, content: tab.content });
+        await saveFile(tab.path, tab.content);
         markSaved(tab.id, tab.content);
       } catch (e) {
         console.warn("Auto-save failed:", e);
@@ -310,7 +311,7 @@ export function EditorArea() {
       const tab = useEditorStore.getState().getActiveTab();
       if (!tab || !tab.isDirty) return;
       try {
-        await invoke("write_file", { path: tab.path, content: tab.content });
+        await saveFile(tab.path, tab.content);
         markSaved(tab.id, tab.content);
       } catch (e) {
         console.warn("Auto-save on focus change failed:", e);
@@ -393,10 +394,7 @@ export function EditorArea() {
   const handleSave = useCallback(async () => {
     if (!activeTab || !activeTab.isDirty) return;
     try {
-      await invoke("write_file", {
-        path: activeTab.path,
-        content: activeTab.content,
-      });
+      await saveFile(activeTab.path, activeTab.content);
       markSaved(activeTab.id, activeTab.content);
 
       // Format on save: run Prettier then reload the formatted content

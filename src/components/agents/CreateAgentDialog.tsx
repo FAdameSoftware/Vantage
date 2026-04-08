@@ -14,14 +14,7 @@ import { useAgentsStore } from "@/stores/agents";
 import type { AgentRole } from "@/stores/agents";
 import { useAgentsMd } from "@/hooks/useAgentsMd";
 import type { AgentRoleDefinition } from "@/lib/agentsmd";
-
-// ── Available models ─────────────────────────────────────────────────
-
-const MODELS = [
-  { id: "claude-sonnet-4-5", label: "Claude Sonnet 4.5" },
-  { id: "claude-opus-4-5", label: "Claude Opus 4.5" },
-  { id: "claude-haiku-4-5", label: "Claude Haiku 4.5" },
-] as const;
+import { AVAILABLE_MODELS, DEFAULT_MODEL_ID } from "@/lib/models";
 
 // ── Role options ─────────────────────────────────────────────────────
 
@@ -76,7 +69,7 @@ export function CreateAgentDialog({
 
   const [name, setName] = useState("");
   const [taskDescription, setTaskDescription] = useState("");
-  const [model, setModel] = useState<string>(MODELS[0].id);
+  const [model, setModel] = useState<string>(DEFAULT_MODEL_ID);
   const [role, setRole] = useState<AgentRole>("builder");
   const [suggestedRole, setSuggestedRole] = useState<AgentRoleDefinition | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -137,7 +130,7 @@ export function CreateAgentDialog({
     // Reset form and close
     setName("");
     setTaskDescription("");
-    setModel(MODELS[0].id);
+    setModel(DEFAULT_MODEL_ID);
     setRole("builder");
     setSuggestedRole(null);
     onOpenChange(false);
@@ -146,7 +139,7 @@ export function CreateAgentDialog({
   function handleClose() {
     setName("");
     setTaskDescription("");
-    setModel(MODELS[0].id);
+    setModel(DEFAULT_MODEL_ID);
     setRole("builder");
     setSuggestedRole(null);
     onOpenChange(false);
@@ -260,7 +253,7 @@ export function CreateAgentDialog({
                 color: "var(--color-text)",
               }}
             >
-              {MODELS.map((m) => (
+              {AVAILABLE_MODELS.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.label}
                 </option>

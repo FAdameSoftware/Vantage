@@ -7,9 +7,12 @@ import ReactDOM from "react-dom/client";
 import App from "./App";
 import "./index.css";
 
+// TODO(IMPROVE-025): Re-enable React.StrictMode after verifying that
+// useTerminal cleanup handles double mount/unmount correctly and Monaco
+// editor lifecycle doesn't leak resources. StrictMode is currently disabled
+// because double mount/unmount causes PTY handle corruption and terminal
+// resource leaks during view transitions.
+// See: https://react.dev/reference/react/StrictMode
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
-  // StrictMode disabled: double mount/unmount causes PTY handle corruption
-  // and terminal resource leaks during view transitions. Re-enable after
-  // fixing cleanup in useTerminal and Monaco editor lifecycle.
   <App />,
 );

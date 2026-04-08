@@ -25,6 +25,8 @@ pub struct SpawnOptions {
     pub from_pr: Option<u32>,
     /// If true, pass --dangerously-skip-permissions to the CLI.
     pub skip_permissions: bool,
+    /// Model to use (e.g., "claude-sonnet-4-6"). Maps to --model CLI arg.
+    pub model: Option<String>,
 }
 
 /// Manages a single Claude Code CLI child process.
@@ -87,6 +89,11 @@ impl ClaudeProcess {
             cmd.env("CLAUDE_CODE_EFFORT_LEVEL", level);
         }
 
+        // Model override
+        if let Some(ref model) = options.model {
+            cmd.arg("--model").arg(model);
+        }
+
         // Plan mode
         if options.plan_mode {
             cmd.arg("--permission-mode").arg("plan");
@@ -100,6 +107,14 @@ impl ClaudeProcess {
         // Skip permissions (dangerous — bypasses all permission prompts)
         if options.skip_permissions {
             eprintln!("[SECURITY] Starting Claude session with --dangerously-skip-permissions enabled");
+            let _ = app_handle.emit(
+                "claude_security_warning",
+                serde_json::json!({
+                    "session_id": session_id,
+                    "warning": "skip_permissions",
+                    "message": "This session is running with --dangerously-skip-permissions. All tool executions will be auto-approved without confirmation."
+                }),
+            );
             cmd.arg("--dangerously-skip-permissions");
         }
 
@@ -166,6 +181,9 @@ impl ClaudeProcess {
             let alive = process.is_alive.clone();
 
             tokio::spawn(async move {
+                // SEC-012: Maximum line length (1 MB). Lines exceeding this are truncated.
+                const MAX_LINE_LEN: usize = 1_048_576;
+
                 let reader = BufReader::new(child_stdout);
                 let mut lines = reader.lines();
 
@@ -173,6 +191,17 @@ impl ClaudeProcess {
                     if line.trim().is_empty() {
                         continue;
                     }
+
+                    // SEC-012: Truncate excessively long lines to prevent OOM
+                    let line = if line.len() > MAX_LINE_LEN {
+                        eprintln!(
+                            "[claude stdout] WARNING: line exceeds 1 MB ({} bytes), truncating",
+                            line.len()
+                        );
+                        line[..MAX_LINE_LEN].to_string()
+                    } else {
+                        line
+                    };
 
                     match parse_claude_message(&line) {
                         Ok((msg, raw)) => {

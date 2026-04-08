@@ -7,6 +7,7 @@ import type { AgentStatus, KanbanColumn } from "../agents";
 function resetStore() {
   useAgentsStore.setState({
     agents: new Map(),
+    agentsVersion: 0,
     columnOrder: {
       backlog: [],
       in_progress: [],

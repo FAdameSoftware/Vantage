@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { ToggleButton } from "@/components/ui/ToggleButton";
 import {
   Search,
   FileCode,
@@ -633,38 +634,6 @@ export function SearchPanel() {
         </div>
       </div>
     </div>
-  );
-}
-
-// ── ToggleButton ───────────────────────────────────────────────────
-
-function ToggleButton({
-  active,
-  onClick,
-  title,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      title={title}
-      aria-label={title}
-      className="flex items-center justify-center w-6 h-6 rounded shrink-0 transition-colors"
-      style={{
-        color: active ? "var(--color-blue)" : "var(--color-overlay-1)",
-        backgroundColor: active
-          ? "var(--color-surface-0)"
-          : "transparent",
-      }}
-    >
-      {children}
-    </button>
   );
 }
 

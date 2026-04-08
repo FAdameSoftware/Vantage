@@ -44,6 +44,7 @@ function resetConversationStore() {
 function resetAgentsStore() {
   useAgentsStore.setState({
     agents: new Map(),
+    agentsVersion: 0,
     columnOrder: {
       backlog: [],
       in_progress: [],

@@ -167,8 +167,22 @@ pub fn search_sessions(
 }
 
 /// Get detailed stats for a single session JSONL file.
+/// Only allows reading files within `~/.claude/projects/` to prevent
+/// arbitrary file reads via path traversal.
 pub fn get_session_stats(session_path: &str) -> Result<SessionStats, String> {
     let path = PathBuf::from(session_path);
+
+    // Validate the path is within ~/.claude/projects/
+    let projects_dir = get_claude_projects_dir()
+        .ok_or_else(|| "Could not determine home directory".to_string())?;
+    let canonical_projects = projects_dir.canonicalize().unwrap_or(projects_dir.clone());
+    let canonical_path = path
+        .canonicalize()
+        .map_err(|e| format!("Invalid session path: {}", e))?;
+    if !canonical_path.starts_with(&canonical_projects) {
+        return Err("Session path must be within ~/.claude/projects/".to_string());
+    }
+
     if !path.exists() {
         return Err(format!("Session file not found: {}", session_path));
     }
@@ -609,4 +623,90 @@ fn time_from_unix_secs(secs: u64) -> String {
 
 fn is_leap_year(year: i64) -> bool {
     (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)
+}
+
+// ── Tests ─────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ── SEC-007: path validation tests ───────────────────────────────
+
+    #[test]
+    fn session_stats_rejects_path_outside_projects_dir() {
+        // Any path that doesn't live under ~/.claude/projects/ should be rejected.
+        // We use a concrete tmp file so canonicalize succeeds — the guard should
+        // still reject it because it isn't under the real projects dir.
+        let tmp = tempfile::NamedTempFile::new().expect("create temp file");
+        let path_str = tmp.path().to_string_lossy().to_string();
+
+        let result = get_session_stats(&path_str);
+        assert!(result.is_err(), "should reject path outside projects dir");
+        let err = result.unwrap_err();
+        assert!(
+            err.contains("must be within") || err.contains("Invalid session path"),
+            "unexpected error message: {}",
+            err
+        );
+    }
+
+    #[test]
+    fn session_stats_rejects_traversal_attack() {
+        // A path that tries to escape via `..` segments.
+        let result = get_session_stats("/../../../etc/passwd");
+        assert!(result.is_err(), "should reject traversal path");
+    }
+
+    #[test]
+    fn session_stats_rejects_nonexistent_file() {
+        let result = get_session_stats("/nonexistent/path/session.jsonl");
+        assert!(result.is_err(), "should reject nonexistent file");
+    }
+
+    // ── Functional tests ─────────────────────────────────────────────
+
+    #[test]
+    fn encode_cwd_replaces_special_chars() {
+        assert_eq!(encode_cwd("/home/user/project"), "-home-user-project");
+        assert_eq!(
+            encode_cwd("C:\\Users\\user\\project"),
+            "C--Users-user-project"
+        );
+    }
+
+    #[test]
+    fn time_from_unix_secs_epoch() {
+        assert_eq!(time_from_unix_secs(0), "1970-01-01T00:00:00Z");
+    }
+
+    #[test]
+    fn time_from_unix_secs_known_date() {
+        // 2024-01-01 00:00:00 UTC = 1704067200
+        assert_eq!(time_from_unix_secs(1704067200), "2024-01-01T00:00:00Z");
+    }
+
+    #[test]
+    fn truncate_str_short() {
+        assert_eq!(truncate_str("hello", 10), "hello");
+    }
+
+    #[test]
+    fn truncate_str_exact() {
+        assert_eq!(truncate_str("hello", 5), "hello");
+    }
+
+    #[test]
+    fn truncate_str_long() {
+        assert_eq!(truncate_str("hello world", 5), "hello...");
+    }
+
+    #[test]
+    fn get_claude_projects_dir_returns_some() {
+        // Should always resolve to *something* on a machine with a home dir
+        let dir = get_claude_projects_dir();
+        assert!(dir.is_some());
+        let path = dir.unwrap();
+        assert!(path.ends_with(".claude/projects") || path.ends_with(".claude\\projects"));
+    }
 }

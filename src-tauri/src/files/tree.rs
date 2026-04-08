@@ -4,6 +4,10 @@ use specta::Type;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
+/// Maximum directory depth allowed for file tree traversal.
+/// Prevents runaway recursion on deeply nested or cyclic-symlink structures.
+const MAX_DEPTH: u32 = 20;
+
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct FileNode {
     pub name: String,
@@ -27,6 +31,9 @@ pub fn build_file_tree(root: &str, depth: u32) -> Result<Vec<FileNode>, String> 
     if !root_path.is_dir() {
         return Err(format!("Path is not a directory: {}", root));
     }
+
+    // SEC-011: Clamp depth to MAX_DEPTH to prevent unbounded recursion
+    let depth = depth.min(MAX_DEPTH);
 
     let walker = WalkBuilder::new(&root_path)
         .max_depth(Some(depth as usize + 1)) // +1 because root itself is depth 0

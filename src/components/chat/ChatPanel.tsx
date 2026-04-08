@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback, useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowDown, Pin } from "lucide-react";
+import { EASE_SMOOTH } from "@/lib/animations";
 import { useConversationStore } from "@/stores/conversation";
 import { useLayoutStore } from "@/stores/layout";
 import { useClaude } from "@/hooks/useClaude";
@@ -314,7 +315,7 @@ export function ChatPanel({ mode = "sidebar" }: ChatPanelProps) {
                   initial={{ opacity: 0, y: 8, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                  transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
+                  transition={{ duration: 0.15, ease: EASE_SMOOTH as unknown as number[] }}
                 >
                   <ArrowDown size={12} />
                   {newMessageCount > 0 ? (

@@ -10,14 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { GitPullRequestDraft } from "lucide-react";
 import { useAgentsStore } from "@/stores/agents";
-
-// ── Available models for writer / reviewer ──────────────────────────
-
-const MODELS = [
-  { id: "claude-sonnet-4-5", label: "Claude Sonnet 4.5" },
-  { id: "claude-opus-4-5", label: "Claude Opus 4.5" },
-  { id: "claude-haiku-4-5", label: "Claude Haiku 4.5" },
-] as const;
+import { AVAILABLE_MODELS, DEFAULT_MODEL_ID } from "@/lib/models";
 
 // ── Component ───────────────────────────────────────────────────────
 
@@ -29,8 +22,8 @@ interface WriterReviewerLauncherProps {
 export function WriterReviewerLauncher({ onLaunch }: WriterReviewerLauncherProps) {
   const [open, setOpen] = useState(false);
   const [taskDescription, setTaskDescription] = useState("");
-  const [writerModel, setWriterModel] = useState<string>(MODELS[0].id);
-  const [reviewerModel, setReviewerModel] = useState<string>(MODELS[0].id);
+  const [writerModel, setWriterModel] = useState<string>(DEFAULT_MODEL_ID);
+  const [reviewerModel, setReviewerModel] = useState<string>(DEFAULT_MODEL_ID);
   const [autoReview, setAutoReview] = useState(true);
 
   const createAgent = useAgentsStore((s) => s.createAgent);
@@ -76,8 +69,8 @@ export function WriterReviewerLauncher({ onLaunch }: WriterReviewerLauncherProps
 
     // Reset and close
     setTaskDescription("");
-    setWriterModel(MODELS[0].id);
-    setReviewerModel(MODELS[0].id);
+    setWriterModel(DEFAULT_MODEL_ID);
+    setReviewerModel(DEFAULT_MODEL_ID);
     setAutoReview(true);
     setOpen(false);
   }, [
@@ -92,8 +85,8 @@ export function WriterReviewerLauncher({ onLaunch }: WriterReviewerLauncherProps
 
   const handleClose = useCallback(() => {
     setTaskDescription("");
-    setWriterModel(MODELS[0].id);
-    setReviewerModel(MODELS[0].id);
+    setWriterModel(DEFAULT_MODEL_ID);
+    setReviewerModel(DEFAULT_MODEL_ID);
     setAutoReview(true);
     setOpen(false);
   }, []);
@@ -165,7 +158,7 @@ export function WriterReviewerLauncher({ onLaunch }: WriterReviewerLauncherProps
                     color: "var(--color-text)",
                   }}
                 >
-                  {MODELS.map((m) => (
+                  {AVAILABLE_MODELS.map((m) => (
                     <option key={m.id} value={m.id}>
                       {m.label}
                     </option>
@@ -192,7 +185,7 @@ export function WriterReviewerLauncher({ onLaunch }: WriterReviewerLauncherProps
                     color: "var(--color-text)",
                   }}
                 >
-                  {MODELS.map((m) => (
+                  {AVAILABLE_MODELS.map((m) => (
                     <option key={m.id} value={m.id}>
                       {m.label}
                     </option>

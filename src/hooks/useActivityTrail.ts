@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useConversationStore } from "@/stores/conversation";
 import type { ConversationMessage, ToolCall } from "@/stores/conversation";
+import { normalizePath as normalizeSlashes, basename as pathBasename } from "@/lib/paths";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -76,16 +77,14 @@ function extractFilePath(toolCall: ToolCall): string | null {
  * Normalize a file path for display: use forward slashes, strip common prefixes.
  */
 function normalizePath(rawPath: string): string {
-  return rawPath.replace(/\\/g, "/");
+  return normalizeSlashes(rawPath);
 }
 
 /**
  * Extract just the filename from a path.
  */
 function getFilename(path: string): string {
-  const normalized = normalizePath(path);
-  const parts = normalized.split("/");
-  return parts[parts.length - 1] || normalized;
+  return pathBasename(path);
 }
 
 // ─── Hook ───────────────────────────────────────────────────────────────────

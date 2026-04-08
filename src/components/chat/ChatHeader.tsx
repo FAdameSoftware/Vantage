@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageSquare, Plus, Search, GitBranch, Pin, Download } from "lucide-react";
+import { EASE_SMOOTH } from "@/lib/animations";
 import { useConversationStore } from "@/stores/conversation";
 import { useSettingsStore } from "@/stores/settings";
 import { PlanModeToggle } from "./PlanModeToggle";
@@ -9,6 +10,7 @@ import { CompactDialog } from "./CompactDialog";
 import { SessionSelector } from "./SessionSelector";
 import { EXPORT_FORMATS } from "@/lib/slashHandlers";
 import { normalizeModelName } from "@/lib/pricing";
+import { AVAILABLE_MODELS } from "@/lib/models";
 import type { ConversationState } from "@/stores/conversation";
 
 // ─── Fine-grained selectors ────────────────────────────────────────────────
@@ -16,14 +18,6 @@ import type { ConversationState } from "@/stores/conversation";
 const selectSession = (s: ConversationState) => s.session;
 const selectConnectionStatus = (s: ConversationState) => s.connectionStatus;
 const selectMessages = (s: ConversationState) => s.messages;
-
-// ─── Available Claude models ────────────────────────────────────────────────
-
-const CLAUDE_MODELS = [
-  { value: "claude-opus-4-6", label: "Opus 4.6" },
-  { value: "claude-sonnet-4-6", label: "Sonnet 4.6" },
-  { value: "claude-haiku-4-5", label: "Haiku 4.5" },
-] as const;
 
 // ─── Model selector dropdown (small — kept inline) ─────────────────────────
 
@@ -44,8 +38,8 @@ function ModelSelector() {
       aria-label="Select Claude model"
       title="Select model for new sessions"
     >
-      {CLAUDE_MODELS.map((m) => (
-        <option key={m.value} value={m.value}>
+      {AVAILABLE_MODELS.map((m) => (
+        <option key={m.id} value={m.id}>
           {m.label}
         </option>
       ))}
@@ -84,7 +78,7 @@ function ExportMenu() {
             initial={{ opacity: 0, y: -4, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -4, scale: 0.98 }}
-            transition={{ duration: 0.12, ease: [0.4, 0, 0.2, 1] }}
+            transition={{ duration: 0.12, ease: EASE_SMOOTH as unknown as number[] }}
           >
             {EXPORT_FORMATS.map((fmt) => (
               <button

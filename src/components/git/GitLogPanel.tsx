@@ -25,34 +25,9 @@ interface GitLogEntry {
   refs: string[];
 }
 
-// ── Extension to Monaco language mapping ─────────────────────────────
+// ── Extension to Monaco language mapping (shared) ────────────────────
 
-function extensionToLanguage(ext: string): string {
-  const map: Record<string, string> = {
-    ts: "typescript",
-    tsx: "typescript",
-    js: "javascript",
-    jsx: "javascript",
-    json: "json",
-    md: "markdown",
-    css: "css",
-    scss: "scss",
-    html: "html",
-    rs: "rust",
-    toml: "toml",
-    yaml: "yaml",
-    yml: "yaml",
-    py: "python",
-    go: "go",
-    sh: "shell",
-    bash: "shell",
-    sql: "sql",
-    xml: "xml",
-    svg: "xml",
-    txt: "plaintext",
-  };
-  return map[ext.toLowerCase()] ?? "plaintext";
-}
+import { extensionToLanguage } from "@/lib/languages";
 
 // ── Diff line parser ─────────────────────────────────────────────────
 
