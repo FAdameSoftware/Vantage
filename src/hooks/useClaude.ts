@@ -25,6 +25,10 @@ import type {
 import type { AgentConversationState } from "@/stores/agentConversations";
 import { generateId } from "@/lib/id";
 
+// Module-level ref count: ensures only ONE set of Tauri event listeners
+// is active, even when multiple components call useClaude().
+let listenerRefCount = 0;
+
 // ─── Helper: route an event to the correct agent (if any) ───────────────────
 
 function routeAgentEvent(
@@ -412,9 +416,17 @@ export function useClaude() {
   const setSession = useConversationStore((s) => s.setSession);
   const clearConversation = useConversationStore((s) => s.clearConversation);
 
-  // ── Set up Tauri event listeners ──
+  // ── Set up Tauri event listeners (singleton — shared across all useClaude() callers) ──
 
   useEffect(() => {
+    // Prevent duplicate listeners: multiple components call useClaude(),
+    // but we only want ONE set of event listeners for the entire app.
+    if (listenerRefCount > 0) {
+      listenerRefCount++;
+      return () => { listenerRefCount--; };
+    }
+    listenerRefCount++;
+
     let cancelled = false;
     const unlisteners: UnlistenFn[] = [];
 
@@ -654,21 +666,18 @@ export function useClaude() {
     setupListeners();
 
     return () => {
-      cancelled = true;
-      for (const unlisten of unlisteners) {
-        unlisten();
+      listenerRefCount--;
+      if (listenerRefCount <= 0) {
+        cancelled = true;
+        for (const unlisten of unlisteners) {
+          unlisten();
+        }
+        cancelAllDiffTimeouts();
+        listenerRefCount = 0;
       }
-      // Cancel any pending diff capture timeouts when listeners are torn down
-      cancelAllDiffTimeouts();
     };
-  }, [
-    handleSystemInit,
-    handleStreamEvent,
-    handleAssistantMessage,
-    handleResult,
-    setPendingPermission,
-    setConnectionStatus,
-  ]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Action: start a session ──
 
