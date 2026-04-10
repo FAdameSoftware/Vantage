@@ -672,6 +672,26 @@ const mockInvokeHandlers: Record<string, MockInvokeHandler> = {
   "plugin:opener|open_url": () => null,
   "plugin:opener|open_path": () => null,
   "plugin:opener|reveal_item_in_dir": () => null,
+
+  // ── Checkpoints ──
+  create_checkpoint: () => ({ tag_name: "checkpoint-mock", commit_hash: "abc1234" }),
+  list_checkpoints: () => [],
+
+  // ── Quality gates / merge ──
+  detect_quality_gates: () => [],
+  run_quality_gate: () => ({ passed: true, output: "All checks passed" }),
+  merge_branch: () => ({ success: true, message: "Merged" }),
+
+  // ── Shell ──
+  get_default_shell: () => "powershell.exe",
+
+  // ── Session stats ──
+  get_session_stats: () => ({ total_sessions: 0, total_cost: 0, avg_duration: 0 }),
+
+  // ── Worktree helpers (additional) ──
+  get_worktree_disk_usage: () => ({ total_bytes: 0, worktrees: [] }),
+  list_worktrees: () => [],
+  remove_worktree: () => null,
 };
 
 function mockInvoke<T>(
@@ -761,6 +781,59 @@ export function setupMocks(): void {
   // Expose error simulator on window for test/console access
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (window as any).__TAURI_MOCK_ERRORS__ = mockErrors;
+
+  // ── Mock tauri-pty module ─────────────────────────────────────────────
+  // The terminal hook does `import("tauri-pty")` which returns { spawn }.
+  // In browser mode we intercept this via a module-level mock so the
+  // terminal renders with a simulated shell instead of crashing.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (window as any).__TAURI_PTY_MOCK__ = {
+    spawn: (
+      _shell: string,
+      _args: string[],
+      _opts: { cols: number; rows: number; cwd?: string },
+    ) => {
+      let onDataCb: ((data: string) => void) | null = null;
+      let onExitCb: ((_ev: { exitCode: number }) => void) | null = null;
+
+      // Send welcome message asynchronously so the terminal is ready
+      setTimeout(() => {
+        onDataCb?.("Vantage Mock Terminal v1.0\r\n$ ");
+      }, 50);
+
+      return {
+        onData: (cb: (data: string) => void) => {
+          onDataCb = cb;
+          return { dispose: () => { onDataCb = null; } };
+        },
+        onExit: (cb: (_ev: { exitCode: number }) => void) => {
+          onExitCb = cb;
+          void onExitCb; // stored but never fires in mock
+          return { dispose: () => { onExitCb = null; } };
+        },
+        write: (data: string) => {
+          // Echo input back through onData to simulate a shell
+          if (onDataCb) {
+            // Handle Enter key — echo a new prompt
+            if (data === "\r") {
+              onDataCb("\r\n$ ");
+            } else if (data === "\x7f") {
+              // Backspace
+              onDataCb("\b \b");
+            } else {
+              onDataCb(data);
+            }
+          }
+        },
+        resize: (_cols: number, _rows: number) => {
+          // no-op
+        },
+        kill: () => {
+          // no-op
+        },
+      };
+    },
+  };
 
   console.log("[TauriMock] Mocks installed — running in browser mode");
   console.log("[TauriMock] Error simulation available via window.__TAURI_MOCK_ERRORS__ or import { mockErrors }");

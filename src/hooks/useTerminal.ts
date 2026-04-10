@@ -106,7 +106,17 @@ export function useTerminal(options: UseTerminalOptions): UseTerminalReturn {
 
     (async () => {
       try {
-        const { spawn } = await import("tauri-pty");
+        // In browser mock mode, tauri-pty is not available — fall back to
+        // the mock PTY registered by tauriMock.ts on window.__TAURI_PTY_MOCK__
+        let spawn: typeof import("tauri-pty").spawn;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const ptyMock = (window as any).__TAURI_PTY_MOCK__;
+        if (ptyMock) {
+          spawn = ptyMock.spawn;
+        } else {
+          const mod = await import("tauri-pty");
+          spawn = mod.spawn;
+        }
 
         const pty = spawn(options.shellPath, options.shellArgs, {
           cols: terminal.cols,
@@ -125,7 +135,7 @@ export function useTerminal(options: UseTerminalOptions): UseTerminalReturn {
 
         // PTY -> Terminal (data from shell to display)
         const dataDisposable = pty.onData((data: string) => {
-          terminal.write(data);
+          if (data != null) terminal.write(data);
         });
 
         // Terminal -> PTY (user keystrokes to shell)

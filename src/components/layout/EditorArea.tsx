@@ -145,6 +145,9 @@ function Breadcrumbs() {
 
   if (!activeTab) return null;
 
+  // Don't render breadcrumbs for internal special tabs (e.g. __vantage://welcome)
+  if (activeTab.path.startsWith("__vantage://")) return null;
+
   const segments = activeTab.path.split("/");
 
   // Build the directory path for each segment (the parent directory containing its siblings)

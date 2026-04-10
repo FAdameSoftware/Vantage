@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { Minus, Square, X, Copy, MessageSquare, Code } from "lucide-react";
+import { Minus, Square, X, Copy, Command, Code, Compass } from "lucide-react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { invoke } from "@tauri-apps/api/core";
 import { saveFile } from "@/lib/ipc";
 import { useEditorStore, selectHasDirtyTabs } from "@/stores/editor";
 import { useWorkspaceStore } from "@/stores/workspace";
@@ -204,9 +203,10 @@ function ViewModeToggle() {
   const viewMode = useLayoutStore((s) => s.viewMode);
   const setViewMode = useLayoutStore((s) => s.setViewMode);
 
-  const segments: { mode: ViewMode; label: string; icon: React.ReactNode; shortcut: string }[] = [
-    { mode: "claude", label: "Claude", icon: <MessageSquare size={12} />, shortcut: "Ctrl+1" },
-    { mode: "ide", label: "IDE", icon: <Code size={12} />, shortcut: "Ctrl+2" },
+  const segments: { mode: ViewMode; label: string; icon: React.ReactNode; shortcut: string; disabled?: boolean }[] = [
+    { mode: "command-center", label: "Command Center", icon: <Command size={12} />, shortcut: "Ctrl+1" },
+    { mode: "copilot", label: "Co-pilot", icon: <Code size={12} />, shortcut: "Ctrl+2" },
+    { mode: "tour", label: "Tour", icon: <Compass size={12} />, shortcut: "", disabled: true },
   ];
 
   return (
@@ -226,9 +226,10 @@ function ViewModeToggle() {
             key={seg.mode}
             role="tab"
             aria-selected={isActive}
-            title={`${seg.label} View (${seg.shortcut})`}
-            onClick={() => setViewMode(seg.mode)}
-            className="flex items-center gap-1 px-2 h-full text-[11px] font-medium transition-colors"
+            title={seg.disabled ? `${seg.label} (coming soon)` : `${seg.label}${seg.shortcut ? ` (${seg.shortcut})` : ""}`}
+            onClick={() => !seg.disabled && setViewMode(seg.mode)}
+            disabled={seg.disabled}
+            className="flex items-center gap-1 px-2 h-full text-[11px] font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             style={{
               backgroundColor: isActive ? "color-mix(in srgb, var(--color-blue) 20%, transparent)" : "transparent",
               color: isActive ? "var(--color-blue)" : "var(--color-subtext-0)",

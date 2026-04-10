@@ -1,0 +1,175 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - img "Vantage" [ref=e1923]
+      - menubar [ref=e8]:
+        - menuitem "File" [ref=e1924]
+        - menuitem "Edit" [ref=e1925]
+        - menuitem "View" [ref=e1926]
+        - menuitem "Go" [ref=e1927]
+        - menuitem "Terminal" [ref=e1928]
+        - menuitem "Help" [ref=e1929]
+      - tablist "View mode" [ref=e1930]:
+        - tab "Claude" [selected] [ref=e1931]:
+          - img [ref=e24]
+          - text: Claude
+        - tab "IDE" [ref=e1932]:
+          - img [ref=e27]
+          - text: IDE
+      - generic [ref=e30]:
+        - generic: Vantage
+      - generic [ref=e31]:
+        - button "Minimize" [ref=e1933]:
+          - img [ref=e33]
+        - button "Maximize" [ref=e1934]:
+          - img [ref=e35]
+        - button "Close" [ref=e1935]:
+          - img [ref=e38]
+    - generic [ref=e1510]:
+      - toolbar "Navigation" [ref=e1936]:
+        - button "Chat" [ref=e1937]:
+          - img [ref=e1514]
+        - button "Files" [ref=e1938]:
+          - img [ref=e1517]
+        - button "Agents" [ref=e1939]:
+          - img [ref=e1522]
+        - button "Settings" [ref=e1940]:
+          - img [ref=e1526]
+      - generic [ref=e1530]:
+        - generic [ref=e1534]:
+          - generic [ref=e1535]:
+            - generic [ref=e1537]: Claude
+            - generic [ref=e1538]:
+              - switch "Plan mode off — click to enable" [ref=e1941]:
+                - img [ref=e1540]
+              - button "Search messages" [ref=e1942]:
+                - img [ref=e1545]
+              - button "Show execution map" [ref=e1943]:
+                - img [ref=e1549]
+              - button "Build & Review workflow" [ref=e1944]:
+                - img [ref=e1555]
+                - generic [ref=e1558]: Build & Review
+              - button "Compact conversation" [ref=e1945]:
+                - img [ref=e1561]
+                - generic [ref=e1566]: Compact
+              - button "Browse sessions" [ref=e1946]:
+                - img [ref=e1569]
+                - generic [ref=e1573]: Sessions
+                - img [ref=e1574]
+          - generic [ref=e1579]:
+            - img [ref=e1581]
+            - generic [ref=e1583]:
+              - heading "Start a conversation with Claude Code" [level=2] [ref=e1584]
+              - paragraph [ref=e1585]: Type a message below to start a new session.
+            - generic [ref=e1586]:
+              - button "Explain this codebase" [ref=e1587]:
+                - img [ref=e1588]
+                - text: Explain this codebase
+              - button "Find and fix bugs" [ref=e1590]:
+                - img [ref=e1591]
+                - text: Find and fix bugs
+              - button "Add a feature" [ref=e1600]:
+                - img [ref=e1601]
+                - text: Add a feature
+              - button "Write tests" [ref=e1604]:
+                - img [ref=e1605]
+                - text: Write tests
+            - generic [ref=e1608]:
+              - generic [ref=e1609]: Ctrl+Shift+P Command palette
+              - generic [ref=e1610]: "@ Mention files"
+              - generic [ref=e1611]: / Slash commands
+          - generic [ref=e1613]:
+            - generic [ref=e1615]:
+              - 'button "Thinking mode: Auto" [ref=e1947]':
+                - img [ref=e1618]
+              - textbox "Ask Claude anything..." [ref=e1948]: "@"
+              - button "Send message" [ref=e1949]:
+                - img [ref=e1627]
+            - paragraph [ref=e1630]: Shift+Enter for newline · @ to add context · Ctrl+V to paste images
+        - separator [ref=e1631]
+        - generic [ref=e1636]:
+          - generic [ref=e1637]:
+            - button "Terminal" [ref=e1950]:
+              - img [ref=e1639]
+              - text: Terminal
+            - button "Browser" [ref=e1951]:
+              - img [ref=e1643]
+              - text: Browser
+            - button "Verification" [ref=e1952]:
+              - img [ref=e1647]
+              - text: Verification
+          - generic [ref=e1652]:
+            - generic [ref=e1653]:
+              - tablist [ref=e1654]:
+                - tab "Terminal 3 (PowerShell) Close Terminal 3" [selected] [ref=e1953] [cursor=pointer]:
+                  - img [ref=e1656]
+                  - generic [ref=e1658]: Terminal 3
+                  - generic [ref=e1659]: (PowerShell)
+                  - button "Close Terminal 3" [ref=e1954]:
+                    - img [ref=e1661]
+              - button "New Terminal" [ref=e1955]:
+                - img [ref=e1666]
+              - generic [ref=e1667]:
+                - button "Clear Terminal" [ref=e1956]:
+                  - img [ref=e1669]
+                - button "Split Terminal" [ref=e1957]:
+                  - img [ref=e1673]
+                - button "Maximize Panel" [ref=e1958]:
+                  - img [ref=e1676]
+                - button "Close Panel (Ctrl+J)" [ref=e1959]:
+                  - img [ref=e1682]
+            - textbox "Terminal input" [ref=e1960]
+    - status "Status Bar" [ref=e1961]:
+      - generic [ref=e227]:
+        - generic [ref=e228]:
+          - button "0 errors. Click to open problems." [ref=e1962]:
+            - img [ref=e230]
+            - generic [ref=e234]: "0"
+          - button "0 warnings. Click to open problems." [ref=e1963]:
+            - img [ref=e236]
+            - generic [ref=e238]: "0"
+        - button "turtle zzz..." [ref=e1964]:
+          - generic "Inkwell the coding turtle" [ref=e1965]:
+            - img "turtle" [ref=e1966]: 🐢
+            - generic [ref=e242]: zzz...
+        - button "Notifications" [ref=e1967]:
+          - img [ref=e244]
+        - button "46%" [ref=e1968]:
+          - img [ref=e249]
+          - generic [ref=e254]: 46%
+        - generic "Project not indexed" [ref=e1969]:
+          - img [ref=e256]
+      - generic [ref=e260]:
+        - button "Ln 1, Col 1" [ref=e1970]
+        - 'button "Line ending: LF. Click to toggle between LF and CRLF." [ref=e1971]': LF
+        - 'generic "Encoding: UTF-8" [ref=e1972]': UTF-8
+        - 'button "Indentation: Spaces: 2. Click to change." [ref=e1973]': "Spaces: 2"
+        - button "Word wrap off. Click to enable." [ref=e1974]: "Wrap: Off"
+        - button "Plain Text" [ref=e1975]
+        - button "Ready" [ref=e1976]:
+          - img [ref=e268]
+          - generic [ref=e270]: Ready
+        - button "$0.0000" [ref=e1977]:
+          - generic "Session cost" [ref=e1978]:
+            - img [ref=e273]
+            - generic [ref=e278]: $0.0000
+        - 'button "Effort level: High" [ref=e1979]':
+          - img [ref=e281]
+          - generic [ref=e284]: High
+          - img [ref=e285]
+        - button "opus-4-6" [ref=e1980]
+  - generic [ref=e289]:
+    - heading "Command Palette" [level=2] [ref=e1981]
+    - paragraph [ref=e291]: Search for a command to run...
+  - region "Notifications alt+T"
+  - generic [ref=e2073]:
+    - generic [ref=e2074]:
+      - generic [ref=e2075]: Dev Panel
+      - generic [ref=e2076]:
+        - button "Dump State" [ref=e2077] [cursor=pointer]
+        - button "x" [ref=e2078] [cursor=pointer]
+    - generic [ref=e2079]: "Renders: 4 | Active tab: __vantage://welcome"
+    - button "▶ Layout" [ref=e2081] [cursor=pointer]
+    - button "▶ Editor" [ref=e2083] [cursor=pointer]
+    - button "▶ Settings" [ref=e2085] [cursor=pointer]
+    - button "▶ Conversation" [ref=e2087] [cursor=pointer]

@@ -12,7 +12,7 @@ type SettingsTab = "preferences" | "keybindings" | "claude-md" | "mcp-servers" |
 const tabs: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
   { id: "preferences", label: "Preferences", icon: <Settings size={12} /> },
   { id: "keybindings", label: "Keybindings", icon: <Keyboard size={12} /> },
-  { id: "claude-md", label: "CLAUDE.md", icon: <FileText size={12} /> },
+  { id: "claude-md", label: "CLAUDE", icon: <FileText size={12} /> },
   { id: "mcp-servers", label: "MCP Servers", icon: <Server size={12} /> },
   { id: "hooks", label: "Hooks", icon: <Zap size={12} /> },
 ];

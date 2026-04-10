@@ -216,8 +216,8 @@ export function UsageDashboard() {
           </div>
         </div>
 
-        {/* Stats cards row */}
-        <div className="grid grid-cols-4 gap-3">
+        {/* Stats cards — wraps in narrow containers (e.g. sidebar) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
           <StatCard
             label="Total Cost"
             value={`$${data.total_cost_usd.toFixed(2)}`}
@@ -259,7 +259,7 @@ export function UsageDashboard() {
                 (API-sourced)
               </span>
             </h2>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="flex flex-col gap-1">
                 <div className="flex items-center gap-1.5 text-xs" style={{ color: "var(--color-subtext-0)" }}>
                   <Activity size={11} style={{ color: "var(--color-blue)" }} />
@@ -335,7 +335,7 @@ export function UsageDashboard() {
         </div>
 
         {/* Bottom row: Model distribution + Sessions per day */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           <div
             className="rounded-lg p-4"
             style={{

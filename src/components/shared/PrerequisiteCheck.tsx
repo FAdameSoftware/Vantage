@@ -88,7 +88,7 @@ export function PrerequisiteCheck() {
           </DialogTitle>
           <DialogDescription style={{ color: "var(--color-subtext-0)" }}>
             {allPassed
-              ? "All prerequisites are met."
+              ? "All systems ready \u2014 let's build something."
               : "Checking system prerequisites..."}
           </DialogDescription>
         </DialogHeader>

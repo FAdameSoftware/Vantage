@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { IDELayout } from "@/components/layout";
+import { AppLayout } from "@/components/layout";
 import { Toaster } from "@/components/ui/sonner";
 import { useKeybindings } from "@/hooks/useKeybindings";
 import { useAgentNotifications } from "@/hooks/useAgentNotifications";
@@ -86,7 +86,7 @@ function App() {
   return (
     <ErrorBoundary>
       <MotionConfig reducedMotion="user">
-        <IDELayout />
+        <AppLayout />
         <CommandPalette />
         <TabSwitcher />
         <PermissionDialog />

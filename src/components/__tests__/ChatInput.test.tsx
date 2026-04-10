@@ -45,7 +45,7 @@ describe("ChatInput", () => {
 
   it("renders streaming placeholder when streaming", () => {
     render(<ChatInput {...defaultProps({ isStreaming: true })} />);
-    expect(screen.getByPlaceholderText("Claude is responding...")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Type to queue a message...")).toBeInTheDocument();
   });
 
   it("calls onSend with trimmed text on Enter", async () => {

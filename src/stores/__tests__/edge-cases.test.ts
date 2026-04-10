@@ -69,6 +69,8 @@ function resetLayoutStore() {
     previewActive: false,
     activePanelTab: "terminal",
     agentsViewMode: "kanban",
+    viewMode: "copilot",
+    overlayDrawerItem: null,
   });
 }
 

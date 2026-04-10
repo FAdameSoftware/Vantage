@@ -10,7 +10,7 @@ export interface ZenModeSnapshot {
   panelVisible: boolean;
 }
 
-export type ViewMode = "claude" | "ide";
+export type ViewMode = "command-center" | "copilot" | "tour";
 
 export interface LayoutState {
   primarySidebarVisible: boolean;
@@ -44,8 +44,10 @@ export interface LayoutState {
   zenMode: boolean;
   /** Saved panel visibility state before zen mode was activated */
   zenModeSnapshot: ZenModeSnapshot | null;
-  /** Active view mode: "claude" for chat-first layout, "ide" for traditional editor layout */
+  /** Active view mode: "command-center" (chat-first), "copilot" (IDE+chat), or "tour" (future) */
   viewMode: ViewMode;
+  /** Which overlay drawer is currently open in command-center mode (null = closed) */
+  overlayDrawerItem: ActivityBarItem | null;
   /** When true, auto-open file previews when Claude touches a file */
   autoOpenFiles: boolean;
   /** Tab ID currently flashing (brief pulse to indicate activity), auto-clears after 2s */
@@ -72,8 +74,10 @@ export interface LayoutState {
   toggleZenMode: () => void;
   /** Set the view mode directly */
   setViewMode: (mode: ViewMode) => void;
-  /** Toggle between claude and ide view modes */
+  /** Toggle between command-center and copilot view modes */
   toggleViewMode: () => void;
+  /** Open or close the overlay drawer (command-center mode) */
+  setOverlayDrawerItem: (item: ActivityBarItem | null) => void;
 
   /** Reset layout to defaults, preserving projectRootPath (used on workspace switch) */
   resetToDefaults: () => void;
@@ -100,7 +104,8 @@ export const useLayoutStore = create<LayoutState>()(
       selectedAgentId: null,
       zenMode: false,
       zenModeSnapshot: null,
-      viewMode: "claude",
+      viewMode: "command-center",
+      overlayDrawerItem: null,
       autoOpenFiles: true,
       flashPanelTab: null,
       setFlashPanelTab: (tab) => {
@@ -119,10 +124,20 @@ export const useLayoutStore = create<LayoutState>()(
       togglePanel: () => set({ panelVisible: !get().panelVisible }),
       setActiveActivityBarItem: (item) => {
         const current = get();
-        if (current.activeActivityBarItem === item && current.primarySidebarVisible) {
-          set({ primarySidebarVisible: false });
+        if (current.viewMode === "command-center") {
+          // In command-center: toggle overlay drawer
+          if (current.overlayDrawerItem === item) {
+            set({ overlayDrawerItem: null });
+          } else {
+            set({ overlayDrawerItem: item, activeActivityBarItem: item });
+          }
         } else {
-          set({ activeActivityBarItem: item, primarySidebarVisible: true });
+          // In copilot: toggle primary sidebar (standard IDE behavior)
+          if (current.activeActivityBarItem === item && current.primarySidebarVisible) {
+            set({ primarySidebarVisible: false });
+          } else {
+            set({ activeActivityBarItem: item, primarySidebarVisible: true });
+          }
         }
       },
       setPrimarySidebarSize: (size) => set({ primarySidebarSize: size }),
@@ -176,8 +191,12 @@ export const useLayoutStore = create<LayoutState>()(
         }
       },
 
-      setViewMode: (mode) => set({ viewMode: mode }),
-      toggleViewMode: () => set({ viewMode: get().viewMode === "claude" ? "ide" : "claude" }),
+      setViewMode: (mode) => set({ viewMode: mode, overlayDrawerItem: null }),
+      toggleViewMode: () => set({
+        viewMode: get().viewMode === "command-center" ? "copilot" : "command-center",
+        overlayDrawerItem: null,
+      }),
+      setOverlayDrawerItem: (item) => set({ overlayDrawerItem: item }),
 
       resetToDefaults: () => {
         const currentPath = get().projectRootPath;
@@ -201,7 +220,8 @@ export const useLayoutStore = create<LayoutState>()(
           selectedAgentId: null,
           zenMode: false,
           zenModeSnapshot: null,
-          viewMode: "claude",
+          viewMode: "command-center",
+          overlayDrawerItem: null,
           autoOpenFiles: true,
           flashPanelTab: null,
         });

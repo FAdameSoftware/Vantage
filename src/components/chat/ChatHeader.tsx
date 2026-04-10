@@ -154,7 +154,7 @@ export function ChatHeader({
           className="text-[11px] font-semibold uppercase tracking-wider"
           style={{ color: "var(--color-subtext-0)" }}
         >
-          {mode === "full" ? "Claude" : "Chat"}
+          Chat
         </span>
         {modelDisplay && (
           <span

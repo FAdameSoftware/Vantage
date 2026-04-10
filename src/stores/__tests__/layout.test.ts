@@ -10,6 +10,8 @@ beforeEach(() => {
     primarySidebarSize: 20,
     secondarySidebarSize: 25,
     panelSize: 30,
+    viewMode: "copilot",
+    overlayDrawerItem: null,
   });
 });
 

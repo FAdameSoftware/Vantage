@@ -105,6 +105,22 @@ export function ChatPanel({ mode = "sidebar" }: ChatPanelProps) {
     setNewMessageCount(count);
   }, []);
 
+  // ── Prompt queue: auto-send next queued message when streaming finishes ──
+  const wasStreamingRef = useRef(false);
+  useEffect(() => {
+    if (wasStreamingRef.current && !isStreaming) {
+      const next = useConversationStore.getState().popNextPrompt();
+      if (next) {
+        // Small delay to let the UI settle before auto-sending
+        setTimeout(() => {
+          const cwd = useConversationStore.getState().session?.cwd ?? useLayoutStore.getState().projectRootPath ?? ".";
+          sendMessage(next, cwd);
+        }, 500);
+      }
+    }
+    wasStreamingRef.current = isStreaming;
+  }, [isStreaming, sendMessage]);
+
   // ── Keyboard shortcut: Ctrl+Shift+F for search ──
 
   useEffect(() => {

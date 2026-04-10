@@ -66,9 +66,15 @@ function ActivityBarButton({
 }) {
   const activeItem = useLayoutStore((s) => s.activeActivityBarItem);
   const primarySidebarVisible = useLayoutStore((s) => s.primarySidebarVisible);
+  const overlayDrawerItem = useLayoutStore((s) => s.overlayDrawerItem);
+  const viewMode = useLayoutStore((s) => s.viewMode);
   const setActiveItem = useLayoutStore((s) => s.setActiveActivityBarItem);
 
-  const isActive = activeItem === entry.id && primarySidebarVisible;
+  // In command-center: active when overlay drawer is open for this item
+  // In copilot: active when primary sidebar shows this item
+  const isActive = viewMode === "command-center"
+    ? overlayDrawerItem === entry.id
+    : activeItem === entry.id && primarySidebarVisible;
 
   return (
     <Tooltip>

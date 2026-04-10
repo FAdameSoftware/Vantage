@@ -36,5 +36,5 @@ export function openFileInEditor(filePath: string) {
   const name = fileName(filePath);
   const language = detectLanguage(filePath);
   useEditorStore.getState().openFile(normalized, name, language, "", false);
-  useLayoutStore.getState().setViewMode("ide");
+  useLayoutStore.getState().setViewMode("copilot");
 }

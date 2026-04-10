@@ -13,6 +13,7 @@ import {
 import { handleSlashCommand } from "@/lib/slashHandlers";
 import { useQuickQuestionStore } from "@/stores/quickQuestion";
 import { useSettingsStore } from "@/stores/settings";
+import { useConversationStore } from "@/stores/conversation";
 import { DIMENSIONS } from "@/lib/dimensions";
 import {
   filterMentionSources,
@@ -114,8 +115,18 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
 
   const handleSend = useCallback(() => {
     const trimmed = text.trim();
-    if (isStreaming || disabled) return;
+    if (disabled) return;
     if (!trimmed && !imagePaste.hasImages) return;
+
+    // Queue message if Claude is currently streaming
+    if (isStreaming) {
+      if (trimmed) {
+        useConversationStore.getState().enqueuePrompt(trimmed);
+        setText("");
+        if (textareaRef.current) textareaRef.current.style.height = "auto";
+      }
+      return;
+    }
 
     // Add to input history
     if (trimmed) {
@@ -336,6 +347,9 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
         if (e.key === "Escape") {
           e.preventDefault();
           setShowMention(false);
+          setMentionQuery("");
+          // Remove the trailing @ and any partial query from the input
+          setText((prev) => prev.replace(/@\w*$/, ""));
           return;
         }
       }
@@ -384,18 +398,22 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     [showSlash, filteredSlash, slashIndex, handleSlashSelect, showMention, filteredMentions, mentionIndex, handleMentionSelect, handleSend, text],
   );
 
+  const queueLength = useConversationStore((s) => s.promptQueue.length);
+
   const placeholder =
     connectionStatus === "starting"
       ? "Connecting..."
       : isStreaming
-        ? "Claude is responding..."
+        ? "Type to queue a message..."
         : "Ask Claude anything...";
 
   const thinkingLabel = getThinkingModeLabel(thinkingMode);
   const isThinkingActive = thinkingMode !== "auto";
 
   const hintText = isStreaming
-    ? "Ctrl+C to stop"
+    ? queueLength > 0
+      ? `${queueLength} queued · Enter to queue more · Ctrl+C to stop`
+      : "Enter to queue a message · Ctrl+C to stop"
     : isResolvingMention
       ? "Resolving context..."
       : imagePaste.hasImages
@@ -482,18 +500,27 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
             maxLength={100000}
           />
 
-          {/* Right: send / stop */}
-          {isStreaming ? (
-            <button
-              type="button"
-              className="p-1 rounded transition-colors hover:bg-[var(--color-surface-1)]"
-              style={{ color: "var(--color-red)" }}
-              onClick={onStop}
-              aria-label="Stop generation"
-            >
-              <Square size={14} />
-            </button>
-          ) : (
+          {/* Right: queue badge + send/stop */}
+          <div className="flex items-center gap-0.5">
+            {queueLength > 0 && (
+              <span
+                className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                style={{ backgroundColor: "var(--color-blue)", color: "var(--color-base)" }}
+              >
+                {queueLength}
+              </span>
+            )}
+            {isStreaming && (
+              <button
+                type="button"
+                className="p-1 rounded transition-colors hover:bg-[var(--color-surface-1)]"
+                style={{ color: "var(--color-red)" }}
+                onClick={onStop}
+                aria-label="Stop generation"
+              >
+                <Square size={14} />
+              </button>
+            )}
             <button
               type="button"
               className="p-1 rounded transition-colors hover:bg-[var(--color-surface-1)]"
@@ -502,11 +529,11 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
               }}
               onClick={handleSend}
               disabled={!hasContent || disabled}
-              aria-label="Send message"
+              aria-label={isStreaming ? "Queue message" : "Send message"}
             >
               <Send size={14} />
             </button>
-          )}
+          </div>
         </div>
       </div>
       <p

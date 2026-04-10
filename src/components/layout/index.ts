@@ -1,4 +1,6 @@
-export { IDELayout } from "./IDELayout";
+export { AppLayout } from "./AppLayout";
+/** @deprecated Use AppLayout instead */
+export { AppLayout as IDELayout } from "./AppLayout";
 export { ActivityBar } from "./ActivityBar";
 export { PrimarySidebar } from "./PrimarySidebar";
 export { EditorArea } from "./EditorArea";

@@ -17,12 +17,17 @@ import {
   Keyboard,
   Maximize2,
   Puzzle,
+  MessageSquare,
+  Brain,
+  Columns2,
+  Trash2,
 } from "lucide-react";
 import { createElement } from "react";
 import { useEditorStore } from "@/stores/editor";
 import { useLayoutStore } from "@/stores/layout";
 import { useSettingsStore } from "@/stores/settings";
 import type { ThemeName } from "@/stores/settings";
+import { useConversationStore } from "@/stores/conversation";
 import * as monaco from "monaco-editor";
 
 // ── Types ─────────────────────────────────────────────────────────────
@@ -599,6 +604,115 @@ export function createCommands(actions: CommandActions): CommandDef[] {
       icon: icon(FileCode),
       category: "Editor",
       action: () => actions.setAutoSave("onFocusChange"),
+    },
+
+    // ── Claude commands ──────────────────────────────────────────────
+    {
+      id: "claude-new-chat",
+      label: "New Chat Session",
+      icon: icon(MessageSquare),
+      category: "Claude",
+      action: () => {
+        useConversationStore.getState().clearConversation();
+      },
+    },
+    {
+      id: "claude-resume-session",
+      label: "Resume Session",
+      icon: icon(MessageSquare),
+      category: "Claude",
+      action: () => {
+        // Open the chat sidebar so the session selector is visible
+        actions.setActiveActivityBarItem("chat");
+        // Dispatch event to open session search within the SessionSelector
+        window.dispatchEvent(new CustomEvent("vantage:open-session-search"));
+      },
+    },
+    {
+      id: "claude-compact",
+      label: "Compact Conversation",
+      icon: icon(MessageSquare),
+      category: "Claude",
+      action: () => {
+        // Dispatch a synthetic send of "/compact" through the chat
+        window.dispatchEvent(
+          new CustomEvent("vantage:send-chat-message", { detail: "/compact" }),
+        );
+      },
+    },
+    {
+      id: "claude-toggle-plan-mode",
+      label: `Plan Mode: ${useSettingsStore.getState().planMode ? "Disable" : "Enable"}`,
+      icon: icon(Brain),
+      category: "Claude",
+      action: () => {
+        const settings = useSettingsStore.getState();
+        settings.setPlanMode(!settings.planMode);
+      },
+    },
+    {
+      id: "claude-thinking-auto",
+      label: "Set Thinking: Auto",
+      icon: icon(Brain),
+      category: "Claude",
+      action: () => useSettingsStore.getState().setThinkingMode("auto"),
+    },
+    {
+      id: "claude-thinking-think",
+      label: "Set Thinking: Think",
+      icon: icon(Brain),
+      category: "Claude",
+      action: () => useSettingsStore.getState().setThinkingMode("think"),
+    },
+    {
+      id: "claude-thinking-think-hard",
+      label: "Set Thinking: Think Hard",
+      icon: icon(Brain),
+      category: "Claude",
+      action: () => useSettingsStore.getState().setThinkingMode("think_hard"),
+    },
+    {
+      id: "claude-thinking-think-harder",
+      label: "Set Thinking: Think Harder",
+      icon: icon(Brain),
+      category: "Claude",
+      action: () => useSettingsStore.getState().setThinkingMode("think_harder"),
+    },
+    {
+      id: "claude-thinking-ultrathink",
+      label: "Set Thinking: Ultrathink",
+      icon: icon(Brain),
+      category: "Claude",
+      action: () => useSettingsStore.getState().setThinkingMode("ultrathink"),
+    },
+
+    // ── Terminal commands ─────────────────────────────────────────────
+    {
+      id: "terminal-clear",
+      label: "Clear Terminal",
+      icon: icon(Terminal),
+      category: "Terminal",
+      action: () => {
+        window.dispatchEvent(new CustomEvent("vantage:terminal-clear"));
+      },
+    },
+    {
+      id: "terminal-split",
+      label: "Split Terminal",
+      icon: icon(Columns2),
+      category: "Terminal",
+      action: () => {
+        window.dispatchEvent(new CustomEvent("vantage:terminal-split"));
+      },
+    },
+    {
+      id: "terminal-kill",
+      label: "Kill Terminal",
+      icon: icon(Trash2),
+      category: "Terminal",
+      action: () => {
+        window.dispatchEvent(new CustomEvent("vantage:terminal-kill"));
+      },
     },
   ];
 }

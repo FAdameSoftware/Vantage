@@ -120,6 +120,8 @@ export interface ConversationState {
   /** Incremented on activeBlocks mutation to trigger re-renders without cloning the Map */
   activeBlocksVersion: number;
   activeMessageId: string | null;
+  /** Text of the last message assembled from stream events (used to skip duplicate assistant events) */
+  lastStreamAssembledText: string | null;
 
   // Session info
   session: SessionMetadata | null;
@@ -151,6 +153,9 @@ export interface ConversationState {
   // Pinned message IDs
   pinnedMessageIds: Set<string>;
 
+  // Prompt queue — messages queued while Claude is streaming
+  promptQueue: string[];
+
   // ── Actions ──
   addUserMessage: (text: string) => void;
   handleSystemInit: (msg: SystemInitMessage) => void;
@@ -173,6 +178,15 @@ export interface ConversationState {
   togglePinMessage: (messageId: string) => void;
   /** Check if a message is pinned */
   isMessagePinned: (messageId: string) => boolean;
+
+  /** Queue a message to be sent after the current turn completes */
+  enqueuePrompt: (text: string) => void;
+  /** Remove a queued prompt by index */
+  dequeuePrompt: (index: number) => void;
+  /** Clear the entire prompt queue */
+  clearPromptQueue: () => void;
+  /** Pop the next queued prompt (returns undefined if empty) */
+  popNextPrompt: () => string | undefined;
 
   /** Reset the conversation store to its default state (used on workspace switch) */
   resetToDefaults: () => void;
@@ -309,6 +323,10 @@ const DEFAULT_STATE: Omit<
   | "restoreCheckpoint"
   | "togglePinMessage"
   | "isMessagePinned"
+  | "enqueuePrompt"
+  | "dequeuePrompt"
+  | "clearPromptQueue"
+  | "popNextPrompt"
   | "resetToDefaults"
 > = {
   messages: [],
@@ -318,6 +336,7 @@ const DEFAULT_STATE: Omit<
   activeBlocks: new Map(),
   activeBlocksVersion: 0,
   activeMessageId: null,
+  lastStreamAssembledText: null,
   session: null,
   totalCost: 0,
   totalTokens: { input: 0, output: 0 },
@@ -328,6 +347,7 @@ const DEFAULT_STATE: Omit<
   sessionAllowedTools: new Set(),
   checkpoints: [],
   pinnedMessageIds: new Set(),
+  promptQueue: [],
 };
 
 export const useConversationStore = create<ConversationState>()(
@@ -491,6 +511,7 @@ export const useConversationStore = create<ConversationState>()(
           thinkingStartedAt: null,
           activeBlocks: new Map(),
           activeMessageId: null,
+          lastStreamAssembledText: assembled.text?.trim() || null,
           connectionStatus: "ready",
         }));
         break;
@@ -546,15 +567,38 @@ export const useConversationStore = create<ConversationState>()(
       }
 
       // Dedup guard: The Claude CLI sends both streaming events (which produce
-      // a message via message_stop) AND a complete "assistant" message for the
-      // same turn. If we already have a recent assistant message with identical
-      // text, skip appending this duplicate.
-      if (assembled.text && messages.length > 0) {
-        const last = messages[messages.length - 1];
-        if (last.role === "assistant" && last.text === assembled.text) {
-          // Same content — replace with the authoritative version (has correct ID)
-          messages[messages.length - 1] = assembled;
-          return { messages };
+      // The CLI sends both stream events (assembled on message_stop) AND a
+      // complete "assistant" event for the same turn. If we already assembled
+      // this message from streaming, skip the duplicate. Merge thinking
+      // content from the assistant event into the existing message since the
+      // stream version may not include it.
+      const { lastStreamAssembledText } = get();
+      const newText = assembled.text?.trim() || "";
+
+      if (lastStreamAssembledText && newText === lastStreamAssembledText) {
+        // Already have this from streaming — just merge thinking content
+        set((s) => {
+          if (!assembled.thinking) return {};
+          const msgs = [...s.messages];
+          for (let i = msgs.length - 1; i >= Math.max(0, msgs.length - 3); i--) {
+            if (msgs[i].role === "assistant" && msgs[i].text.trim() === newText) {
+              msgs[i] = { ...msgs[i], thinking: assembled.thinking || msgs[i].thinking };
+              return { messages: msgs, lastStreamAssembledText: null };
+            }
+          }
+          return { lastStreamAssembledText: null };
+        });
+        return;
+      }
+
+      // Fallback dedup: check recent messages by text content
+      if (newText && messages.length > 0) {
+        for (let i = messages.length - 1; i >= Math.max(0, messages.length - 3); i--) {
+          const msg = messages[i];
+          if (msg.role === "assistant" && msg.text.trim() === newText) {
+            messages[i] = { ...msg, thinking: assembled.thinking || msg.thinking };
+            return { messages, lastStreamAssembledText: null };
+          }
         }
       }
 
@@ -694,13 +738,37 @@ export const useConversationStore = create<ConversationState>()(
     return get().pinnedMessageIds.has(messageId);
   },
 
+  enqueuePrompt(text: string) {
+    set((state) => ({ promptQueue: [...state.promptQueue, text] }));
+  },
+
+  dequeuePrompt(index: number) {
+    set((state) => ({
+      promptQueue: state.promptQueue.filter((_, i) => i !== index),
+    }));
+  },
+
+  clearPromptQueue() {
+    set({ promptQueue: [] });
+  },
+
+  popNextPrompt() {
+    const queue = get().promptQueue;
+    if (queue.length === 0) return undefined;
+    const next = queue[0];
+    set({ promptQueue: queue.slice(1) });
+    return next;
+  },
+
   resetToDefaults() {
     set({
       ...DEFAULT_STATE,
       activeBlocks: new Map(),
       activeBlocksVersion: 0,
+      lastStreamAssembledText: null,
       sessionAllowedTools: new Set(),
       pinnedMessageIds: new Set(),
+      promptQueue: [],
     });
     useUsageStore.getState().reset();
   },

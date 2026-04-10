@@ -297,14 +297,14 @@ export function useKeybindings() {
     {
       key: "1",
       ctrl: true,
-      action: () => setViewMode("claude"),
-      description: "Switch to Claude View",
+      action: () => setViewMode("command-center"),
+      description: "Switch to Command Center",
     },
     {
       key: "2",
       ctrl: true,
-      action: () => setViewMode("ide"),
-      description: "Switch to IDE View",
+      action: () => setViewMode("copilot"),
+      description: "Switch to Co-pilot",
     },
   ], [
     togglePrimarySidebar, togglePanel, toggleSecondarySidebar,

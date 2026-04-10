@@ -28,7 +28,15 @@ import {
   saveRecentProjects,
 } from "@/lib/workspaceStorage";
 
-import { useLayoutStore } from "./layout";
+import { useLayoutStore, type ViewMode } from "./layout";
+
+/** Migrate old workspace viewMode values to new unified mode names */
+function migrateViewMode(mode?: string): ViewMode {
+  if (mode === "claude") return "command-center";
+  if (mode === "ide") return "copilot";
+  if (mode === "command-center" || mode === "copilot" || mode === "tour") return mode;
+  return "command-center";
+}
 import { useEditorStore } from "./editor";
 import { useConversationStore } from "./conversation";
 import type { ConversationMessage, ToolCall } from "./conversation";
@@ -312,7 +320,7 @@ async function applyWorkspaceState(ws: WorkspaceFile): Promise<void> {
     agentsViewMode: ws.layout.agentsViewMode,
     previewUrl: ws.layout.previewUrl,
     previewActive: ws.layout.previewActive,
-    viewMode: ws.layout.viewMode ?? "claude",
+    viewMode: migrateViewMode(ws.layout.viewMode),
     projectRootPath: ws.projectPath,
   });
 

@@ -319,7 +319,7 @@ export function PlanUsageIndicator({ windowWidth }: { windowWidth: number }) {
                 color: isHigh ? "var(--color-red)" : "var(--color-subtext-0)",
               }}
             >
-              {fiveHourUtil.toFixed(0)}%
+              Plan: {fiveHourUtil.toFixed(0)}%
             </span>
           </>
         )}

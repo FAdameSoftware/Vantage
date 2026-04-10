@@ -1,0 +1,194 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - banner [ref=e4]:
+        - img [ref=e6]
+        - menubar [ref=e8]:
+          - menuitem [ref=e10]: File
+          - menuitem [ref=e12]: Edit
+          - menuitem [ref=e14]: View
+          - menuitem [ref=e16]: Go
+          - menuitem [ref=e18]: Terminal
+          - menuitem [ref=e20]: Help
+        - tablist [ref=e22]:
+          - tab [selected] [ref=e23]:
+            - img [ref=e24]
+            - text: Claude
+          - tab [ref=e26]:
+            - img [ref=e27]
+            - text: IDE
+        - generic [ref=e30]:
+          - generic: Vantage
+        - generic [ref=e31]:
+          - button [ref=e32]:
+            - img [ref=e33]
+          - button [ref=e34]:
+            - img [ref=e35]
+          - button [ref=e37]:
+            - img [ref=e38]
+      - generic [ref=e41]:
+        - toolbar [ref=e42]:
+          - button [ref=e43]:
+            - img [ref=e45]
+          - button [ref=e47]:
+            - img [ref=e48]
+          - button [ref=e52]:
+            - img [ref=e53]
+          - button [ref=e56]:
+            - img [ref=e57]
+        - generic [ref=e61]:
+          - generic [ref=e65]:
+            - generic [ref=e66]:
+              - generic [ref=e68]: Claude
+              - generic [ref=e69]:
+                - switch [ref=e70]:
+                  - img [ref=e71]
+                - button [ref=e75]:
+                  - img [ref=e76]
+                - button [ref=e79]:
+                  - img [ref=e80]
+                - button [ref=e85]:
+                  - img [ref=e86]
+                  - generic [ref=e89]: Build & Review
+                - button [ref=e91]:
+                  - img [ref=e92]
+                  - generic [ref=e97]: Compact
+                - button [ref=e99]:
+                  - img [ref=e100]
+                  - generic [ref=e104]: Sessions
+                  - img [ref=e105]
+            - generic [ref=e110]:
+              - img [ref=e112]
+              - generic [ref=e114]:
+                - heading "Start a conversation with Claude Code" [level=2] [ref=e115]
+                - paragraph [ref=e116]: Type a message below to start a new session.
+              - generic [ref=e117]:
+                - button "Explain this codebase" [ref=e118]:
+                  - img [ref=e119]
+                  - text: Explain this codebase
+                - button "Find and fix bugs" [ref=e121]:
+                  - img [ref=e122]
+                  - text: Find and fix bugs
+                - button "Add a feature" [ref=e131]:
+                  - img [ref=e132]
+                  - text: Add a feature
+                - button "Write tests" [ref=e135]:
+                  - img [ref=e136]
+                  - text: Write tests
+              - generic [ref=e139]:
+                - generic [ref=e140]: Ctrl+Shift+P Command palette
+                - generic [ref=e141]: "@ Mention files"
+                - generic [ref=e142]: / Slash commands
+            - generic [ref=e144]:
+              - generic [ref=e146]:
+                - button [ref=e148]:
+                  - img [ref=e149]
+                - textbox [ref=e156]:
+                  - /placeholder: Ask Claude anything...
+                - button [disabled] [ref=e157]:
+                  - img [ref=e158]
+              - paragraph [ref=e161]: Shift+Enter for newline · @ to add context · Ctrl+V to paste images
+          - separator [ref=e162]
+          - generic [ref=e167]:
+            - generic [ref=e168]:
+              - button [ref=e169]:
+                - img [ref=e170]
+                - text: Terminal
+              - button [ref=e173]:
+                - img [ref=e174]
+                - text: Browser
+              - button [ref=e177]:
+                - img [ref=e178]
+                - text: Verification
+            - generic [ref=e183]:
+              - generic [ref=e184]:
+                - tablist [ref=e185]:
+                  - tab [selected] [ref=e186] [cursor=pointer]:
+                    - img [ref=e187]
+                    - generic [ref=e189]: Terminal 1
+                    - generic [ref=e190]: (PowerShell)
+                    - button [ref=e191]:
+                      - img [ref=e192]
+                - button [ref=e196]:
+                  - img [ref=e197]
+                - generic [ref=e198]:
+                  - button [ref=e199]:
+                    - img [ref=e200]
+                  - button [ref=e203]:
+                    - img [ref=e204]
+                  - button [ref=e206]:
+                    - img [ref=e207]
+                  - button [ref=e212]:
+                    - img [ref=e213]
+              - textbox [ref=e222]
+      - status [ref=e226]:
+        - generic [ref=e227]:
+          - generic [ref=e228]:
+            - button [ref=e229]:
+              - img [ref=e230]
+              - generic [ref=e234]: "0"
+            - button [ref=e235]:
+              - img [ref=e236]
+              - generic [ref=e238]: "0"
+          - button [ref=e239]:
+            - generic [ref=e240]:
+              - img [ref=e241]: 🐢
+              - generic [ref=e242]: zzz...
+          - button [ref=e243]:
+            - img [ref=e244]
+          - button [ref=e248]:
+            - img [ref=e249]
+            - generic [ref=e254]: 46%
+          - img [ref=e256]
+        - generic [ref=e260]:
+          - button [ref=e261]: Ln 1, Col 1
+          - button [ref=e262]: "Wrap: Off"
+          - button [ref=e265]: Plain Text
+          - button [ref=e267]:
+            - img [ref=e268]
+            - generic [ref=e270]: Ready
+          - button [ref=e271]:
+            - generic [ref=e272]:
+              - img [ref=e273]
+              - generic [ref=e278]: $0.0000
+          - button [ref=e280]:
+            - img [ref=e281]
+            - generic [ref=e284]: High
+            - img [ref=e285]
+          - button [ref=e288]: opus-4-6
+    - generic [ref=e289]:
+      - heading [level=2] [ref=e290]: Command Palette
+      - paragraph [ref=e291]: Search for a command to run...
+    - region "Notifications alt+T"
+    - button [ref=e292] [cursor=pointer]: DEV
+  - dialog "Welcome to Vantage" [ref=e296]:
+    - generic [ref=e297]:
+      - heading "Welcome to Vantage" [level=2] [ref=e298]
+      - paragraph [ref=e299]: All prerequisites are met.
+    - generic [ref=e300]:
+      - generic [ref=e301]:
+        - img [ref=e302]
+        - generic [ref=e305]:
+          - generic [ref=e306]:
+            - generic [ref=e307]: Node.js
+            - generic [ref=e308]: v20.11.0
+          - paragraph [ref=e309]: Node.js is installed
+      - generic [ref=e310]:
+        - img [ref=e311]
+        - generic [ref=e314]:
+          - generic [ref=e315]:
+            - generic [ref=e316]: Claude CLI
+            - generic [ref=e317]: 1.0.0
+          - paragraph [ref=e318]: Claude CLI is available
+      - generic [ref=e319]:
+        - img [ref=e320]
+        - generic [ref=e323]:
+          - generic [ref=e324]:
+            - generic [ref=e325]: Git
+            - generic [ref=e326]: 2.43.0
+          - paragraph [ref=e327]: Git is installed
+    - generic [ref=e328]:
+      - button "Check Again" [active] [ref=e329] [cursor=pointer]:
+        - img [ref=e330]
+        - text: Check Again
+      - button "Continue" [ref=e335] [cursor=pointer]
